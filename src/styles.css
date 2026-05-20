@@ -163,6 +163,22 @@
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid oklch(1 0 0 / 0.08);
   }
+
+  .aurora {
+    background:
+      conic-gradient(from 180deg at 50% 50%,
+        oklch(0.72 0.19 145 / 0.18) 0deg,
+        transparent 90deg,
+        oklch(0.65 0.22 200 / 0.12) 180deg,
+        transparent 270deg,
+        oklch(0.72 0.19 145 / 0.18) 360deg);
+    animation: aurora-spin 22s linear infinite;
+    filter: blur(60px);
+  }
+
+  @keyframes aurora-spin {
+    to { transform: rotate(360deg); }
+  }
 }
 
 /* Custom scrollbar */

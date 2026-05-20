@@ -120,6 +120,8 @@ export type Database = {
           billing_cycle: string
           created_at: string
           current_period_end: string | null
+          customer_email: string | null
+          customer_name: string | null
           discount_cents: number
           grace_until: string | null
           id: string
@@ -133,13 +135,15 @@ export type Database = {
           stripe_payment_intent_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount_cents: number
           billing_cycle?: string
           created_at?: string
           current_period_end?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
           discount_cents?: number
           grace_until?: string | null
           id?: string
@@ -153,13 +157,15 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount_cents?: number
           billing_cycle?: string
           created_at?: string
           current_period_end?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
           discount_cents?: number
           grace_until?: string | null
           id?: string
@@ -173,7 +179,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

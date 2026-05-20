@@ -50,6 +50,7 @@ function NotificationsPage() {
   const fetchList = useServerFn(listMyNotifications);
   const markRead = useServerFn(markNotificationRead);
   const sendTest = useServerFn(sendTestNotification);
+  const disableAll = useServerFn(disableAllPush);
 
   const { data: notifs = [] } = useQuery({
     queryKey: ["my-notifications"],

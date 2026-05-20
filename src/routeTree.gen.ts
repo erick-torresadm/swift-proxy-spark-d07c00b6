@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
+import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -165,6 +166,12 @@ const ApiPublicHooksProxysellerSyncRoute =
     path: '/api/public/hooks/proxyseller-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksNotificationsDispatchRoute =
+  ApiPublicHooksNotificationsDispatchRouteImport.update({
+    id: '/api/public/hooks/notifications-dispatch',
+    path: '/api/public/hooks/notifications-dispatch',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
@@ -212,6 +220,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
@@ -239,6 +248,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/admin/'
+    | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   fileRoutesByTo: FileRoutesByTo
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/admin'
+    | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   id:
@@ -316,6 +328,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/_authenticated/admin/'
+    | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   fileRoutesById: FileRoutesById
@@ -329,6 +342,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
@@ -503,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProxysellerSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/notifications-dispatch': {
+      id: '/api/public/hooks/notifications-dispatch'
+      path: '/api/public/hooks/notifications-dispatch'
+      fullPath: '/api/public/hooks/notifications-dispatch'
+      preLoaderRoute: typeof ApiPublicHooksNotificationsDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -585,6 +606,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicHooksNotificationsDispatchRoute:
+    ApiPublicHooksNotificationsDispatchRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }

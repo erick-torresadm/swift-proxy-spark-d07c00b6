@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/public/hooks/notifications-dispatch")
           .select(
             "id, user_id, current_period_end, status, products(name, notify_expiry_days)",
           )
-          .in("status", ["active"])
+          .in("status", ["paid"])
           .not("current_period_end", "is", null)
           .not("user_id", "is", null);
 

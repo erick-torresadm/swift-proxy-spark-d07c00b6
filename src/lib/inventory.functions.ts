@@ -116,9 +116,14 @@ export const getProviderStatus = createServerFn({ method: "GET" })
       .limit(20);
     return {
       api_configured: !!process.env.PROXY_SELLER_API_KEY,
-      balance: balance.ok ? balance.data : null,
+      balance: balance.ok ? JSON.parse(JSON.stringify(balance.data ?? null)) : null,
       balance_error: balance.error ?? null,
-      recent_calls: recent ?? [],
+      recent_calls: JSON.parse(JSON.stringify(recent ?? [])),
+    } as {
+      api_configured: boolean;
+      balance: unknown;
+      balance_error: string | null;
+      recent_calls: Array<{ id: string; action: string; status: string | null; created_at: string; response: unknown }>;
     };
   });
 

@@ -27,37 +27,45 @@ export function Navbar() {
     <motion.header
       initial={{ y: -30, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className={`fixed top-0 inset-x-0 z-50 transition-all ${
-        scrolled
-          ? "bg-background/80 backdrop-blur-xl border-b border-border/60"
-          : "bg-transparent"
-      }`}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="fixed inset-x-0 top-3 sm:top-5 z-50 px-3 sm:px-6 pointer-events-none"
     >
-      <div className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center">
-          <img src={logo} alt="FastProxy" className="h-7" />
+      <motion.div
+        animate={{
+          maxWidth: scrolled ? 880 : 1120,
+          paddingLeft: scrolled ? 14 : 20,
+          paddingRight: scrolled ? 14 : 20,
+        }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className={`pointer-events-auto mx-auto h-14 sm:h-16 flex items-center justify-between rounded-full border backdrop-blur-2xl transition-colors ${
+          scrolled
+            ? "bg-background/70 border-border/70 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]"
+            : "bg-background/40 border-border/40 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)]"
+        }`}
+      >
+        <Link to="/" className="flex items-center shrink-0">
+          <img src={logo} alt="FastProxy" className="h-6 sm:h-7" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-full transition"
             >
               {l.label}
             </a>
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2 shrink-0">
           {loading ? (
-            <div className="w-24 h-9 rounded-xl bg-card animate-pulse" />
+            <div className="w-24 h-9 rounded-full bg-card animate-pulse" />
           ) : user ? (
             <Link
               to="/dashboard"
-              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition flex items-center gap-2"
+              className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition flex items-center gap-2"
             >
               <LayoutDashboard className="w-4 h-4" />
               Meu painel
@@ -66,13 +74,13 @@ export function Navbar() {
             <>
               <Link
                 to="/login"
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-card transition"
+                className="px-4 py-2 rounded-full text-sm font-semibold text-foreground hover:bg-foreground/5 transition"
               >
                 Entrar
               </Link>
               <Link
                 to="/signup"
-                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition"
+                className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition"
               >
                 Criar conta
               </Link>
@@ -82,36 +90,37 @@ export function Navbar() {
 
         <button
           onClick={() => setOpen(!open)}
-          className="md:hidden p-2 rounded-lg hover:bg-card transition"
+          className="md:hidden p-2 rounded-full hover:bg-foreground/5 transition"
           aria-label="Menu"
         >
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
-      </div>
+      </motion.div>
 
       {open && (
         <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="md:hidden bg-background/95 backdrop-blur-xl border-b border-border"
+          initial={{ opacity: 0, y: -8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.2 }}
+          className="md:hidden pointer-events-auto mt-2 mx-auto max-w-[560px] rounded-3xl bg-background/85 backdrop-blur-2xl border border-border/70 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.6)] overflow-hidden"
         >
-          <div className="px-5 py-4 space-y-1">
+          <div className="px-3 py-3 space-y-1">
             {links.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="block py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                className="block px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/5"
               >
                 {l.label}
               </a>
             ))}
-            <div className="pt-3 border-t border-border mt-3 space-y-2">
+            <div className="pt-2 border-t border-border/60 mt-2 space-y-2">
               {user ? (
                 <Link
                   to="/dashboard"
                   onClick={() => setOpen(false)}
-                  className="block w-full text-center py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold"
+                  className="block w-full text-center py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-bold"
                 >
                   Meu painel
                 </Link>
@@ -120,14 +129,14 @@ export function Navbar() {
                   <Link
                     to="/login"
                     onClick={() => setOpen(false)}
-                    className="block w-full text-center py-2.5 rounded-xl border border-border text-sm font-semibold"
+                    className="block w-full text-center py-2.5 rounded-full border border-border text-sm font-semibold"
                   >
                     Entrar
                   </Link>
                   <Link
                     to="/signup"
                     onClick={() => setOpen(false)}
-                    className="block w-full text-center py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold"
+                    className="block w-full text-center py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-bold"
                   >
                     Criar conta
                   </Link>
@@ -140,3 +149,4 @@ export function Navbar() {
     </motion.header>
   );
 }
+

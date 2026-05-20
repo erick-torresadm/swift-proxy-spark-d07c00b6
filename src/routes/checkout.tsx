@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
-import { ArrowLeft, CreditCard, Loader2, Minus, Plus, Tag } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Minus, Plus, Tag, Mail, User } from "lucide-react";
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
-import { useAuth } from "@/hooks/use-auth";
 
 type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us";
 
@@ -13,8 +12,8 @@ type CatalogItem = {
   slug: Slug;
   name: string;
   tagline: string;
-  monthly: number; // cents
-  yearly: number; // cents
+  monthly: number;
+  yearly: number;
   blockSize: number;
   unitLabel: string;
 };
@@ -78,10 +77,10 @@ function formatBRL(cents: number) {
   });
 }
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function CheckoutPage() {
   const search = Route.useSearch();
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const startCheckout = useServerFn(createCheckoutSession);
 
   const [slug, setSlug] = useState<Slug>(search.plan ?? "ipv6-br");
@@ -89,6 +88,8 @@ function CheckoutPage() {
     search.billing ?? "monthly",
   );
   const [qty, setQty] = useState<number>(search.qty ?? 1);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -100,14 +101,20 @@ function CheckoutPage() {
 
   async function handleSubmit() {
     setError(null);
-    if (!user) {
-      navigate({ to: "/login", search: { redirect: `/checkout?plan=${slug}&billing=${billing}&qty=${qty}` } as never });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+    if (!cleanName || cleanName.length < 2) {
+      setError("Informe seu nome completo");
+      return;
+    }
+    if (!emailRegex.test(cleanEmail)) {
+      setError("Informe um email válido");
       return;
     }
     setSubmitting(true);
     try {
       const res = await startCheckout({
-        data: { productSlug: slug, quantity: qty, billing },
+        data: { productSlug: slug, quantity: qty, billing, email: cleanEmail, name: cleanName },
       });
       if (res?.url) {
         window.location.href = res.url;
@@ -245,6 +252,46 @@ function CheckoutPage() {
             </div>
           </div>
 
+          {/* Customer data — no signup needed */}
+          <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Nome completo
+              </label>
+              <div className="mt-2 relative">
+                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Como você se chama"
+                  maxLength={120}
+                  className="w-full h-11 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Email
+              </label>
+              <div className="mt-2 relative">
+                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  maxLength={255}
+                  autoComplete="email"
+                  className="w-full h-11 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
+                />
+              </div>
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              Sua conta será criada automaticamente após o pagamento — enviamos o link de acesso no email.
+            </p>
+          </div>
+
           {/* Coupon notice */}
           <div className="mb-6 p-4 rounded-xl border border-border bg-background/60 flex items-start gap-3">
             <Tag className="w-4 h-4 mt-0.5 text-primary" />
@@ -290,7 +337,7 @@ function CheckoutPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={submitting || loading}
+            disabled={submitting}
             className="mt-6 w-full py-4 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-base shadow-glow hover:opacity-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? (

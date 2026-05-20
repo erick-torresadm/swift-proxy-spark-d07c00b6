@@ -92,6 +92,72 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
               const customerId =
                 typeof s.customer === "string" ? s.customer : s.customer?.id;
               const discountCents = s.total_details?.amount_discount ?? 0;
+              const customerEmail =
+                (s.metadata?.customer_email as string | undefined) ??
+                s.customer_details?.email ??
+                s.customer_email ??
+                null;
+              const customerName =
+                (s.metadata?.customer_name as string | undefined) ??
+                s.customer_details?.name ??
+                null;
+
+              // Auto-provision auth user if not yet linked
+              if (orderId && customerEmail) {
+                const { data: existingOrder } = await supabaseAdmin
+                  .from("orders")
+                  .select("user_id")
+                  .eq("id", orderId)
+                  .maybeSingle();
+
+                if (!existingOrder?.user_id) {
+                  let userId: string | null = null;
+                  // Look for an existing auth user with that email
+                  try {
+                    const { data: list } = await supabaseAdmin.auth.admin.listUsers({
+                      page: 1,
+                      perPage: 200,
+                    });
+                    userId =
+                      list.users.find(
+                        (u) => u.email?.toLowerCase() === customerEmail.toLowerCase(),
+                      )?.id ?? null;
+                  } catch {
+                    /* ignore */
+                  }
+
+                  // Create user via invite (sends magic-link email automatically)
+                  if (!userId) {
+                    try {
+                      const { data: invited } =
+                        await supabaseAdmin.auth.admin.inviteUserByEmail(
+                          customerEmail,
+                          {
+                            data: {
+                              full_name: customerName ?? undefined,
+                            },
+                          },
+                        );
+                      userId = invited.user?.id ?? null;
+                    } catch (err) {
+                      await logAudit(
+                        "auto_provision_user",
+                        "error",
+                        { email: customerEmail },
+                        err instanceof Error ? err.message : String(err),
+                      );
+                    }
+                  }
+
+                  if (userId) {
+                    await supabaseAdmin
+                      .from("orders")
+                      .update({ user_id: userId })
+                      .eq("id", orderId);
+                  }
+                }
+              }
+
               // try to fetch first applied promotion code
               let promoCode: string | null = null;
               if (s.id) {
@@ -117,6 +183,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
               });
               break;
             }
+
             case "invoice.paid":
             case "invoice.payment_succeeded": {
               const inv = event.data.object as Stripe.Invoice;

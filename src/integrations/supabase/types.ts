@@ -14,6 +14,225 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          request: Json | null
+          response: Json | null
+          source: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          request?: Json | null
+          response?: Json | null
+          source: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          request?: Json | null
+          response?: Json | null
+          source?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      customer_proxies: {
+        Row: {
+          allocated_at: string
+          created_at: string
+          id: string
+          ip_rotations_used: number
+          order_id: string
+          provider_order_id: string | null
+          released_at: string | null
+          rotations_reset_at: string
+          status: Database["public"]["Enums"]["allocation_status"]
+          stock_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allocated_at?: string
+          created_at?: string
+          id?: string
+          ip_rotations_used?: number
+          order_id: string
+          provider_order_id?: string | null
+          released_at?: string | null
+          rotations_reset_at?: string
+          status?: Database["public"]["Enums"]["allocation_status"]
+          stock_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allocated_at?: string
+          created_at?: string
+          id?: string
+          ip_rotations_used?: number
+          order_id?: string
+          provider_order_id?: string | null
+          released_at?: string | null
+          rotations_reset_at?: string
+          status?: Database["public"]["Enums"]["allocation_status"]
+          stock_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_proxies_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_proxies_provider_order_id_fkey"
+            columns: ["provider_order_id"]
+            isOneToOne: false
+            referencedRelation: "provider_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_proxies_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "proxy_stock"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          amount_cents: number
+          billing_cycle: string
+          created_at: string
+          current_period_end: string | null
+          grace_until: string | null
+          id: string
+          last_payment_check_at: string | null
+          product_id: string
+          quantity: number
+          status: Database["public"]["Enums"]["order_status"]
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          billing_cycle?: string
+          created_at?: string
+          current_period_end?: string | null
+          grace_until?: string | null
+          id?: string
+          last_payment_check_at?: string | null
+          product_id: string
+          quantity?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          billing_cycle?: string
+          created_at?: string
+          current_period_end?: string | null
+          grace_until?: string | null
+          id?: string
+          last_payment_check_at?: string | null
+          product_id?: string
+          quantity?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          active: boolean
+          block_size: number
+          category: Database["public"]["Enums"]["product_category"]
+          country_code: string
+          created_at: string
+          delivery_mode: Database["public"]["Enums"]["delivery_mode"]
+          description: string | null
+          duration_days: number
+          id: string
+          ip_rotations_per_month: number
+          name: string
+          price_monthly_cents: number
+          price_yearly_cents: number | null
+          provider_tariff_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          block_size?: number
+          category: Database["public"]["Enums"]["product_category"]
+          country_code?: string
+          created_at?: string
+          delivery_mode: Database["public"]["Enums"]["delivery_mode"]
+          description?: string | null
+          duration_days?: number
+          id?: string
+          ip_rotations_per_month?: number
+          name: string
+          price_monthly_cents: number
+          price_yearly_cents?: number | null
+          provider_tariff_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          block_size?: number
+          category?: Database["public"]["Enums"]["product_category"]
+          country_code?: string
+          created_at?: string
+          delivery_mode?: Database["public"]["Enums"]["delivery_mode"]
+          description?: string | null
+          duration_days?: number
+          id?: string
+          ip_rotations_per_month?: number
+          name?: string
+          price_monthly_cents?: number
+          price_yearly_cents?: number | null
+          provider_tariff_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -43,6 +262,166 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      provider_orders: {
+        Row: {
+          auto_renew: boolean
+          cost_cents: number | null
+          country_code: string | null
+          created_at: string
+          expires_at: string | null
+          external_order_id: string | null
+          id: string
+          product_id: string | null
+          purchased_at: string
+          quantity: number
+          raw_payload: Json | null
+          status: Database["public"]["Enums"]["provider_order_status"]
+        }
+        Insert: {
+          auto_renew?: boolean
+          cost_cents?: number | null
+          country_code?: string | null
+          created_at?: string
+          expires_at?: string | null
+          external_order_id?: string | null
+          id?: string
+          product_id?: string | null
+          purchased_at?: string
+          quantity: number
+          raw_payload?: Json | null
+          status?: Database["public"]["Enums"]["provider_order_status"]
+        }
+        Update: {
+          auto_renew?: boolean
+          cost_cents?: number | null
+          country_code?: string | null
+          created_at?: string
+          expires_at?: string | null
+          external_order_id?: string | null
+          id?: string
+          product_id?: string | null
+          purchased_at?: string
+          quantity?: number
+          raw_payload?: Json | null
+          status?: Database["public"]["Enums"]["provider_order_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proxy_stock: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          expires_at: string | null
+          external_proxy_id: string | null
+          host: string
+          id: string
+          password: string | null
+          port: number
+          product_id: string
+          protocol: string | null
+          provider_order_id: string | null
+          purchased_at: string
+          status: Database["public"]["Enums"]["stock_status"]
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          expires_at?: string | null
+          external_proxy_id?: string | null
+          host: string
+          id?: string
+          password?: string | null
+          port: number
+          product_id: string
+          protocol?: string | null
+          provider_order_id?: string | null
+          purchased_at?: string
+          status?: Database["public"]["Enums"]["stock_status"]
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          expires_at?: string | null
+          external_proxy_id?: string | null
+          host?: string
+          id?: string
+          password?: string | null
+          port?: number
+          product_id?: string
+          protocol?: string | null
+          provider_order_id?: string | null
+          purchased_at?: string
+          status?: Database["public"]["Enums"]["stock_status"]
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proxy_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proxy_stock_provider_order_id_fkey"
+            columns: ["provider_order_id"]
+            isOneToOne: false
+            referencedRelation: "provider_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restock_rules: {
+        Row: {
+          batch_quantity: number
+          created_at: string
+          enabled: boolean
+          id: string
+          min_stock: number
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          batch_quantity?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          min_stock?: number
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          batch_quantity?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          min_stock?: number
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restock_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -77,9 +456,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_expired_grace_proxies: {
+        Args: never
+        Returns: {
+          released_count: number
+        }[]
+      }
     }
     Enums: {
+      allocation_status: "active" | "grace" | "released" | "cancelled"
       app_role: "admin" | "customer"
+      delivery_mode: "stock" | "direct"
+      order_status:
+        | "pending"
+        | "paid"
+        | "past_due"
+        | "grace"
+        | "cancelled"
+        | "expired"
+      product_category: "ipv6" | "ipv6_fb" | "ipv4" | "isp"
+      provider_order_status: "pending" | "active" | "expired" | "failed"
+      stock_status: "available" | "allocated" | "expired" | "removed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -207,7 +604,20 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      allocation_status: ["active", "grace", "released", "cancelled"],
       app_role: ["admin", "customer"],
+      delivery_mode: ["stock", "direct"],
+      order_status: [
+        "pending",
+        "paid",
+        "past_due",
+        "grace",
+        "cancelled",
+        "expired",
+      ],
+      product_category: ["ipv6", "ipv6_fb", "ipv4", "isp"],
+      provider_order_status: ["pending", "active", "expired", "failed"],
+      stock_status: ["available", "allocated", "expired", "removed"],
     },
   },
 } as const

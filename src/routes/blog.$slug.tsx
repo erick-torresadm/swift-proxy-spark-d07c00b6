@@ -140,7 +140,7 @@ function PostPage() {
         <section className="mt-12 pt-8 border-t border-border">
           <h2 className="text-2xl font-black mb-6">Perguntas frequentes</h2>
           <div className="space-y-4">
-            {post.faq.map((f, i) => (
+            {post.faq.map((f: { question: string; answer: string }, i: number) => (
               <details
                 key={i}
                 className="bg-card border border-border rounded-2xl p-4 group"
@@ -160,7 +160,7 @@ function PostPage() {
 
       {post.tags.length > 0 && (
         <div className="mt-10 flex flex-wrap gap-2">
-          {post.tags.map((t) => (
+          {post.tags.map((t: { slug: string; name: string }) => (
             <Link
               key={t.slug}
               to="/blog/tag/$slug"

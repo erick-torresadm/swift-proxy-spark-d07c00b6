@@ -207,7 +207,7 @@ export const listRelatedPosts = createServerFn({ method: "POST" })
       .eq("id", data.postId)
       .maybeSingle();
     if (!src?.category_id) return [];
-    const { data } = await supabaseAdmin
+    const { data: related } = await supabaseAdmin
       .from("posts")
       .select("slug, title, excerpt, cover_image_url, published_at")
       .eq("status", "published")
@@ -215,7 +215,7 @@ export const listRelatedPosts = createServerFn({ method: "POST" })
       .neq("id", data.postId)
       .order("published_at", { ascending: false })
       .limit(data.limit);
-    return data ?? [];
+    return related ?? [];
   });
 
 /* ---------------- COMENTÁRIOS ---------------- */

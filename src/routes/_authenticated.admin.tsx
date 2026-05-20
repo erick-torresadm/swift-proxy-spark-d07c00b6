@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useLocation, redirect } from "@tanstack/react-router";
-import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft } from "lucide-react";
+import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -24,6 +24,7 @@ const adminNav = [
   { to: "/admin/orders", label: "Pedidos", icon: Receipt },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/provider", label: "Provedor", icon: ServerCog },
+  { to: "/admin/emails", label: "Emails", icon: Mail },
 ] as const;
 
 function AdminLayout() {

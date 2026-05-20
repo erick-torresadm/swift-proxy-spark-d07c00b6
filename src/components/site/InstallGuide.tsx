@@ -13,126 +13,6 @@ import {
   MousePointerClick,
 } from "lucide-react";
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.12 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: "easeOut" },
-  },
-};
-
-const phoneVariants = {
-  hidden: { opacity: 0, scale: 0.92, y: 40 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: "backOut" },
-  },
-};
-
-function AndroidSteps() {
-  const steps = [
-    {
-      icon: Chrome,
-      label: "Abra o Chrome",
-      desc: "Acesse fastproxy.com no navegador Chrome.",
-    },
-    {
-      icon: ArrowDownToLine,
-      label: "Toque no menu",
-      desc: 'Clique nos três pontinhos (⋮) no canto superior direito.',
-    },
-    {
-      icon: PlusSquare,
-      label: "Adicionar à tela",
-      desc: 'Selecione "Adicionar à tela inicial" ou "Instalar app".',
-    },
-    {
-      icon: CheckCircle2,
-      label: "Pronto!",
-      desc: "O ícone do FastProxy aparece no seu launcher.",
-    },
-  ];
-  return (
-    <ol className="space-y-5">
-      {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          variants={itemVariants}
-          className="flex items-start gap-4"
-        >
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-            <s.icon className="w-5 h-5 text-primary" />
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
-              {i + 1}
-            </span>
-          </div>
-          <div>
-            <p className="font-semibold text-sm">{s.label}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
-          </div>
-        </motion.li>
-      ))}
-    </ol>
-  );
-}
-
-function iOSSteps() {
-  const steps = [
-    {
-      icon: Apple,
-      label: "Abra o Safari",
-      desc: "Acesse fastproxy.com pelo Safari (iPhone/iPad).",
-    },
-    {
-      icon: Share2,
-      label: "Toque em Compartilhar",
-      desc: 'Clique no ícone de compartilhar na barra inferior.',
-    },
-    {
-      icon: ArrowDownToLine,
-      label: "Adicionar à Tela de Início",
-      desc: 'Deslize e toque em "Adicionar à Tela de Início".',
-    },
-    {
-      icon: CheckCircle2,
-      label: "Pronto!",
-      desc: "O ícone do FastProxy aparece na sua home screen.",
-    },
-  ];
-  return (
-    <ol className="space-y-5">
-      {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          variants={itemVariants}
-          className="flex items-start gap-4"
-        >
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-            <s.icon className="w-5 h-5 text-primary" />
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
-              {i + 1}
-            </span>
-          </div>
-          <div>
-            <p className="font-semibold text-sm">{s.label}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
-          </div>
-        </motion.li>
-      ))}
-    </ol>
-  );
-}
-
 export function InstallGuide() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
@@ -149,27 +29,39 @@ export function InstallGuide() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
         <motion.div
-          variants={containerVariants}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.12 } },
+          }}
           className="text-center mb-14"
         >
           <motion.div
-            variants={itemVariants}
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+            }}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-semibold mb-5"
           >
             <Smartphone className="w-3.5 h-3.5" />
             APP NATIVO
           </motion.div>
           <motion.h2
-            variants={itemVariants}
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+            }}
             className="text-3xl md:text-5xl font-bold tracking-tight mb-4"
           >
             Instale o{" "}
             <span className="text-gradient">FastProxy</span> no celular
           </motion.h2>
           <motion.p
-            variants={itemVariants}
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+            }}
             className="text-muted-foreground max-w-xl mx-auto text-sm md:text-base"
           >
             Transforme o site em um app de verdade. Acesso rápido, notificações
@@ -180,9 +72,9 @@ export function InstallGuide() {
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left: phone mockup */}
           <motion.div
-            variants={phoneVariants}
-            initial="hidden"
-            animate={isInView ? "visible" : "hidden"}
+            initial={{ opacity: 0, scale: 0.92, y: 40 }}
+            animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, ease: "backOut" as const }}
             className="order-2 md:order-1 flex justify-center"
           >
             <div className="relative w-[260px] h-[520px] rounded-[2.5rem] border-[6px] border-white/10 bg-card shadow-card overflow-hidden">
@@ -244,14 +136,20 @@ export function InstallGuide() {
 
           {/* Right: steps */}
           <motion.div
-            variants={containerVariants}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.12 } },
+            }}
             className="order-1 md:order-2"
           >
             {/* tabs */}
             <motion.div
-              variants={itemVariants}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+              }}
               className="flex gap-2 mb-8 p-1 rounded-2xl bg-secondary/60 border border-border w-fit"
             >
               <button
@@ -282,14 +180,17 @@ export function InstallGuide() {
               key={activeTab}
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
+              transition={{ duration: 0.35, ease: "easeOut" as const }}
               className="glass rounded-3xl p-6 md:p-8"
             >
-              {activeTab === "android" ? <AndroidSteps /> : <iOSSteps />}
+              {activeTab === "android" ? <AndroidSteps /> : <IOSSteps />}
             </motion.div>
 
             <motion.div
-              variants={itemVariants}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+              }}
               className="mt-6 flex flex-wrap gap-3"
             >
               {[
@@ -310,6 +211,74 @@ export function InstallGuide() {
         </div>
       </div>
     </section>
+  );
+}
+
+function AndroidSteps() {
+  const steps = [
+    { icon: Chrome, label: "Abra o Chrome", desc: "Acesse fastproxy.com no navegador Chrome." },
+    { icon: ArrowDownToLine, label: "Toque no menu", desc: "Clique nos três pontinhos (⋮) no canto superior direito." },
+    { icon: PlusSquare, label: "Adicionar à tela", desc: 'Selecione "Adicionar à tela inicial" ou "Instalar app".' },
+    { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece no seu launcher." },
+  ];
+  return (
+    <ol className="space-y-5">
+      {steps.map((s, i) => (
+        <motion.li
+          key={i}
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+          }}
+          className="flex items-start gap-4"
+        >
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+            <s.icon className="w-5 h-5 text-primary" />
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
+              {i + 1}
+            </span>
+          </div>
+          <div>
+            <p className="font-semibold text-sm">{s.label}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
+          </div>
+        </motion.li>
+      ))}
+    </ol>
+  );
+}
+
+function IOSSteps() {
+  const steps = [
+    { icon: Apple, label: "Abra o Safari", desc: "Acesse fastproxy.com pelo Safari (iPhone/iPad)." },
+    { icon: Share2, label: "Toque em Compartilhar", desc: "Clique no ícone de compartilhar na barra inferior." },
+    { icon: ArrowDownToLine, label: "Adicionar à Tela de Início", desc: "Deslize e toque em \"Adicionar à Tela de Início\"." },
+    { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece na sua home screen." },
+  ];
+  return (
+    <ol className="space-y-5">
+      {steps.map((s, i) => (
+        <motion.li
+          key={i}
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+          }}
+          className="flex items-start gap-4"
+        >
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+            <s.icon className="w-5 h-5 text-primary" />
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
+              {i + 1}
+            </span>
+          </div>
+          <div>
+            <p className="font-semibold text-sm">{s.label}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
+          </div>
+        </motion.li>
+      ))}
+    </ol>
   );
 }
 

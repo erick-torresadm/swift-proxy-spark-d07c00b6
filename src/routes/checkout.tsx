@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
-import { ArrowLeft, CreditCard, Loader2, Minus, Plus, Tag } from "lucide-react";
+import { ArrowLeft, CreditCard, Loader2, Minus, Plus, Tag, Mail, User } from "lucide-react";
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
-import { useAuth } from "@/hooks/use-auth";
 
 type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us";
 
@@ -13,8 +12,8 @@ type CatalogItem = {
   slug: Slug;
   name: string;
   tagline: string;
-  monthly: number; // cents
-  yearly: number; // cents
+  monthly: number;
+  yearly: number;
   blockSize: number;
   unitLabel: string;
 };
@@ -78,10 +77,10 @@ function formatBRL(cents: number) {
   });
 }
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function CheckoutPage() {
   const search = Route.useSearch();
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const startCheckout = useServerFn(createCheckoutSession);
 
   const [slug, setSlug] = useState<Slug>(search.plan ?? "ipv6-br");
@@ -89,6 +88,8 @@ function CheckoutPage() {
     search.billing ?? "monthly",
   );
   const [qty, setQty] = useState<number>(search.qty ?? 1);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -100,14 +101,20 @@ function CheckoutPage() {
 
   async function handleSubmit() {
     setError(null);
-    if (!user) {
-      navigate({ to: "/login", search: { redirect: `/checkout?plan=${slug}&billing=${billing}&qty=${qty}` } as never });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+    if (!cleanName || cleanName.length < 2) {
+      setError("Informe seu nome completo");
+      return;
+    }
+    if (!emailRegex.test(cleanEmail)) {
+      setError("Informe um email válido");
       return;
     }
     setSubmitting(true);
     try {
       const res = await startCheckout({
-        data: { productSlug: slug, quantity: qty, billing },
+        data: { productSlug: slug, quantity: qty, billing, email: cleanEmail, name: cleanName },
       });
       if (res?.url) {
         window.location.href = res.url;

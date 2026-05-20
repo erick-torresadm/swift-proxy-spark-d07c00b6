@@ -298,6 +298,20 @@ function NotificationsPage() {
           </div>
         )}
       </div>
+
+      <div className="pt-4 border-t border-border/60 text-center">
+        <button
+          onClick={() => {
+            if (confirm("Desativar notificações em todos os dispositivos?")) {
+              disableAllMut.mutate();
+            }
+          }}
+          disabled={disableAllMut.isPending}
+          className="text-xs text-muted-foreground hover:text-destructive transition disabled:opacity-50"
+        >
+          {disableAllMut.isPending ? "Desativando…" : "Desativar notificações em todos os dispositivos"}
+        </button>
+      </div>
     </div>
   );
 }

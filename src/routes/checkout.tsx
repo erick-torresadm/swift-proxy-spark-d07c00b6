@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import {
@@ -115,8 +115,13 @@ function StepHeader({ n, title, hint }: { n: number; title: string; hint?: strin
 }
 
 function CheckoutPage() {
+  const location = useLocation();
   const search = Route.useSearch();
   const startCheckout = useServerFn(createCheckoutSession);
+
+  if (location.pathname !== "/checkout") {
+    return <Outlet />;
+  }
 
   const initialSlug: Slug = search.plan ?? "ipv6-br";
   const [country, setCountry] = useState<Country>(CATALOG[initialSlug].country);

@@ -42,11 +42,32 @@ function CopyButton({ value, label = "Copiar" }: { value: string; label?: string
 
 function ProxiesPage() {
   const fetchProxies = useServerFn(listMyProxies);
+  const rotateFn = useServerFn(rotateProxyIp);
+  const reactivateFn = useServerFn(createReactivateCheckout);
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["my-proxies"],
     queryFn: () => fetchProxies(),
     refetchInterval: 60000,
   });
+
+  const rotate = useMutation({
+    mutationFn: (proxyId: string) => rotateFn({ data: { proxyId } }),
+    onSuccess: (r) => {
+      toast.success(`IP rotacionado! Restam ${r.remaining}/${r.cap}`);
+      qc.invalidateQueries({ queryKey: ["my-proxies"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reactivate = useMutation({
+    mutationFn: (orderId: string) => reactivateFn({ data: { orderId } }),
+    onSuccess: (r) => {
+      if (r.url) window.location.href = r.url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const [query, setQuery] = useState("");
 

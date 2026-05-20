@@ -20,6 +20,9 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/blog", changefreq: "daily", priority: "0.9" },
           { path: "/login", changefreq: "monthly", priority: "0.3" },
           { path: "/signup", changefreq: "monthly", priority: "0.3" },
+          { path: "/privacidade", changefreq: "yearly", priority: "0.4" },
+          { path: "/termos", changefreq: "yearly", priority: "0.4" },
+          { path: "/reembolso", changefreq: "yearly", priority: "0.4" },
         ];
 
         const [{ data: posts }, { data: cats }, { data: prog }] = await Promise.all([

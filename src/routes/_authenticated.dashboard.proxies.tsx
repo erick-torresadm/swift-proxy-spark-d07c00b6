@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { Server, Copy, Check, Download, Search } from "lucide-react";
-import { listMyProxies } from "@/lib/dashboard.functions";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle } from "lucide-react";
+import { listMyProxies, rotateProxyIp, createReactivateCheckout } from "@/lib/dashboard.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard/proxies")({
   component: ProxiesPage,
   head: () => ({ meta: [{ title: "Meus proxies — FastProxy" }] }),
 });
+
 
 type Proxy = Awaited<ReturnType<typeof listMyProxies>>[number];
 

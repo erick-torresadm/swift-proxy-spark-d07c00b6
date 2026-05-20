@@ -21,6 +21,7 @@ import {
   listMyNotifications,
   markNotificationRead,
   sendTestNotification,
+  disableAllPush,
 } from "@/lib/notifications.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/notificacoes")({

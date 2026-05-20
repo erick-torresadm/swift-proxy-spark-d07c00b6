@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getStripe } from "./stripe.server";
+import { replaceProxyIp, psDateToIso } from "./proxyseller.server";
 
 
 /**
@@ -174,7 +175,7 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
     const { data: row, error } = await supabaseAdmin
       .from("customer_proxies")
       .select(
-        "id, user_id, status, ip_rotations_used, rotations_reset_at, orders(products(ip_rotations_per_month))",
+        "id, user_id, status, stock_id, ip_rotations_used, rotations_reset_at, orders(products(ip_rotations_per_month))",
       )
       .eq("id", data.proxyId)
       .maybeSingle();
@@ -205,8 +206,32 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       );
     }
 
-    // TODO(provider): chamar API do provedor IPv6 para realmente rotacionar
-    // o IP do bloco. Por enquanto apenas registramos o uso.
+    // Call ProxySeller to actually rotate the IP at the provider
+    const { data: stock } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, external_proxy_id")
+      .eq("id", row.stock_id as string)
+      .maybeSingle();
+
+    if (!stock?.external_proxy_id) {
+      throw new Error("Proxy sem ID externo (estoque manual). Contate suporte.");
+    }
+
+    const replaced = await replaceProxyIp(stock.external_proxy_id);
+    if (replaced) {
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({
+          external_proxy_id: replaced.id,
+          host: replaced.ip_only || replaced.ip,
+          port: replaced.port_http,
+          username: replaced.login,
+          password: replaced.password,
+          protocol: (replaced.protocol || "http").toLowerCase(),
+          expires_at: psDateToIso(replaced.date_end) ?? undefined,
+        })
+        .eq("id", stock.id);
+    }
 
     const { error: updErr } = await supabaseAdmin
       .from("customer_proxies")

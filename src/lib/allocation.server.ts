@@ -1,9 +1,12 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { purchaseIpv6Block, psDateToIso } from "./proxyseller.server";
 
 /**
  * Allocates proxies from stock to a paid order.
  * - quantityNeeded = order.quantity * product.block_size
  * - picks `available` proxy_stock rows matching the order's product
+ * - For IPv6 categories: if stock is short, auto-purchase from ProxySeller
+ *   (reuses freed stock first, only buys when truly empty)
  * - inserts into customer_proxies and flips stock status to `allocated`
  * Idempotent: if proxies are already allocated for this order, does nothing.
  */
@@ -21,13 +24,12 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   if (!order) throw new Error("order not found");
   if (!order.user_id) throw new Error("order has no user_id yet");
   if (order.status !== "paid") {
-    // only allocate paid orders
     return { allocated: 0, short: 0 };
   }
 
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("id, block_size")
+    .select("id, block_size, category, country_code, provider_tariff_id")
     .eq("id", order.product_id)
     .maybeSingle();
   if (!product) throw new Error("product not found");
@@ -45,17 +47,39 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     return { allocated: existing ?? 0, short: 0 };
   }
 
-  const remaining = totalNeeded - (existing ?? 0);
+  let remaining = totalNeeded - (existing ?? 0);
 
-  // Pick available stock for this product
-  const { data: pool } = await supabaseAdmin
+  // ───────── 1) Pick available stock first (reuse freed IPs) ─────────
+  let { data: pool } = await supabaseAdmin
     .from("proxy_stock")
     .select("id")
     .eq("product_id", product.id)
     .eq("status", "available")
     .limit(remaining);
 
-  const picks = pool ?? [];
+  let picks = pool ?? [];
+
+  // ───────── 2) If short and IPv6 → auto-purchase from ProxySeller ─────────
+  const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
+  const stillShort = remaining - picks.length;
+
+  if (stillShort > 0 && isIpv6) {
+    try {
+      await autoPurchaseIpv6IntoStock(product, stillShort);
+      // Re-pick after restock
+      const { data: pool2 } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("id")
+        .eq("product_id", product.id)
+        .eq("status", "available")
+        .limit(remaining);
+      picks = pool2 ?? [];
+    } catch (e) {
+      console.error("[allocation] auto-purchase IPv6 failed:", e);
+      // fall through; we'll just report `short`
+    }
+  }
+
   if (picks.length === 0) {
     return { allocated: existing ?? 0, short: remaining };
   }
@@ -84,4 +108,75 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     allocated: (existing ?? 0) + picks.length,
     short: remaining - picks.length,
   };
+}
+
+/**
+ * Buys an IPv6 block from ProxySeller and inserts the proxies into stock.
+ * Reads ProxySeller config from product.provider_tariff_id as JSON:
+ *   { "countryId": 7, "periodId": "30" }
+ */
+async function autoPurchaseIpv6IntoStock(
+  product: {
+    id: string;
+    provider_tariff_id: string | null;
+    country_code: string | null;
+  },
+  needed: number,
+): Promise<void> {
+  if (!product.provider_tariff_id) {
+    throw new Error(
+      `product ${product.id} missing provider_tariff_id (ProxySeller config)`,
+    );
+  }
+
+  let cfg: { countryId?: number; periodId?: string };
+  try {
+    cfg = JSON.parse(product.provider_tariff_id);
+  } catch {
+    throw new Error("invalid provider_tariff_id JSON");
+  }
+  if (!cfg.countryId || !cfg.periodId) {
+    throw new Error("provider_tariff_id must include {countryId, periodId}");
+  }
+
+  const result = await purchaseIpv6Block({
+    countryId: cfg.countryId,
+    periodId: cfg.periodId,
+    quantity: needed,
+  });
+
+  // Record the provider order
+  const { data: provOrder } = await supabaseAdmin
+    .from("provider_orders")
+    .insert({
+      product_id: product.id,
+      external_order_id: result.externalOrderId,
+      status: "active",
+      quantity: result.proxies.length,
+      cost_cents: result.costCents,
+      country_code: product.country_code,
+      raw_payload: { baseOrderNumber: result.baseOrderNumber } as never,
+    })
+    .select("id")
+    .maybeSingle();
+
+  const stockRows = result.proxies.map((p) => ({
+    product_id: product.id,
+    provider_order_id: provOrder?.id ?? null,
+    external_proxy_id: p.id,
+    host: p.ip_only || p.ip,
+    port: p.port_http,
+    username: p.login,
+    password: p.password,
+    protocol: (p.protocol || "http").toLowerCase(),
+    country_code: product.country_code,
+    status: "available" as const,
+    expires_at: psDateToIso(p.date_end),
+  }));
+
+  if (stockRows.length === 0) return;
+  const { error: stockErr } = await supabaseAdmin
+    .from("proxy_stock")
+    .insert(stockRows);
+  if (stockErr) throw new Error(`stock insert failed: ${stockErr.message}`);
 }

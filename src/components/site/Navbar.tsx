@@ -8,6 +8,7 @@ import logo from "@/assets/logo-fastproxy.png";
 const links = [
   { href: "/#planos", label: "Planos" },
   { href: "/#recursos", label: "Recursos" },
+  { href: "/blog", label: "Blog" },
   { href: "/#faq", label: "FAQ" },
 ];
 

@@ -263,6 +263,200 @@ export type Database = {
           },
         ]
       }
+      post_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      post_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          parent_id: string | null
+          post_id: string
+          status: Database["public"]["Enums"]["comment_status"]
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          post_id: string
+          status?: Database["public"]["Enums"]["comment_status"]
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          post_id?: string
+          status?: Database["public"]["Enums"]["comment_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_tag_map: {
+        Row: {
+          post_id: string
+          tag_id: string
+        }
+        Insert: {
+          post_id: string
+          tag_id: string
+        }
+        Update: {
+          post_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_tag_map_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_tag_map_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "post_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          author_id: string | null
+          category_id: string | null
+          content_md: string
+          cover_image_url: string | null
+          created_at: string
+          excerpt: string | null
+          faq: Json
+          id: string
+          keyword_primary: string | null
+          keywords_secondary: string[]
+          meta_description: string | null
+          meta_title: string | null
+          published_at: string | null
+          reading_time_minutes: number
+          slug: string
+          status: Database["public"]["Enums"]["post_status"]
+          title: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          author_id?: string | null
+          category_id?: string | null
+          content_md?: string
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          faq?: Json
+          id?: string
+          keyword_primary?: string | null
+          keywords_secondary?: string[]
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          reading_time_minutes?: number
+          slug: string
+          status?: Database["public"]["Enums"]["post_status"]
+          title: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          author_id?: string | null
+          category_id?: string | null
+          content_md?: string
+          cover_image_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          faq?: Json
+          id?: string
+          keyword_primary?: string | null
+          keywords_secondary?: string[]
+          meta_description?: string | null
+          meta_title?: string | null
+          published_at?: string | null
+          reading_time_minutes?: number
+          slug?: string
+          status?: Database["public"]["Enums"]["post_status"]
+          title?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "post_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pricing_rules: {
         Row: {
           auto_sync_stripe: boolean
@@ -392,6 +586,60 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      programmatic_pages: {
+        Row: {
+          active: boolean
+          content_md: string
+          created_at: string
+          excerpt: string | null
+          group_name: string | null
+          id: string
+          keyword_primary: string | null
+          keywords_secondary: string[]
+          meta_description: string | null
+          meta_title: string | null
+          slug: string
+          title: string
+          updated_at: string
+          variables: Json
+          view_count: number
+        }
+        Insert: {
+          active?: boolean
+          content_md?: string
+          created_at?: string
+          excerpt?: string | null
+          group_name?: string | null
+          id?: string
+          keyword_primary?: string | null
+          keywords_secondary?: string[]
+          meta_description?: string | null
+          meta_title?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+          variables?: Json
+          view_count?: number
+        }
+        Update: {
+          active?: boolean
+          content_md?: string
+          created_at?: string
+          excerpt?: string | null
+          group_name?: string | null
+          id?: string
+          keyword_primary?: string | null
+          keywords_secondary?: string[]
+          meta_description?: string | null
+          meta_title?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+          variables?: Json
+          view_count?: number
         }
         Relationships: []
       }
@@ -712,6 +960,7 @@ export type Database = {
     Enums: {
       allocation_status: "active" | "grace" | "released" | "cancelled"
       app_role: "admin" | "customer"
+      comment_status: "visible" | "hidden" | "flagged"
       delivery_mode: "stock" | "direct"
       notification_kind:
         | "expiring_soon"
@@ -730,6 +979,7 @@ export type Database = {
         | "grace"
         | "cancelled"
         | "expired"
+      post_status: "draft" | "published" | "archived"
       product_category: "ipv6" | "ipv6_fb" | "ipv4" | "isp"
       provider_order_status: "pending" | "active" | "expired" | "failed"
       stock_status: "available" | "allocated" | "expired" | "removed"
@@ -862,6 +1112,7 @@ export const Constants = {
     Enums: {
       allocation_status: ["active", "grace", "released", "cancelled"],
       app_role: ["admin", "customer"],
+      comment_status: ["visible", "hidden", "flagged"],
       delivery_mode: ["stock", "direct"],
       notification_kind: [
         "expiring_soon",
@@ -882,6 +1133,7 @@ export const Constants = {
         "cancelled",
         "expired",
       ],
+      post_status: ["draft", "published", "archived"],
       product_category: ["ipv6", "ipv6_fb", "ipv4", "isp"],
       provider_order_status: ["pending", "active", "expired", "failed"],
       stock_status: ["available", "allocated", "expired", "removed"],

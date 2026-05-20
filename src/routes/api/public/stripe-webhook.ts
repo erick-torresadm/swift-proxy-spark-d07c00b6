@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getStripe } from "@/lib/stripe.server";
+import { allocateProxiesForOrder } from "@/lib/allocation.server";
 import type Stripe from "stripe";
 
 async function logAudit(action: string, status: string, payload: unknown, error?: string) {

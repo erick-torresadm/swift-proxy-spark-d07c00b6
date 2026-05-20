@@ -9,6 +9,8 @@
  * IMPORTANT: never expose this to the client. Server-only.
  */
 
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
 const BASE = "https://proxy-seller.com/personal/api/v1";
 
 function getApiKey(): string {
@@ -17,37 +19,98 @@ function getApiKey(): string {
   return key;
 }
 
-type PsResponse<T> = {
+export type PsResponse<T> = {
   status: "success" | "error";
   data: T | null;
   errors: Array<{ message: string; code: number; customData: unknown }>;
 };
 
-async function psPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+async function psCall<T>(
+  method: "GET" | "POST",
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
   const url = `${BASE}/${getApiKey()}${path}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const json = (await res.json()) as PsResponse<T>;
-  if (json.status !== "success" || !json.data) {
-    const msg = json.errors?.[0]?.message ?? `ProxySeller ${path} failed`;
-    throw new Error(`ProxySeller: ${msg}`);
+  const started = Date.now();
+  let status = 0;
+  let parsed: PsResponse<T> | null = null;
+  let errMsg: string | undefined;
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    status = res.status;
+    const text = await res.text();
+    try {
+      parsed = text ? (JSON.parse(text) as PsResponse<T>) : null;
+    } catch {
+      errMsg = `non-JSON response: ${text.slice(0, 200)}`;
+    }
+    if (parsed && parsed.status !== "success") {
+      errMsg = parsed.errors?.[0]?.message ?? `ProxySeller ${path} failed`;
+    }
+  } catch (e) {
+    errMsg = e instanceof Error ? e.message : "fetch failed";
   }
-  return json.data;
+
+  // Best-effort audit (non-blocking)
+  void supabaseAdmin.from("audit_log").insert({
+    source: "proxy_seller",
+    action: `${method} ${path}`,
+    status: errMsg ? "error" : "ok",
+    request: (body ?? null) as never,
+    response: {
+      http: status,
+      duration_ms: Date.now() - started,
+      body: parsed as unknown,
+      error: errMsg ?? null,
+    } as never,
+  });
+
+  if (errMsg || !parsed || !parsed.data) {
+    throw new Error(`ProxySeller ${path}: ${errMsg ?? "no data"}`);
+  }
+  return parsed.data;
 }
 
-async function psGet<T>(path: string): Promise<T> {
-  const url = `${BASE}/${getApiKey()}${path}`;
-  const res = await fetch(url, { method: "GET" });
-  const json = (await res.json()) as PsResponse<T>;
-  if (json.status !== "success" || !json.data) {
-    const msg = json.errors?.[0]?.message ?? `ProxySeller ${path} failed`;
-    throw new Error(`ProxySeller: ${msg}`);
-  }
-  return json.data;
+const psGet = <T>(path: string) => psCall<T>("GET", path);
+const psPost = <T>(path: string, body: Record<string, unknown>) =>
+  psCall<T>("POST", path, body);
+
+// ─────────────────────────── Balance ───────────────────────────
+
+export async function getBalance(): Promise<{ summ: number }> {
+  return psGet("/balance/get");
 }
+
+// ─────────────────────────── Reference data ───────────────────────────
+
+export type PsProxyKind = "ipv4" | "ipv6" | "isp" | "mobile";
+
+export async function getReferenceList(kind: PsProxyKind): Promise<unknown> {
+  return psGet(`/reference/list/${kind}`);
+}
+
+// ─────────────────────────── Order calc (pricing) ───────────────────────────
+
+export type PsOrderCalcResult = {
+  total: number; // USD
+  currency?: string;
+  [k: string]: unknown;
+};
+
+/** Dry-run order pricing — returns total cost in USD without buying. */
+export async function calcOrder(
+  kind: PsProxyKind,
+  params: Record<string, unknown>,
+): Promise<PsOrderCalcResult> {
+  return psPost(`/order/calc/${kind}`, params);
+}
+
+// ─────────────────────────── Order make ───────────────────────────
 
 export type PsProxyItem = {
   id: string;
@@ -98,7 +161,6 @@ export async function purchaseIpv6Block(params: {
   const baseOrderNumber = order.listBaseOrderNumbers?.[0];
   if (!baseOrderNumber) throw new Error("ProxySeller: no baseOrderNumber returned");
 
-  // Fetch the actual IPs provisioned for this order
   const list = await psGet<{ items: PsProxyItem[] }>(
     `/proxy/list/ipv6?orderId=${encodeURIComponent(baseOrderNumber)}`,
   );
@@ -111,11 +173,19 @@ export async function purchaseIpv6Block(params: {
   };
 }
 
-/**
- * Rotates / replaces a single proxy IP at the provider.
- * The proxy slot stays (same order), only the IP changes.
- * Returns the new proxy details to refresh local stock.
- */
+// ─────────────────────────── List proxies ───────────────────────────
+
+export async function listProxies(
+  kind: PsProxyKind,
+  opts?: { orderId?: string },
+): Promise<PsProxyItem[]> {
+  const qs = opts?.orderId ? `?orderId=${encodeURIComponent(opts.orderId)}` : "";
+  const data = await psGet<{ items: PsProxyItem[] }>(`/proxy/list/${kind}${qs}`);
+  return data.items ?? [];
+}
+
+// ─────────────────────────── Replace / rotate ───────────────────────────
+
 export async function replaceProxyIp(externalProxyId: string): Promise<PsProxyItem | null> {
   const data = await psPost<{ items?: PsProxyItem[] }>("/proxy/replace", {
     ids: [externalProxyId],
@@ -123,9 +193,44 @@ export async function replaceProxyIp(externalProxyId: string): Promise<PsProxyIt
   return data.items?.[0] ?? null;
 }
 
+// ─────────────────────────── Prolong (extend expiration) ───────────────────────────
+
+export async function prolongCalc(
+  kind: PsProxyKind,
+  params: { ids: string[]; periodId: string },
+): Promise<{ total: number; [k: string]: unknown }> {
+  return psPost(`/prolong/calc/${kind}`, { ...params, paymentId: 1 });
+}
+
+export async function prolongMake(
+  kind: PsProxyKind,
+  params: { ids: string[]; periodId: string },
+): Promise<{ total: number; [k: string]: unknown }> {
+  return psPost(`/prolong/make/${kind}`, { ...params, paymentId: 1 });
+}
+
+// ─────────────────────────── Comments ───────────────────────────
+
+export async function setProxyComment(ids: string[], comment: string): Promise<unknown> {
+  return psCall("POST", "/proxy/comment/set", { ids, comment });
+}
+
+// ─────────────────────────── Helpers ───────────────────────────
+
 /** Parse dd.mm.yyyy → ISO date */
 export function psDateToIso(d: string): string | null {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(d);
   if (!m) return null;
   return `${m[3]}-${m[2]}-${m[1]}T00:00:00Z`;
+}
+
+/** Safe wrapper that doesn't throw — returns {ok, data, error}. */
+export async function safe<T>(fn: () => Promise<T>): Promise<
+  { ok: true; data: T } | { ok: false; error: string }
+> {
+  try {
+    return { ok: true, data: await fn() };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }

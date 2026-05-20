@@ -297,7 +297,7 @@ function CheckoutPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={submitting || loading}
+            disabled={submitting}
             className="mt-6 w-full py-4 rounded-xl bg-gradient-primary text-primary-foreground font-bold text-base shadow-glow hover:opacity-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? (

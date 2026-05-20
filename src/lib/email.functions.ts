@@ -78,6 +78,7 @@ export async function notifyOrderPaid(orderId: string) {
     .eq("id", order.product_id)
     .maybeSingle();
 
+  if (!order.user_id) return;
   const { data: user } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
   if (!user.user?.email) return;
 
@@ -86,6 +87,7 @@ export async function notifyOrderPaid(orderId: string) {
     .select("full_name")
     .eq("user_id", order.user_id)
     .maybeSingle();
+
 
   await sendEmail({
     to: user.user.email,

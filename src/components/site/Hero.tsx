@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Check, Zap, ShieldCheck } from "lucide-react";
+import { TerminalMock } from "./TerminalMock";
 
 export function Hero() {
   return (
@@ -9,6 +10,7 @@ export function Hero() {
     >
       {/* Animated background orbs */}
       <div className="absolute inset-0 grid-bg" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] aspect-square aurora opacity-60 pointer-events-none" />
       <motion.div
         animate={{
           x: [0, 50, 0],
@@ -104,6 +106,8 @@ export function Hero() {
               </div>
             ))}
           </motion.div>
+
+          <TerminalMock />
         </div>
       </div>
 

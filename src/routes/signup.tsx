@@ -1,39 +1,147 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowLeft, Construction } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo-fastproxy.png";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
   head: () => ({
-    meta: [{ title: "Criar conta — FastProxy" }, { name: "description", content: "Crie sua conta FastProxy." }],
+    meta: [
+      { title: "Criar conta — FastProxy" },
+      { name: "description", content: "Crie sua conta FastProxy em segundos." },
+    ],
   }),
 });
 
 function SignupPage() {
+  const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/dashboard" });
+    });
+  }, [navigate]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) {
+      toast.error("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: { full_name: fullName },
+      },
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(
+        error.message === "User already registered"
+          ? "Esse email já está cadastrado. Faça login."
+          : error.message,
+      );
+      return;
+    }
+    toast.success("Conta criada! Verifique seu email para confirmar.");
+    navigate({ to: "/login" });
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+    <div className="min-h-screen flex items-center justify-center px-6 py-12 bg-background">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
-        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition text-sm">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition text-sm"
+        >
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Link>
-        <div className="bg-card border border-border rounded-3xl p-10 shadow-card text-center">
-          <img src={logo} alt="FastProxy" className="h-10 mx-auto mb-6" />
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent border border-primary/20 text-primary text-xs font-bold uppercase mb-4">
-            <Construction className="w-3 h-3" /> Em construção
+
+        <div className="bg-card border border-border rounded-3xl p-8 sm:p-10 shadow-card">
+          <div className="text-center mb-8">
+            <img src={logo} alt="FastProxy" className="h-9 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold mb-1">Criar conta</h1>
+            <p className="text-sm text-muted-foreground">
+              Comece em menos de 1 minuto
+            </p>
           </div>
-          <h1 className="text-2xl font-bold mb-2">Criar conta</h1>
-          <p className="text-muted-foreground text-sm mb-8">
-            Cadastro com email/senha + Google será habilitado na próxima leva.
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Nome completo</label>
+              <input
+                type="text"
+                required
+                autoComplete="name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border focus:border-primary focus:outline-none transition text-sm"
+                placeholder="Seu nome"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Email</label>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border focus:border-primary focus:outline-none transition text-sm"
+                placeholder="voce@email.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Senha</label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border focus:border-primary focus:outline-none transition text-sm"
+                placeholder="Mínimo 8 caracteres"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold shadow-glow hover:bg-primary/90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Criar conta
+            </button>
+
+            <p className="text-[11px] text-muted-foreground text-center mt-3">
+              Ao criar conta você concorda com nossos Termos e Política de Privacidade.
+            </p>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Já tem conta?{" "}
+            <Link to="/login" className="text-primary hover:underline font-semibold">
+              Entrar
+            </Link>
           </p>
-          <Link to="/" className="inline-block w-full py-3 rounded-xl bg-gradient-primary text-primary-foreground font-bold">
-            Voltar para a Home
-          </Link>
         </div>
       </motion.div>
     </div>

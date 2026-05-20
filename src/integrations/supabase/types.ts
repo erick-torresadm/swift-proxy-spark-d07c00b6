@@ -120,12 +120,15 @@ export type Database = {
           billing_cycle: string
           created_at: string
           current_period_end: string | null
+          discount_cents: number
           grace_until: string | null
           id: string
           last_payment_check_at: string | null
           product_id: string
+          promo_code: string | null
           quantity: number
           status: Database["public"]["Enums"]["order_status"]
+          stripe_checkout_session_id: string | null
           stripe_customer_id: string | null
           stripe_payment_intent_id: string | null
           stripe_subscription_id: string | null
@@ -137,12 +140,15 @@ export type Database = {
           billing_cycle?: string
           created_at?: string
           current_period_end?: string | null
+          discount_cents?: number
           grace_until?: string | null
           id?: string
           last_payment_check_at?: string | null
           product_id: string
+          promo_code?: string | null
           quantity?: number
           status?: Database["public"]["Enums"]["order_status"]
+          stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_subscription_id?: string | null
@@ -154,12 +160,15 @@ export type Database = {
           billing_cycle?: string
           created_at?: string
           current_period_end?: string | null
+          discount_cents?: number
           grace_until?: string | null
           id?: string
           last_payment_check_at?: string | null
           product_id?: string
+          promo_code?: string | null
           quantity?: number
           status?: Database["public"]["Enums"]["order_status"]
+          stripe_checkout_session_id?: string | null
           stripe_customer_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_subscription_id?: string | null
@@ -193,6 +202,9 @@ export type Database = {
           price_yearly_cents: number | null
           provider_tariff_id: string | null
           slug: string
+          stripe_price_monthly_id: string | null
+          stripe_price_yearly_id: string | null
+          stripe_product_id: string | null
           updated_at: string
         }
         Insert: {
@@ -211,6 +223,9 @@ export type Database = {
           price_yearly_cents?: number | null
           provider_tariff_id?: string | null
           slug: string
+          stripe_price_monthly_id?: string | null
+          stripe_price_yearly_id?: string | null
+          stripe_product_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -229,6 +244,9 @@ export type Database = {
           price_yearly_cents?: number | null
           provider_tariff_id?: string | null
           slug?: string
+          stripe_price_monthly_id?: string | null
+          stripe_price_yearly_id?: string | null
+          stripe_product_id?: string | null
           updated_at?: string
         }
         Relationships: []

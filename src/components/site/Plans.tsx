@@ -6,6 +6,13 @@ import { Link } from "@tanstack/react-router";
 type PlanKey = "ipv6" | "ipv4" | "fbads" | "isp";
 type Billing = "monthly" | "yearly";
 
+const SLUG_MAP: Record<PlanKey, "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us"> = {
+  ipv6: "ipv6-br",
+  ipv4: "ipv4-us",
+  fbads: "ipv6-fb-br",
+  isp: "isp-us",
+};
+
 const YEARLY_DISCOUNT = 0.175;
 
 const plans: {
@@ -248,7 +255,7 @@ export function Plans() {
                   {/* CTA */}
                   <Link
                     to="/checkout"
-                    search={{ plan: plan.key }}
+                    search={{ plan: SLUG_MAP[plan.key], billing, qty: 1 }}
                     className={`mt-auto w-full py-3 rounded-xl font-bold text-sm text-center transition ${
                       isFeatured
                         ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow"

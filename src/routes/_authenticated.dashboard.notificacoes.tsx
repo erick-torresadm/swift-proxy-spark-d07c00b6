@@ -72,6 +72,15 @@ function NotificationsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const disableAllMut = useMutation({
+    mutationFn: async () => {
+      await disableAll();
+      await push.disable();
+    },
+    onSuccess: () => toast.success("Notificações desativadas em todos os dispositivos."),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const canEnable =
     push.supported && !push.blockedInPreview && (!push.isIOS || push.isStandalone);
 

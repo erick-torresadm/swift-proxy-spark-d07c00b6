@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getStripe } from "./stripe.server";
+
 
 /**
  * Public lookup by order ID — used by the /checkout/success page to poll
@@ -106,7 +108,7 @@ export const listMyProxies = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("customer_proxies")
       .select(
-        "id, status, allocated_at, order_id, proxy_stock(host, port, username, password, protocol, country_code), orders(products(name, slug))",
+        "id, status, allocated_at, order_id, ip_rotations_used, rotations_reset_at, proxy_stock(host, port, username, password, protocol, country_code), orders(grace_until, products(name, slug, ip_rotations_per_month))",
       )
       .eq("user_id", context.userId)
       .neq("status", "released")
@@ -114,6 +116,8 @@ export const listMyProxies = createServerFn({ method: "GET" })
 
     return (data ?? []).map((r) => ({
       id: r.id,
+      order_id: r.order_id,
+
       status: r.status as string,
       allocated_at: r.allocated_at,
       host: r.proxy_stock?.host ?? null,
@@ -124,6 +128,10 @@ export const listMyProxies = createServerFn({ method: "GET" })
       country_code: r.proxy_stock?.country_code ?? null,
       product_name: r.orders?.products?.name ?? "Plano",
       product_slug: r.orders?.products?.slug ?? null,
+      ip_rotations_used: r.ip_rotations_used ?? 0,
+      ip_rotations_per_month: r.orders?.products?.ip_rotations_per_month ?? 0,
+      rotations_reset_at: r.rotations_reset_at,
+      grace_until: r.orders?.grace_until ?? null,
     }));
   });
 
@@ -133,7 +141,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, status, quantity, billing_cycle, amount_cents, current_period_end, created_at, products(name, slug, block_size)",
+        "id, status, quantity, billing_cycle, amount_cents, current_period_end, grace_until, created_at, products(name, slug, block_size)",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
@@ -145,8 +153,142 @@ export const listMyOrders = createServerFn({ method: "GET" })
       billing_cycle: o.billing_cycle as string,
       amount_cents: o.amount_cents,
       current_period_end: o.current_period_end,
+      grace_until: o.grace_until,
       created_at: o.created_at,
       product_name: o.products?.name ?? "Plano",
       block_size: o.products?.block_size ?? 1,
     }));
   });
+
+/**
+ * Rotates the IP for a customer proxy (IPv6 FB plan).
+ * Counter resets monthly (30 days from rotations_reset_at).
+ * Real provider call is stubbed — wire up to IPv6 provider API later.
+ */
+export const rotateProxyIp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ proxyId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await supabaseAdmin
+      .from("customer_proxies")
+      .select(
+        "id, user_id, status, ip_rotations_used, rotations_reset_at, orders(products(ip_rotations_per_month))",
+      )
+      .eq("id", data.proxyId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!row || row.user_id !== context.userId) {
+      throw new Error("Proxy não encontrado");
+    }
+    if (row.status !== "active") {
+      throw new Error("Proxy não está ativo");
+    }
+
+    const cap = row.orders?.products?.ip_rotations_per_month ?? 0;
+    if (cap <= 0) {
+      throw new Error("Este plano não inclui rotação de IP");
+    }
+
+    const resetAt = row.rotations_reset_at
+      ? new Date(row.rotations_reset_at).getTime()
+      : 0;
+    const monthMs = 30 * 86400 * 1000;
+    const shouldReset = Date.now() - resetAt > monthMs;
+    const usedNow = shouldReset ? 0 : (row.ip_rotations_used ?? 0);
+
+    if (usedNow >= cap) {
+      throw new Error(
+        `Limite mensal atingido (${cap} rotações). Aguarde o reset.`,
+      );
+    }
+
+    // TODO(provider): chamar API do provedor IPv6 para realmente rotacionar
+    // o IP do bloco. Por enquanto apenas registramos o uso.
+
+    const { error: updErr } = await supabaseAdmin
+      .from("customer_proxies")
+      .update({
+        ip_rotations_used: usedNow + 1,
+        rotations_reset_at: shouldReset
+          ? new Date().toISOString()
+          : row.rotations_reset_at,
+      })
+      .eq("id", row.id);
+    if (updErr) throw new Error(updErr.message);
+
+    return {
+      ok: true,
+      used: usedNow + 1,
+      cap,
+      remaining: cap - (usedNow + 1),
+    };
+  });
+
+/**
+ * Creates a Stripe Checkout session to reactivate a past_due/grace order
+ * with a 20% discount coupon. Returns the URL for redirect.
+ */
+export const createReactivateCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ orderId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const stripe = getStripe();
+
+
+
+    const { data: order } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "id, user_id, status, billing_cycle, quantity, customer_email, products(name, stripe_price_monthly_id, stripe_price_yearly_id)",
+      )
+      .eq("id", data.orderId)
+      .maybeSingle();
+
+    if (!order || order.user_id !== context.userId) {
+      throw new Error("Pedido não encontrado");
+    }
+    if (!["past_due", "grace", "pending"].includes(order.status as string)) {
+      throw new Error("Pedido não precisa de reativação");
+    }
+
+    const priceId =
+      order.billing_cycle === "yearly"
+        ? order.products?.stripe_price_yearly_id
+        : order.products?.stripe_price_monthly_id;
+
+    if (!priceId) throw new Error("Preço Stripe não configurado");
+
+    // create-or-reuse a 20% off coupon
+    const couponId = "reactivate-20";
+    try {
+      await stripe.coupons.retrieve(couponId);
+    } catch {
+      await stripe.coupons.create({
+        id: couponId,
+        percent_off: 20,
+        duration: "once",
+        name: "Reativação 20% OFF",
+      });
+    }
+
+    const origin =
+      process.env.PUBLIC_SITE_URL ?? "https://swift-proxy-spark.lovable.app";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer_email: order.customer_email ?? undefined,
+      line_items: [{ price: priceId, quantity: order.quantity }],
+      discounts: [{ coupon: couponId }],
+      success_url: `${origin}/checkout/success?order=${order.id}`,
+      cancel_url: `${origin}/dashboard`,
+      metadata: { reactivate_order_id: order.id },
+    });
+
+    return { url: session.url };
+  });
+

@@ -37,6 +37,15 @@ function AuthenticatedLayout() {
   const { isAdmin } = useRole(user?.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const fetchExpiring = useServerFn(getExpiringCount);
+  const { data: expiring } = useQuery({
+    queryKey: ["expiring-count"],
+    queryFn: () => fetchExpiring(),
+    refetchInterval: 5 * 60_000,
+    enabled: !!user,
+  });
+  useAppBadge(expiring?.count ?? 0);
+
   async function handleSignOut() {
     await signOut();
     navigate({ to: "/" });

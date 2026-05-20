@@ -10,6 +10,7 @@ import { FAQ } from "@/components/site/FAQ";
 import { CTA } from "@/components/site/CTA";
 import { Footer } from "@/components/site/Footer";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
+import { InstallGuide } from "@/components/site/InstallGuide";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -26,6 +27,7 @@ function Index() {
         <Marquee />
         <Solution />
         <Features />
+        <InstallGuide />
         <Plans />
         <FAQ />
         <CTA />

@@ -24,6 +24,7 @@ const adminNav = [
   { to: "/admin/orders", label: "Pedidos", icon: Receipt },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/provider", label: "Provedor", icon: ServerCog },
+  { to: "/admin/emails", label: "Emails", icon: Mail },
 ] as const;
 
 function AdminLayout() {

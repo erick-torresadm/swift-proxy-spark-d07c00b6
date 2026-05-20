@@ -252,6 +252,46 @@ function CheckoutPage() {
             </div>
           </div>
 
+          {/* Customer data — no signup needed */}
+          <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Nome completo
+              </label>
+              <div className="mt-2 relative">
+                <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Como você se chama"
+                  maxLength={120}
+                  className="w-full h-11 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Email
+              </label>
+              <div className="mt-2 relative">
+                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  maxLength={255}
+                  autoComplete="email"
+                  className="w-full h-11 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
+                />
+              </div>
+            </div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">
+              Sua conta será criada automaticamente após o pagamento — enviamos o link de acesso no email.
+            </p>
+          </div>
+
           {/* Coupon notice */}
           <div className="mb-6 p-4 rounded-xl border border-border bg-background/60 flex items-start gap-3">
             <Tag className="w-4 h-4 mt-0.5 text-primary" />

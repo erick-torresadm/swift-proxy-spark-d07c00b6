@@ -38,7 +38,7 @@ async function markOrderPaid(opts: {
   if (typeof opts.discountCents === "number") updates.discount_cents = opts.discountCents;
   updates.grace_until = null;
 
-  let query = supabaseAdmin.from("orders").update(updates);
+  let query = supabaseAdmin.from("orders").update(updates as never);
   if (opts.orderId) query = query.eq("id", opts.orderId);
   else if (opts.sessionId) query = query.eq("stripe_checkout_session_id", opts.sessionId);
   else if (opts.subscriptionId) query = query.eq("stripe_subscription_id", opts.subscriptionId);
@@ -57,7 +57,7 @@ async function markOrderPastDue(subscriptionId: string) {
 async function markOrderCanceled(subscriptionId: string) {
   await supabaseAdmin
     .from("orders")
-    .update({ status: "canceled" })
+    .update({ status: "cancelled" })
     .eq("stripe_subscription_id", subscriptionId);
 }
 

@@ -235,10 +235,9 @@ export const createReactivateCheckout = createServerFn({ method: "POST" })
     z.object({ orderId: z.string().uuid() }).parse(data),
   )
   .handler(async ({ data, context }) => {
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: "2025-08-27.basil" as never,
-    });
+    const stripe = getStripe();
+
+
 
     const { data: order } = await supabaseAdmin
       .from("orders")

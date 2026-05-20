@@ -30,6 +30,7 @@ import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
+import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -144,6 +145,12 @@ const ApiPublicHooksStripeSyncRoute =
     path: '/api/public/hooks/stripe-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProxysellerSyncRoute =
+  ApiPublicHooksProxysellerSyncRouteImport.update({
+    id: '/api/public/hooks/proxyseller-sync',
+    path: '/api/public/hooks/proxyseller-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
 export interface FileRoutesByTo {
@@ -186,6 +194,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
 export interface FileRoutesById {
@@ -210,6 +219,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
 export interface FileRouteTypes {
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/admin/'
+    | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/admin'
+    | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   id:
     | '__root__'
@@ -278,6 +290,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/_authenticated/admin/'
+    | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   fileRoutesById: FileRoutesById
 }
@@ -290,6 +303,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
 
@@ -442,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksStripeSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/proxyseller-sync': {
+      id: '/api/public/hooks/proxyseller-sync'
+      path: '/api/public/hooks/proxyseller-sync'
+      fullPath: '/api/public/hooks/proxyseller-sync'
+      preLoaderRoute: typeof ApiPublicHooksProxysellerSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -519,8 +540,19 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

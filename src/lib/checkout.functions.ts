@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getStripe } from "./stripe.server";
 
@@ -9,10 +8,11 @@ const CheckoutSchema = z.object({
   productSlug: z.string().min(1).max(64),
   quantity: z.number().int().min(1).max(500),
   billing: z.enum(["monthly", "yearly"]),
+  email: z.string().trim().toLowerCase().email().max(255),
+  name: z.string().trim().min(1).max(120),
 });
 
 function originFromRequest(): string {
-  // Try Origin/Referer first (preserves correct protocol+port in dev)
   const origin = getRequestHeader("origin");
   if (origin) return origin;
   const referer = getRequestHeader("referer");
@@ -29,11 +29,8 @@ function originFromRequest(): string {
 }
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => CheckoutSchema.parse(data))
-  .handler(async ({ data, context }) => {
-    const { userId } = context;
-
+  .handler(async ({ data }) => {
     const { data: product, error: prodErr } = await supabaseAdmin
       .from("products")
       .select(
@@ -53,36 +50,54 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     if (!unitAmount || unitAmount <= 0)
       throw new Error("Plano sem preço configurado para este ciclo");
 
-    const { data: userRow } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const email = userRow.user?.email;
-
     const stripe = getStripe();
 
-    // Reuse existing Stripe customer for this email (if any)
-    let customerId: string | undefined;
-    if (email) {
-      const found = await stripe.customers.list({ email, limit: 1 });
-      customerId = found.data[0]?.id;
+    // Try to find existing auth user by email (link order if exists)
+    let existingUserId: string | null = null;
+    try {
+      const { data: list } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 200,
+      });
+      existingUserId =
+        list.users.find((u) => u.email?.toLowerCase() === data.email)?.id ?? null;
+    } catch {
+      /* ignore */
     }
 
-    // Pre-create the order in "pending"; webhook will flip to paid
+    // Reuse / create Stripe customer
+    let customerId: string | undefined;
+    const found = await stripe.customers.list({ email: data.email, limit: 1 });
+    if (found.data[0]) {
+      customerId = found.data[0].id;
+    } else {
+      const created = await stripe.customers.create({
+        email: data.email,
+        name: data.name,
+      });
+      customerId = created.id;
+    }
+
     const totalAmount = unitAmount * data.quantity;
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
       .insert({
-        user_id: userId,
+        user_id: existingUserId,
+        customer_email: data.email,
+        customer_name: data.name,
         product_id: product.id,
         quantity: data.quantity,
         billing_cycle: data.billing,
         amount_cents: totalAmount,
         status: "pending",
+        stripe_customer_id: customerId,
       })
       .select("id")
       .single();
-    if (orderErr || !order) throw new Error(orderErr?.message || "Falha ao criar pedido");
+    if (orderErr || !order)
+      throw new Error(orderErr?.message || "Falha ao criar pedido");
 
     const origin = originFromRequest();
-    const intervalLabel = data.billing === "yearly" ? "/ano" : "/mês";
     const productLabel =
       product.block_size > 1
         ? `${product.name} (bloco de ${product.block_size} IPs)`
@@ -91,7 +106,6 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      customer_email: customerId ? undefined : email,
       allow_promotion_codes: true,
       client_reference_id: order.id,
       line_items: [
@@ -114,22 +128,24 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       subscription_data: {
         metadata: {
           order_id: order.id,
-          user_id: userId,
           product_id: product.id,
           product_slug: product.slug,
           billing: data.billing,
           quantity: String(data.quantity),
+          customer_email: data.email,
+          customer_name: data.name,
         },
       },
       metadata: {
         order_id: order.id,
-        user_id: userId,
         product_id: product.id,
         product_slug: product.slug,
         billing: data.billing,
         quantity: String(data.quantity),
+        customer_email: data.email,
+        customer_name: data.name,
       },
-      success_url: `${origin}/dashboard/orders?checkout=success&order=${order.id}`,
+      success_url: `${origin}/checkout/success?order=${order.id}`,
       cancel_url: `${origin}/checkout?plan=${product.slug}&billing=${data.billing}&qty=${data.quantity}&canceled=1`,
     });
 

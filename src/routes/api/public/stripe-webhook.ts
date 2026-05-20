@@ -182,6 +182,25 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                 promoCode,
                 discountCents,
               });
+
+              // Auto-allocate proxies from stock now that the order is paid
+              if (orderId) {
+                try {
+                  const result = await allocateProxiesForOrder(orderId);
+                  await logAudit(
+                    "allocate_proxies",
+                    result.short > 0 ? "partial" : "ok",
+                    { orderId, ...result },
+                  );
+                } catch (err) {
+                  await logAudit(
+                    "allocate_proxies",
+                    "error",
+                    { orderId },
+                    err instanceof Error ? err.message : String(err),
+                  );
+                }
+              }
               break;
             }
 

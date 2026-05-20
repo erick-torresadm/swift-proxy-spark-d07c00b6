@@ -206,36 +206,51 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       );
     }
 
-    // Call ProxySeller to actually rotate the IP at the provider
-    const { data: stock } = await supabaseAdmin
+    // Rotação por SWAP de estoque: pega um proxy disponível do mesmo produto
+    // e libera o atual de volta (status released). Não chama a API do provedor.
+    const { data: currentStock } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, external_proxy_id")
+      .select("id, product_id")
       .eq("id", row.stock_id as string)
       .maybeSingle();
 
-    if (!stock?.external_proxy_id) {
-      throw new Error("Proxy sem ID externo (estoque manual). Contate suporte.");
+    if (!currentStock) {
+      throw new Error("Estoque atual não encontrado");
     }
 
-    const replaced = await replaceProxyIp(stock.external_proxy_id);
-    if (replaced) {
-      await supabaseAdmin
-        .from("proxy_stock")
-        .update({
-          external_proxy_id: replaced.id,
-          host: replaced.ip_only || replaced.ip,
-          port: replaced.port_http,
-          username: replaced.login,
-          password: replaced.password,
-          protocol: (replaced.protocol || "http").toLowerCase(),
-          expires_at: psDateToIso(replaced.date_end) ?? undefined,
-        })
-        .eq("id", stock.id);
+    const { data: available, error: availErr } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id")
+      .eq("product_id", currentStock.product_id)
+      .eq("status", "available")
+      .neq("id", currentStock.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (availErr) throw new Error(availErr.message);
+    if (!available) {
+      throw new Error("Sem IPs disponíveis em estoque para rotação no momento.");
     }
+
+    // Aloca o novo estoque ao cliente e libera o anterior
+    const { error: newStockErr } = await supabaseAdmin
+      .from("proxy_stock")
+      .update({ status: "allocated" })
+      .eq("id", available.id)
+      .eq("status", "available");
+    if (newStockErr) throw new Error(newStockErr.message);
+
+    const { error: relErr } = await supabaseAdmin
+      .from("proxy_stock")
+      .update({ status: "available" })
+      .eq("id", currentStock.id);
+    if (relErr) throw new Error(relErr.message);
 
     const { error: updErr } = await supabaseAdmin
       .from("customer_proxies")
       .update({
+        stock_id: available.id,
         ip_rotations_used: usedNow + 1,
         rotations_reset_at: shouldReset
           ? new Date().toISOString()
@@ -243,6 +258,7 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       })
       .eq("id", row.id);
     if (updErr) throw new Error(updErr.message);
+
 
     return {
       ok: true,

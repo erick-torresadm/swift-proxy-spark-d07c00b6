@@ -25,11 +25,13 @@ import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_au
 import { Route as AuthenticatedDashboardProxiesRouteImport } from './routes/_authenticated.dashboard.proxies'
 import { Route as AuthenticatedDashboardOrdersRouteImport } from './routes/_authenticated.dashboard.orders'
 import { Route as AuthenticatedAdminProviderRouteImport } from './routes/_authenticated.admin.provider'
+import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated.admin.pricing'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated.admin.orders'
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated.admin.inventory'
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
+import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -114,6 +116,12 @@ const AuthenticatedAdminProviderRoute =
     path: '/provider',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPricingRoute =
+  AuthenticatedAdminPricingRouteImport.update({
+    id: '/pricing',
+    path: '/pricing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminOrdersRoute =
   AuthenticatedAdminOrdersRouteImport.update({
     id: '/orders',
@@ -144,6 +152,12 @@ const ApiPublicHooksStripeSyncRoute =
     path: '/api/public/hooks/stripe-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProxysellerSyncRoute =
+  ApiPublicHooksProxysellerSyncRouteImport.update({
+    id: '/api/public/hooks/proxyseller-sync',
+    path: '/api/public/hooks/proxyseller-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -159,12 +173,14 @@ export interface FileRoutesByFullPath {
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
 export interface FileRoutesByTo {
@@ -180,12 +196,14 @@ export interface FileRoutesByTo {
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
 export interface FileRoutesById {
@@ -204,12 +222,14 @@ export interface FileRoutesById {
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/_authenticated/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/_authenticated/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/_authenticated/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
 }
 export interface FileRouteTypes {
@@ -228,12 +248,14 @@ export interface FileRouteTypes {
     | '/admin/emails'
     | '/admin/inventory'
     | '/admin/orders'
+    | '/admin/pricing'
     | '/admin/provider'
     | '/dashboard/orders'
     | '/dashboard/proxies'
     | '/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/admin/'
+    | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -249,12 +271,14 @@ export interface FileRouteTypes {
     | '/admin/emails'
     | '/admin/inventory'
     | '/admin/orders'
+    | '/admin/pricing'
     | '/admin/provider'
     | '/dashboard/orders'
     | '/dashboard/proxies'
     | '/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/admin'
+    | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   id:
     | '__root__'
@@ -272,12 +296,14 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/emails'
     | '/_authenticated/admin/inventory'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/pricing'
     | '/_authenticated/admin/provider'
     | '/_authenticated/dashboard/orders'
     | '/_authenticated/dashboard/proxies'
     | '/_authenticated/dashboard/settings'
     | '/api/public/stripe-webhook'
     | '/_authenticated/admin/'
+    | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
   fileRoutesById: FileRoutesById
 }
@@ -290,6 +316,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
 
@@ -407,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminProviderRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/pricing': {
+      id: '/_authenticated/admin/pricing'
+      path: '/pricing'
+      fullPath: '/admin/pricing'
+      preLoaderRoute: typeof AuthenticatedAdminPricingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
       path: '/orders'
@@ -442,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksStripeSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/proxyseller-sync': {
+      id: '/api/public/hooks/proxyseller-sync'
+      path: '/api/public/hooks/proxyseller-sync'
+      fullPath: '/api/public/hooks/proxyseller-sync'
+      preLoaderRoute: typeof ApiPublicHooksProxysellerSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -450,6 +491,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
   AuthenticatedAdminProviderRoute: typeof AuthenticatedAdminProviderRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
@@ -459,6 +501,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,
   AuthenticatedAdminInventoryRoute: AuthenticatedAdminInventoryRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+  AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
   AuthenticatedAdminProviderRoute: AuthenticatedAdminProviderRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
@@ -519,6 +562,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }
 export const routeTree = rootRouteImport

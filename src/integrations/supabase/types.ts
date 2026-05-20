@@ -114,6 +114,30 @@ export type Database = {
           },
         ]
       }
+      fx_rates: {
+        Row: {
+          currency: string
+          fetched_at: string
+          id: string
+          rate_brl: number
+          source: string | null
+        }
+        Insert: {
+          currency: string
+          fetched_at?: string
+          id?: string
+          rate_brl: number
+          source?: string | null
+        }
+        Update: {
+          currency?: string
+          fetched_at?: string
+          id?: string
+          rate_brl?: number
+          source?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount_cents: number
@@ -190,6 +214,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pricing_rules: {
+        Row: {
+          auto_sync_stripe: boolean
+          created_at: string
+          id: string
+          markup_pct: number
+          min_margin_pct: number
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_sync_stripe?: boolean
+          created_at?: string
+          id?: string
+          markup_pct?: number
+          min_margin_pct?: number
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_sync_stripe?: boolean
+          created_at?: string
+          id?: string
+          markup_pct?: number
+          min_margin_pct?: number
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       products: {
         Row: {
@@ -287,6 +341,27 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_balance_snapshots: {
+        Row: {
+          balance_usd: number
+          fetched_at: string
+          id: string
+          provider: string
+        }
+        Insert: {
+          balance_usd: number
+          fetched_at?: string
+          id?: string
+          provider?: string
+        }
+        Update: {
+          balance_usd?: number
+          fetched_at?: string
+          id?: string
+          provider?: string
+        }
+        Relationships: []
+      }
       provider_orders: {
         Row: {
           auto_renew: boolean
@@ -339,6 +414,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      provider_settings: {
+        Row: {
+          alert_email: string | null
+          auto_purchase_enabled: boolean
+          id: string
+          min_balance_usd: number
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          alert_email?: string | null
+          auto_purchase_enabled?: boolean
+          id?: string
+          min_balance_usd?: number
+          provider?: string
+          updated_at?: string
+        }
+        Update: {
+          alert_email?: string | null
+          auto_purchase_enabled?: boolean
+          id?: string
+          min_balance_usd?: number
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      proxy_health_events: {
+        Row: {
+          details: Json | null
+          detected_at: string
+          event: string
+          external_proxy_id: string | null
+          id: string
+          resolved_at: string | null
+          stock_id: string | null
+        }
+        Insert: {
+          details?: Json | null
+          detected_at?: string
+          event: string
+          external_proxy_id?: string | null
+          id?: string
+          resolved_at?: string | null
+          stock_id?: string | null
+        }
+        Update: {
+          details?: Json | null
+          detected_at?: string
+          event?: string
+          external_proxy_id?: string | null
+          id?: string
+          resolved_at?: string | null
+          stock_id?: string | null
+        }
+        Relationships: []
       }
       proxy_stock: {
         Row: {

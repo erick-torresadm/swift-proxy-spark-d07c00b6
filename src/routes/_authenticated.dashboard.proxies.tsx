@@ -241,7 +241,17 @@ function ProxiesPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <CopyButton value={formatLine(p)} />
+                          <div className="inline-flex items-center gap-1">
+                            <Link
+                              to="/dashboard/proxy/$id/quick"
+                              params={{ id: p.id }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition"
+                              title="Abrir tela rápida"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </Link>
+                            <CopyButton value={formatLine(p)} />
+                          </div>
                         </td>
                       </tr>
                     );

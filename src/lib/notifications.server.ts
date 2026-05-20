@@ -34,9 +34,10 @@ export async function enqueueNotification(args: EnqueueArgs) {
     title: args.title,
     body: args.body,
     link: args.link ?? null,
-    metadata: args.metadata ?? null,
+    metadata: (args.metadata ?? null) as never,
     dedupe_key: args.dedupeKey ?? null,
   };
+
 
   const { data: inserted, error } = await supabaseAdmin
     .from("notifications")

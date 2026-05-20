@@ -43,13 +43,13 @@ async function request<T = Json>(
     source: "proxy_seller",
     action: `${method} ${path}`,
     status: errMsg ? "error" : "ok",
-    request: body ?? null,
+    request: (body ?? null) as never,
     response: {
       status,
       duration_ms: Date.now() - started,
-      body: parsed,
+      body: parsed as unknown,
       error: errMsg ?? null,
-    },
+    } as never,
   });
 
   return { ok: !errMsg, data: parsed, status, error: errMsg };

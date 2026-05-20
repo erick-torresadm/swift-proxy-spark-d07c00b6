@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "FastProxy: proxies HTTP e SOCKS5 dedicados no Brasil. IPv6 a partir de R$29,90/mês, IPv4 e ISP. Alta velocidade, entrega automática, suporte 24/7.",
       },
       { name: "author", content: "FastProxy" },
-      { property: "og:title", content: "FastProxy — Proxy IPv6, IPv4 e ISP Dedicado no Brasil" },
+      { property: "og:title", content: "FastProxy — Proxy IPv6, IPv4 e ISP Dedicado no Brasil | Melhor Preço" },
       {
         property: "og:description",
         content:
@@ -92,6 +92,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:locale", content: "pt_BR" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@fastproxybr" },
+      { name: "twitter:title", content: "FastProxy — Proxy IPv6, IPv4 e ISP Dedicado no Brasil | Melhor Preço" },
+      { name: "description", content: "Fastproxy V2 Reboot is a modern web application for managing and purchasing proxy services." },
+      { property: "og:description", content: "Fastproxy V2 Reboot is a modern web application for managing and purchasing proxy services." },
+      { name: "twitter:description", content: "Fastproxy V2 Reboot is a modern web application for managing and purchasing proxy services." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b969835-bfe1-4be1-801a-a2a65a503ba7/id-preview-de2ea58d--22278c7a-6a44-4eed-8709-90b11bbbb809.lovable.app-1779313845271.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b969835-bfe1-4be1-801a-a2a65a503ba7/id-preview-de2ea58d--22278c7a-6a44-4eed-8709-90b11bbbb809.lovable.app-1779313845271.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

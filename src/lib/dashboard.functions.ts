@@ -116,6 +116,8 @@ export const listMyProxies = createServerFn({ method: "GET" })
 
     return (data ?? []).map((r) => ({
       id: r.id,
+      order_id: r.order_id,
+
       status: r.status as string,
       allocated_at: r.allocated_at,
       host: r.proxy_stock?.host ?? null,

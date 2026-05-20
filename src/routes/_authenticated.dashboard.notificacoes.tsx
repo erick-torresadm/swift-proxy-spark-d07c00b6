@@ -21,6 +21,7 @@ import {
   listMyNotifications,
   markNotificationRead,
   sendTestNotification,
+  disableAllPush,
 } from "@/lib/notifications.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/notificacoes")({
@@ -49,6 +50,7 @@ function NotificationsPage() {
   const fetchList = useServerFn(listMyNotifications);
   const markRead = useServerFn(markNotificationRead);
   const sendTest = useServerFn(sendTestNotification);
+  const disableAll = useServerFn(disableAllPush);
 
   const { data: notifs = [] } = useQuery({
     queryKey: ["my-notifications"],
@@ -67,6 +69,15 @@ function NotificationsPage() {
       toast.success("Notificação de teste enviada!");
       qc.invalidateQueries({ queryKey: ["my-notifications"] });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const disableAllMut = useMutation({
+    mutationFn: async () => {
+      await disableAll();
+      await push.disable();
+    },
+    onSuccess: () => toast.success("Notificações desativadas em todos os dispositivos."),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -286,6 +297,20 @@ function NotificationsPage() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="pt-4 border-t border-border/60 text-center">
+        <button
+          onClick={() => {
+            if (confirm("Desativar notificações em todos os dispositivos?")) {
+              disableAllMut.mutate();
+            }
+          }}
+          disabled={disableAllMut.isPending}
+          className="text-xs text-muted-foreground hover:text-destructive transition disabled:opacity-50"
+        >
+          {disableAllMut.isPending ? "Desativando…" : "Desativar notificações em todos os dispositivos"}
+        </button>
       </div>
     </div>
   );

@@ -34,6 +34,7 @@ import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authe
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
+import { Route as AuthenticatedDashboardProxyIdQuickRouteImport } from './routes/_authenticated.dashboard.proxy.$id.quick'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -172,6 +173,12 @@ const ApiPublicHooksNotificationsDispatchRoute =
     path: '/api/public/hooks/notifications-dispatch',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedDashboardProxyIdQuickRoute =
+  AuthenticatedDashboardProxyIdQuickRouteImport.update({
+    id: '/proxy/$id/quick',
+    path: '/proxy/$id/quick',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
+  '/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -223,6 +231,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
+  '/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
+  '/_authenticated/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
+    | '/dashboard/proxy/$id/quick'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -304,6 +315,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
+    | '/dashboard/proxy/$id/quick'
   id:
     | '__root__'
     | '/'
@@ -331,6 +343,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
+    | '/_authenticated/dashboard/proxy/$id/quick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -524,6 +537,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksNotificationsDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/dashboard/proxy/$id/quick': {
+      id: '/_authenticated/dashboard/proxy/$id/quick'
+      path: '/proxy/$id/quick'
+      fullPath: '/dashboard/proxy/$id/quick'
+      preLoaderRoute: typeof AuthenticatedDashboardProxyIdQuickRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
   }
 }
 
@@ -555,6 +575,7 @@ interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardOrdersRoute: typeof AuthenticatedDashboardOrdersRoute
   AuthenticatedDashboardProxiesRoute: typeof AuthenticatedDashboardProxiesRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
+  AuthenticatedDashboardProxyIdQuickRoute: typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
@@ -564,6 +585,8 @@ const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
     AuthenticatedDashboardOrdersRoute: AuthenticatedDashboardOrdersRoute,
     AuthenticatedDashboardProxiesRoute: AuthenticatedDashboardProxiesRoute,
     AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
+    AuthenticatedDashboardProxyIdQuickRoute:
+      AuthenticatedDashboardProxyIdQuickRoute,
   }
 
 const AuthenticatedDashboardRouteWithChildren =

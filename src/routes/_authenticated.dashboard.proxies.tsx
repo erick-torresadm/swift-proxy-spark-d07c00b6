@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle } from "lucide-react";
+import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2 } from "lucide-react";
 import { listMyProxies, rotateProxyIp, createReactivateCheckout } from "@/lib/dashboard.functions";
 import { toast } from "sonner";
 
@@ -241,7 +241,17 @@ function ProxiesPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <CopyButton value={formatLine(p)} />
+                          <div className="inline-flex items-center gap-1">
+                            <Link
+                              to="/dashboard/proxy/$id/quick"
+                              params={{ id: p.id }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition"
+                              title="Abrir tela rápida"
+                            >
+                              <Maximize2 className="w-3.5 h-3.5" />
+                            </Link>
+                            <CopyButton value={formatLine(p)} />
+                          </div>
                         </td>
                       </tr>
                     );

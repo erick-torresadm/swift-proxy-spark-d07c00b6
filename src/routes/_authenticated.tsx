@@ -1,9 +1,14 @@
 import { createFileRoute, Outlet, Link, useNavigate, useLocation, redirect } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutDashboard, Server, Receipt, Settings, LogOut, Shield, Menu, X, Bell } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useRole } from "@/hooks/use-role";
+import { useAppBadge } from "@/hooks/use-app-badge";
+import { InstallBanner } from "@/components/install-banner";
+import { getExpiringCount } from "@/lib/notifications.functions";
 import logo from "@/assets/logo-fastproxy.png";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -31,6 +36,15 @@ function AuthenticatedLayout() {
   const { user, signOut } = useAuth();
   const { isAdmin } = useRole(user?.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const fetchExpiring = useServerFn(getExpiringCount);
+  const { data: expiring } = useQuery({
+    queryKey: ["expiring-count"],
+    queryFn: () => fetchExpiring(),
+    refetchInterval: 5 * 60_000,
+    enabled: !!user,
+  });
+  useAppBadge(expiring?.count ?? 0);
 
   async function handleSignOut() {
     await signOut();
@@ -119,6 +133,7 @@ function AuthenticatedLayout() {
 
       <main className="flex-1 min-w-0">
         <div className="p-6 sm:p-8 lg:p-10 pt-16 lg:pt-10">
+          <InstallBanner />
           <Outlet />
         </div>
       </main>

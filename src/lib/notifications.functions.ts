@@ -85,3 +85,28 @@ export const sendTestNotification = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+/** Quantos proxies do usuário expiram nos próximos 7 dias (badge). */
+export const getExpiringCount = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const horizon = new Date(Date.now() + 7 * 86400_000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("orders!inner(current_period_end)", { count: "exact", head: true })
+      .eq("user_id", context.userId)
+      .neq("status", "released")
+      .lte("orders.current_period_end", horizon);
+    return { count: count ?? 0 };
+  });
+
+/** Remove TODAS as inscrições push do usuário (todos os dispositivos). */
+export const disableAllPush = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await supabaseAdmin
+      .from("push_subscriptions")
+      .delete()
+      .eq("user_id", context.userId);
+    return { ok: true };
+  });

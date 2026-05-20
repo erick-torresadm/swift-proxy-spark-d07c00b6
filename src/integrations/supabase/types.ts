@@ -138,6 +138,54 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          dedupe_key: string | null
+          email_status: Database["public"]["Enums"]["notification_status"]
+          id: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          link: string | null
+          metadata: Json | null
+          push_status: Database["public"]["Enums"]["notification_status"]
+          read_at: string | null
+          sent_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          dedupe_key?: string | null
+          email_status?: Database["public"]["Enums"]["notification_status"]
+          id?: string
+          kind: Database["public"]["Enums"]["notification_kind"]
+          link?: string | null
+          metadata?: Json | null
+          push_status?: Database["public"]["Enums"]["notification_status"]
+          read_at?: string | null
+          sent_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          dedupe_key?: string | null
+          email_status?: Database["public"]["Enums"]["notification_status"]
+          id?: string
+          kind?: Database["public"]["Enums"]["notification_kind"]
+          link?: string | null
+          metadata?: Json | null
+          push_status?: Database["public"]["Enums"]["notification_status"]
+          read_at?: string | null
+          sent_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount_cents: number
@@ -248,6 +296,7 @@ export type Database = {
       products: {
         Row: {
           active: boolean
+          auto_renew_at_provider: boolean
           block_size: number
           category: Database["public"]["Enums"]["product_category"]
           country_code: string
@@ -258,6 +307,7 @@ export type Database = {
           id: string
           ip_rotations_per_month: number
           name: string
+          notify_expiry_days: number[]
           price_monthly_cents: number
           price_yearly_cents: number | null
           provider_tariff_id: string | null
@@ -269,6 +319,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          auto_renew_at_provider?: boolean
           block_size?: number
           category: Database["public"]["Enums"]["product_category"]
           country_code?: string
@@ -279,6 +330,7 @@ export type Database = {
           id?: string
           ip_rotations_per_month?: number
           name: string
+          notify_expiry_days?: number[]
           price_monthly_cents: number
           price_yearly_cents?: number | null
           provider_tariff_id?: string | null
@@ -290,6 +342,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          auto_renew_at_provider?: boolean
           block_size?: number
           category?: Database["public"]["Enums"]["product_category"]
           country_code?: string
@@ -300,6 +353,7 @@ export type Database = {
           id?: string
           ip_rotations_per_month?: number
           name?: string
+          notify_expiry_days?: number[]
           price_monthly_cents?: number
           price_yearly_cents?: number | null
           provider_tariff_id?: string | null
@@ -541,6 +595,42 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          failed_count: number
+          id: string
+          last_seen_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          failed_count?: number
+          id?: string
+          last_seen_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          failed_count?: number
+          id?: string
+          last_seen_at?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       restock_rules: {
         Row: {
           batch_quantity: number
@@ -623,6 +713,16 @@ export type Database = {
       allocation_status: "active" | "grace" | "released" | "cancelled"
       app_role: "admin" | "customer"
       delivery_mode: "stock" | "direct"
+      notification_kind:
+        | "expiring_soon"
+        | "expired"
+        | "payment_failed"
+        | "payment_succeeded"
+        | "grace_ending"
+        | "rotation_reset"
+        | "promo"
+        | "system"
+      notification_status: "pending" | "sent" | "failed" | "read"
       order_status:
         | "pending"
         | "paid"
@@ -763,6 +863,17 @@ export const Constants = {
       allocation_status: ["active", "grace", "released", "cancelled"],
       app_role: ["admin", "customer"],
       delivery_mode: ["stock", "direct"],
+      notification_kind: [
+        "expiring_soon",
+        "expired",
+        "payment_failed",
+        "payment_succeeded",
+        "grace_ending",
+        "rotation_reset",
+        "promo",
+        "system",
+      ],
+      notification_status: ["pending", "sent", "failed", "read"],
       order_status: [
         "pending",
         "paid",

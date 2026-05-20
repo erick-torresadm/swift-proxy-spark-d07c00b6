@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useNavigate, useLocation, redirect } from "@tanstack/react-router";
-import { LayoutDashboard, Server, Receipt, Settings, LogOut, Shield, Menu, X } from "lucide-react";
+import { LayoutDashboard, Server, Receipt, Settings, LogOut, Shield, Menu, X, Bell } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,8 +20,10 @@ const navItems = [
   { to: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
   { to: "/dashboard/proxies", label: "Meus proxies", icon: Server },
   { to: "/dashboard/orders", label: "Pedidos", icon: Receipt },
+  { to: "/dashboard/notificacoes", label: "Notificações", icon: Bell },
   { to: "/dashboard/settings", label: "Configurações", icon: Settings },
 ] as const;
+
 
 function AuthenticatedLayout() {
   const navigate = useNavigate();

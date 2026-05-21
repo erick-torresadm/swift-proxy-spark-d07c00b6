@@ -2,9 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Server, Receipt, Clock, TrendingUp, ArrowRight } from "lucide-react";
+import { Server, Receipt, Clock, TrendingUp, ArrowRight, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getMyOverview } from "@/lib/dashboard.functions";
+import { BuyMoreDialog } from "@/components/buy-more-dialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard/")({
   component: DashboardHome,

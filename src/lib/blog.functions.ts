@@ -355,7 +355,7 @@ export const moderateComment = createServerFn({ method: "POST" })
 export const listAllComments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertCommentMod(context.userId);
     const { data: rows } = await supabaseAdmin
       .from("post_comments")
       .select("id, body, status, created_at, user_id, post_id, posts(slug, title)")

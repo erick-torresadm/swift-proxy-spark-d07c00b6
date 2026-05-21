@@ -276,6 +276,9 @@ function ProxiesPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
+                          <HealthBadge stockId={p.stock_id} health={health} />
+                        </td>
+                        <td className="px-4 py-3">
                           <span
                             className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               p.status === "active"

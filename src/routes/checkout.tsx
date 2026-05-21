@@ -119,6 +119,7 @@ function CheckoutPage() {
   const location = useLocation();
   const search = Route.useSearch();
   const startCheckout = useServerFn(createCheckoutSession);
+  const validateCoupon = useServerFn(validateCouponPublic);
 
   if (location.pathname !== "/checkout") {
     return <Outlet />;

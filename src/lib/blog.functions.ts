@@ -441,19 +441,41 @@ export const listAllPostsAdmin = createServerFn({ method: "GET" })
     await assertBlogEditor(context.userId);
     const { data } = await supabaseAdmin
       .from("posts")
-      .select("id, slug, title, status, published_at, view_count, post_categories(name)")
+      .select(
+        "id, slug, title, status, published_at, view_count, updated_at, meta_title, meta_description, keyword_primary, cover_image_url, faq, content_md, noindex, post_categories(id, name)",
+      )
       .order("created_at", { ascending: false })
-      .limit(200);
-    return (data ?? []).map((p) => ({
-      id: p.id,
-      slug: p.slug,
-      title: p.title,
-      status: p.status,
-      published_at: p.published_at,
-      view_count: p.view_count,
-      category_name: p.post_categories?.name ?? null,
-    }));
+      .limit(500);
+    return (data ?? []).map((p) => {
+      const wordCount = (p.content_md ?? "").trim().split(/\s+/).filter(Boolean).length;
+      const faqArr = (p.faq as unknown[]) ?? [];
+      const seoChecks = {
+        meta_title: !!p.meta_title && p.meta_title.length >= 30 && p.meta_title.length <= 60,
+        meta_description: !!p.meta_description && p.meta_description.length >= 100 && p.meta_description.length <= 160,
+        cover: !!p.cover_image_url,
+        keyword: !!p.keyword_primary,
+        faq: faqArr.length > 0,
+        length: wordCount >= 300,
+      };
+      const passed = Object.values(seoChecks).filter(Boolean).length;
+      return {
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        status: p.status,
+        published_at: p.published_at,
+        view_count: p.view_count,
+        updated_at: p.updated_at,
+        category_id: p.post_categories?.id ?? null,
+        category_name: p.post_categories?.name ?? null,
+        word_count: wordCount,
+        noindex: p.noindex ?? false,
+        seo_score: Math.round((passed / 6) * 100),
+        seo_checks: seoChecks,
+      };
+    });
   });
+
 
 export const getPostAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

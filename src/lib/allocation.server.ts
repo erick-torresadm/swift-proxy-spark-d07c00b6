@@ -152,7 +152,7 @@ async function autoPurchaseIpv6IntoStock(
     country_code: string | null;
   },
   needed: number,
-): Promise<void> {
+): Promise<number> {
   if (!product.provider_tariff_id) {
     throw new Error(
       `product ${product.id} missing provider_tariff_id (ProxySeller config)`,

@@ -354,11 +354,12 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
 
     const ids = (orders ?? []).map((o) => o.id);
     if (ids.length === 0) {
-      return { synced: 0, allocated: 0, short: 0, error: null as string | null };
+      return { synced: 0, allocated: 0, short: 0, pending: false, error: null as string | null };
     }
 
     let allocated = 0;
     let short = 0;
+    let pending = false;
     let hadError = false;
     let synced = 0;
 
@@ -367,6 +368,7 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
         const r = await allocateProxiesForOrder(orderId);
         allocated += r.allocated;
         short += r.short;
+        if (r.pending) pending = true;
         if (r.error) {
           hadError = true;
           console.error(`[syncMyAllocations] order ${orderId} error:`, r.error);
@@ -379,5 +381,11 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
     }
 
     // Nunca devolvemos detalhe técnico ao cliente — apenas um flag genérico.
-    return { synced, allocated, short, error: hadError ? "unavailable" : null };
+    return {
+      synced,
+      allocated,
+      short,
+      pending,
+      error: hadError && !pending ? "unavailable" : null,
+    };
   });

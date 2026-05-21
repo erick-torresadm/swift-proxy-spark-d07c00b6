@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { purchaseIpv6Block, psDateToIso } from "./proxyseller.server";
+import { notifyAllAdmins } from "./notifications.server";
 
 /**
  * Allocates proxies from stock to a paid order.
@@ -66,8 +67,25 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 
   let purchaseError: string | undefined;
   if (stillShort > 0 && isIpv6) {
+    // 🔔 Alerta admin: estoque insuficiente para alocar
+    void notifyAllAdmins({
+      title: "⚠️ Estoque insuficiente",
+      body: `Pedido ${order.id.slice(0, 8)} precisa de ${remaining} IPs do produto ${product.category}/${product.country_code ?? "?"}. Faltam ${stillShort}. Comprando bloco na ProxySeller…`,
+      link: "/admin/inventory",
+      metadata: { orderId: order.id, productId: product.id, shortBy: stillShort },
+      dedupeKey: `stock-short:${order.id}`,
+    });
+
     try {
-      await autoPurchaseIpv6IntoStock(product, stillShort);
+      const bought = await autoPurchaseIpv6IntoStock(product, stillShort);
+      // 🔔 Alerta admin: restock automático ok
+      void notifyAllAdmins({
+        title: "📦 Estoque renovado",
+        body: `+${bought} IPs adicionados ao produto ${product.category}/${product.country_code ?? "?"} via compra automática.`,
+        link: "/admin/inventory",
+        metadata: { productId: product.id, added: bought },
+        dedupeKey: `restock-auto:${order.id}`,
+      });
       // Re-pick after restock
       const { data: pool2 } = await supabaseAdmin
         .from("proxy_stock")
@@ -79,6 +97,14 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     } catch (e) {
       purchaseError = e instanceof Error ? e.message : String(e);
       console.error("[allocation] auto-purchase IPv6 failed:", e);
+      // 🔔 Alerta admin: falha no restock
+      void notifyAllAdmins({
+        title: "🛑 Falha na compra automática",
+        body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"}: ${purchaseError}`,
+        link: "/admin/inventory",
+        metadata: { orderId: order.id, productId: product.id, error: purchaseError },
+        dedupeKey: `restock-fail:${order.id}`,
+      });
       // fall through; we'll just report `short`
     }
   }
@@ -126,7 +152,7 @@ async function autoPurchaseIpv6IntoStock(
     country_code: string | null;
   },
   needed: number,
-): Promise<void> {
+): Promise<number> {
   if (!product.provider_tariff_id) {
     throw new Error(
       `product ${product.id} missing provider_tariff_id (ProxySeller config)`,
@@ -178,9 +204,10 @@ async function autoPurchaseIpv6IntoStock(
     expires_at: psDateToIso(p.date_end),
   }));
 
-  if (stockRows.length === 0) return;
+  if (stockRows.length === 0) return 0;
   const { error: stockErr } = await supabaseAdmin
     .from("proxy_stock")
     .insert(stockRows);
   if (stockErr) throw new Error(`stock insert failed: ${stockErr.message}`);
+  return stockRows.length;
 }

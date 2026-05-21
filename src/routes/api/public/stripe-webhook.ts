@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "@/lib/stripe.server";
 import { allocateProxiesForOrder } from "@/lib/allocation.server";
+import { notifyAllAdmins } from "@/lib/notifications.server";
 import type Stripe from "stripe";
 
 async function logAudit(action: string, status: string, payload: unknown, error?: string) {
@@ -200,6 +201,31 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                     { orderId },
                     err instanceof Error ? err.message : String(err),
                   );
+                }
+              }
+
+              // 🔔 Alerta admin: nova venda
+              if (orderId) {
+                try {
+                  const { data: ord } = await supabaseAdmin
+                    .from("orders")
+                    .select("amount_cents, quantity, customer_email, billing_cycle, product_id, products(name, slug)")
+                    .eq("id", orderId)
+                    .maybeSingle();
+                  const prod = (ord as any)?.products as { name?: string; slug?: string } | null;
+                  const amount = ((ord?.amount_cents ?? 0) / 100).toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  });
+                  await notifyAllAdmins({
+                    title: "💸 Nova venda",
+                    body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}`,
+                    link: `/admin/orders`,
+                    metadata: { orderId, productSlug: prod?.slug },
+                    dedupeKey: `sale:${orderId}`,
+                  });
+                } catch (e) {
+                  console.error("admin sale notify failed", e);
                 }
               }
               break;

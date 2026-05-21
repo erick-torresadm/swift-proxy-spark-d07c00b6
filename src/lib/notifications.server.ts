@@ -76,3 +76,43 @@ export async function enqueueNotification(args: EnqueueArgs) {
 
   return inserted.id;
 }
+
+/**
+ * Broadcast a system notification to every admin (push + in-app), one row per admin.
+ * Use for ops alerts: nova venda, estoque baixo, restock concluído, etc.
+ */
+export async function notifyAllAdmins(args: {
+  title: string;
+  body: string;
+  link?: string;
+  metadata?: Record<string, unknown>;
+  dedupeKey?: string;
+}) {
+  const { data: admins } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+
+  if (!admins || admins.length === 0) return 0;
+
+  let sent = 0;
+  for (const a of admins) {
+    if (!a.user_id) continue;
+    try {
+      await enqueueNotification({
+        userId: a.user_id,
+        kind: "system",
+        title: args.title,
+        body: args.body,
+        link: args.link,
+        metadata: args.metadata,
+        dedupeKey: args.dedupeKey ? `${args.dedupeKey}:${a.user_id}` : undefined,
+        sendImmediately: true,
+      });
+      sent++;
+    } catch (e) {
+      console.error("notifyAllAdmins failed for", a.user_id, e);
+    }
+  }
+  return sent;
+}

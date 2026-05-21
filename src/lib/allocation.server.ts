@@ -212,6 +212,54 @@ async function autoPurchaseIpv6IntoStock(
     throw new Error("provider_tariff_id must include {countryId, periodId}");
   }
 
+  // Check dry-run mode — simulate full purchase flow without spending balance
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "proxyseller")
+    .maybeSingle();
+  const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
+
+  if (dryRun) {
+    // 1) Real /order/calc call (validates country/period/qty, no charge)
+    const calc = await calcOrder("ipv6", {
+      countryId: cfg.countryId,
+      periodId: cfg.periodId,
+      quantity: needed,
+      protocol: cfg.protocol,
+      targetSectionId: cfg.targetSectionId,
+      targetId: cfg.targetId,
+    });
+    const costCents = Math.round((Number(calc.total) || 0) * 100);
+    const delay =
+      DRY_RUN_DELAY_MIN_MS +
+      Math.floor(Math.random() * (DRY_RUN_DELAY_MAX_MS - DRY_RUN_DELAY_MIN_MS));
+    const simulateReadyAt = new Date(Date.now() + delay).toISOString();
+    const fakeBase = `DRYRUN-${crypto.randomUUID()}`;
+
+    await supabaseAdmin.from("provider_orders").insert({
+      product_id: product.id,
+      external_order_id: fakeBase,
+      status: "pending",
+      quantity: 0,
+      cost_cents: costCents,
+      country_code: product.country_code,
+      triggered_by_order_id: triggeredByOrderId,
+      raw_payload: {
+        baseOrderNumber: fakeBase,
+        dryRun: true,
+        simulateReadyAt,
+        quantityRequested: needed,
+        periodId: cfg.periodId,
+        countryId: cfg.countryId,
+      } as never,
+    });
+
+    // Returns 0 — backfill cron will materialize fake IPs after delay,
+    // mimicking the real 3-5min ProxySeller provisioning window.
+    return 0;
+  }
+
   const result = await purchaseIpv6Block({
     countryId: cfg.countryId,
     periodId: cfg.periodId,

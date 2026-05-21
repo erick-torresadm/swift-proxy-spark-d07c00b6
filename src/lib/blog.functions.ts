@@ -16,14 +16,31 @@ const faqSchema = z.array(
   }),
 );
 
-async function assertAdmin(userId: string) {
+async function getRoles(userId: string): Promise<string[]> {
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (!data) throw new Error("Acesso negado: apenas admin");
+    .eq("user_id", userId);
+  return (data ?? []).map((r) => r.role as string);
+}
+
+async function assertAdmin(userId: string) {
+  const roles = await getRoles(userId);
+  if (!roles.includes("admin")) throw new Error("Acesso negado: apenas admin");
+}
+
+async function assertBlogEditor(userId: string) {
+  const roles = await getRoles(userId);
+  if (!roles.some((r) => r === "admin" || r === "editor")) {
+    throw new Error("Acesso negado: precisa ser admin ou editor");
+  }
+}
+
+async function assertCommentMod(userId: string) {
+  const roles = await getRoles(userId);
+  if (!roles.some((r) => r === "admin" || r === "editor" || r === "moderator")) {
+    throw new Error("Acesso negado: precisa moderar comentários");
+  }
 }
 
 function estimateReadingMinutes(md: string): number {

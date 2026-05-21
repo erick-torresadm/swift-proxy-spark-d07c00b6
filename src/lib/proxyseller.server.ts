@@ -107,7 +107,7 @@ export async function calcOrder(
   kind: PsProxyKind,
   params: Record<string, unknown>,
 ): Promise<PsOrderCalcResult> {
-  return psPost(`/order/calc/${kind}`, params);
+  return psPost(`/order/calc`, params);
 }
 
 // ─────────────────────────── Order make ───────────────────────────
@@ -150,7 +150,7 @@ export async function purchaseIpv6Block(params: {
   costCents: number;
   proxies: PsProxyItem[];
 }> {
-  const order = await psPost<PsOrderMakeData>("/order/make/ipv6", {
+  const order = await psPost<PsOrderMakeData>("/order/make", {
     countryId: params.countryId,
     periodId: params.periodId,
     quantity: params.quantity,

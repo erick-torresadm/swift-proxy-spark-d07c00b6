@@ -47,6 +47,63 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_ads: {
+        Row: {
+          active: boolean
+          click_count: number
+          created_at: string
+          cta_label: string | null
+          description: string | null
+          ends_at: string | null
+          html: string | null
+          id: string
+          image_url: string | null
+          impression_count: number
+          link_url: string
+          position: Database["public"]["Enums"]["blog_ad_position"]
+          sort_order: number
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          click_count?: number
+          created_at?: string
+          cta_label?: string | null
+          description?: string | null
+          ends_at?: string | null
+          html?: string | null
+          id?: string
+          image_url?: string | null
+          impression_count?: number
+          link_url: string
+          position: Database["public"]["Enums"]["blog_ad_position"]
+          sort_order?: number
+          starts_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          click_count?: number
+          created_at?: string
+          cta_label?: string | null
+          description?: string | null
+          ends_at?: string | null
+          html?: string | null
+          id?: string
+          image_url?: string | null
+          impression_count?: number
+          link_url?: string
+          position?: Database["public"]["Enums"]["blog_ad_position"]
+          sort_order?: number
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           assigned_admin_id: string | null
@@ -571,6 +628,7 @@ export type Database = {
       posts: {
         Row: {
           author_id: string | null
+          canonical_url: string | null
           category_id: string | null
           content_md: string
           cover_image_url: string | null
@@ -583,6 +641,7 @@ export type Database = {
           keywords_secondary: string[]
           meta_description: string | null
           meta_title: string | null
+          noindex: boolean
           published_at: string | null
           reading_time_minutes: number
           slug: string
@@ -593,6 +652,7 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
+          canonical_url?: string | null
           category_id?: string | null
           content_md?: string
           cover_image_url?: string | null
@@ -605,6 +665,7 @@ export type Database = {
           keywords_secondary?: string[]
           meta_description?: string | null
           meta_title?: string | null
+          noindex?: boolean
           published_at?: string | null
           reading_time_minutes?: number
           slug: string
@@ -615,6 +676,7 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
+          canonical_url?: string | null
           category_id?: string | null
           content_md?: string
           cover_image_url?: string | null
@@ -627,6 +689,7 @@ export type Database = {
           keywords_secondary?: string[]
           meta_description?: string | null
           meta_title?: string | null
+          noindex?: boolean
           published_at?: string | null
           reading_time_minutes?: number
           slug?: string
@@ -1241,6 +1304,7 @@ export type Database = {
     Enums: {
       allocation_status: "active" | "grace" | "released" | "cancelled"
       app_role: "admin" | "customer" | "editor" | "moderator"
+      blog_ad_position: "top" | "middle" | "bottom"
       chat_sender: "client" | "admin" | "system"
       chat_status: "waiting" | "active" | "closed"
       comment_status: "visible" | "hidden" | "flagged"
@@ -1396,6 +1460,7 @@ export const Constants = {
     Enums: {
       allocation_status: ["active", "grace", "released", "cancelled"],
       app_role: ["admin", "customer", "editor", "moderator"],
+      blog_ad_position: ["top", "middle", "bottom"],
       chat_sender: ["client", "admin", "system"],
       chat_status: ["waiting", "active", "closed"],
       comment_status: ["visible", "hidden", "flagged"],

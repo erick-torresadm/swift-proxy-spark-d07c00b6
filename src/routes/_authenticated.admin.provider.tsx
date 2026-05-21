@@ -203,7 +203,12 @@ function SettingsCard({
   initial,
   onSaved,
 }: {
-  initial: { min_balance_usd: number; alert_email: string | null; auto_purchase_enabled: boolean } | null;
+  initial: {
+    min_balance_usd: number;
+    alert_email: string | null;
+    auto_purchase_enabled: boolean;
+    dry_run?: boolean;
+  } | null;
   onSaved: () => void;
 }) {
   const qc = useQueryClient();
@@ -221,12 +226,14 @@ function SettingsCard({
   const [min, setMin] = useState<number>(50);
   const [email, setEmail] = useState<string>("");
   const [auto, setAuto] = useState<boolean>(true);
+  const [dryRun, setDryRun] = useState<boolean>(false);
 
   useEffect(() => {
     if (initial) {
       setMin(Number(initial.min_balance_usd));
       setEmail(initial.alert_email ?? "");
       setAuto(initial.auto_purchase_enabled);
+      setDryRun(!!initial.dry_run);
     }
   }, [initial]);
 
@@ -267,6 +274,31 @@ function SettingsCard({
           <span className="text-sm">Compra automática ativa</span>
         </label>
       </div>
+
+      <label
+        className={`mt-4 flex items-start gap-3 p-3 rounded-lg border ${
+          dryRun ? "border-amber-500/50 bg-amber-500/5" : "border-border bg-muted/20"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={dryRun}
+          onChange={(e) => setDryRun(e.target.checked)}
+          className="w-4 h-4 mt-0.5"
+        />
+        <div>
+          <p className="text-sm font-bold">
+            Modo simulação (dry-run) {dryRun && <span className="text-amber-500">— ATIVO</span>}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Faz chamada real ao <code>/order/calc</code> da ProxySeller para validar
+            preço/país/período <strong>sem gastar saldo</strong>. Gera IPs fake
+            (<code>2001:db8::/32</code>) após 3–5 min, simulando o fluxo completo de
+            provisionamento, backfill e alocação.
+          </p>
+        </div>
+      </label>
+
       <div className="flex justify-end mt-4">
         <button
           onClick={() =>
@@ -275,6 +307,7 @@ function SettingsCard({
                 min_balance_usd: min,
                 alert_email: email || null,
                 auto_purchase_enabled: auto,
+                dry_run: dryRun,
               },
             })
           }

@@ -382,6 +382,7 @@ const postUpsertSchema = z.object({
   keywords_secondary: z.array(z.string().max(80)).max(20).default([]),
   faq: faqSchema.default([]),
   tag_ids: z.array(z.string().uuid()).max(20).default([]),
+  display_author_name: z.string().min(1).max(80).default("FastProxy"),
 });
 
 export const upsertPost = createServerFn({ method: "POST" })

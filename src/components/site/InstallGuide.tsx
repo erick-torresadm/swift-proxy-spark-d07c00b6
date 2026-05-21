@@ -71,7 +71,30 @@ export function InstallGuide() {
                 </div>
               </div>
               <div className="pt-10 px-4 pb-4 h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-4">
+                {/* Barra do navegador simulada — muda conforme a aba */}
+                <motion.div
+                  key={`bar-${activeTab}`}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center gap-2 mb-3 px-2 py-1.5 rounded-lg bg-secondary/70 border border-border text-[10px]"
+                >
+                  {activeTab === "android" ? (
+                    <>
+                      <Chrome className="w-3 h-3 text-primary" />
+                      <span className="truncate text-muted-foreground">fastproxy.com</span>
+                      <span className="ml-auto font-bold text-foreground/80">⋮</span>
+                    </>
+                  ) : (
+                    <>
+                      <Apple className="w-3 h-3 text-primary" />
+                      <span className="truncate text-muted-foreground">fastproxy.com</span>
+                      <Share2 className="w-3 h-3 ml-auto text-foreground/80" />
+                    </>
+                  )}
+                </motion.div>
+
+                <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                     <ZapIcon />
                   </div>
@@ -92,15 +115,32 @@ export function InstallGuide() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-auto p-3 rounded-2xl bg-primary/10 border border-primary/20">
+                <motion.div
+                  key={`cta-${activeTab}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="mt-auto relative p-3 rounded-2xl bg-primary/10 border border-primary/20"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowDownToLine className="w-4 h-4 text-primary" />
                     <span className="text-xs font-bold">Adicionar à tela inicial</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Acesse o FastProxy com um toque, sem digitar o endereço.
+                    {activeTab === "android"
+                      ? "Toque em ⋮ → Instalar app no Chrome."
+                      : "Toque em Compartilhar → Adicionar à Tela de Início."}
                   </p>
-                </div>
+                  <motion.div
+                    aria-hidden
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1, 1, 0.8], x: [0, 4, -2, 0], y: [0, -2, 2, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 0.6 }}
+                    className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-primary/30 border border-primary flex items-center justify-center"
+                  >
+                    <MousePointerClick className="w-3.5 h-3.5 text-primary" />
+                  </motion.div>
+                </motion.div>
               </div>
               <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/3 to-transparent pointer-events-none" />
             </div>
@@ -169,21 +209,21 @@ export function InstallGuide() {
   );
 }
 
-function AndroidSteps() {
-  const steps = [
-    { icon: Chrome, label: "Abra o Chrome", desc: "Acesse fastproxy.com no navegador Chrome." },
-    { icon: ArrowDownToLine, label: "Toque no menu", desc: "Clique nos três pontinhos (⋮) no canto superior direito." },
-    { icon: PlusSquare, label: "Adicionar à tela", desc: 'Selecione "Adicionar à tela inicial" ou "Instalar app".' },
-    { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece no seu launcher." },
-  ];
+type Step = { icon: typeof Chrome; label: string; desc: string };
+
+function StepsList({ steps }: { steps: Step[] }) {
   return (
-    <ol className="space-y-5">
+    <motion.ol
+      className="space-y-5"
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+      }}
+    >
       {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          variants={fadeUp}
-          className="flex items-start gap-4"
-        >
+        <motion.li key={i} variants={fadeUp} className="flex items-start gap-4">
           <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
             <s.icon className="w-5 h-5 text-primary" />
             <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
@@ -196,38 +236,33 @@ function AndroidSteps() {
           </div>
         </motion.li>
       ))}
-    </ol>
+    </motion.ol>
+  );
+}
+
+function AndroidSteps() {
+  return (
+    <StepsList
+      steps={[
+        { icon: Chrome, label: "Abra o Chrome", desc: "Acesse fastproxy.com no navegador Chrome." },
+        { icon: ArrowDownToLine, label: "Toque no menu", desc: "Clique nos três pontinhos (⋮) no canto superior direito." },
+        { icon: PlusSquare, label: "Adicionar à tela", desc: 'Selecione "Adicionar à tela inicial" ou "Instalar app".' },
+        { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece no seu launcher." },
+      ]}
+    />
   );
 }
 
 function IOSSteps() {
-  const steps = [
-    { icon: Apple, label: "Abra o Safari", desc: "Acesse fastproxy.com pelo Safari (iPhone/iPad)." },
-    { icon: Share2, label: "Toque em Compartilhar", desc: "Clique no ícone de compartilhar na barra inferior." },
-    { icon: ArrowDownToLine, label: "Adicionar à Tela de Início", desc: 'Deslize e toque em "Adicionar à Tela de Início".' },
-    { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece na sua home screen." },
-  ];
   return (
-    <ol className="space-y-5">
-      {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          variants={fadeUp}
-          className="flex items-start gap-4"
-        >
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-            <s.icon className="w-5 h-5 text-primary" />
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
-              {i + 1}
-            </span>
-          </div>
-          <div>
-            <p className="font-semibold text-sm">{s.label}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
-          </div>
-        </motion.li>
-      ))}
-    </ol>
+    <StepsList
+      steps={[
+        { icon: Apple, label: "Abra o Safari", desc: "Acesse fastproxy.com pelo Safari (iPhone/iPad)." },
+        { icon: Share2, label: "Toque em Compartilhar", desc: "Clique no ícone de compartilhar na barra inferior." },
+        { icon: ArrowDownToLine, label: "Adicionar à Tela de Início", desc: 'Deslize e toque em "Adicionar à Tela de Início".' },
+        { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece na sua home screen." },
+      ]}
+    />
   );
 }
 

@@ -42,6 +42,7 @@ import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
 import { Route as AuthenticatedAdminChatRouteImport } from './routes/_authenticated.admin.chat'
+import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated.admin.broadcast'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated.admin.allocations'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
@@ -222,6 +223,12 @@ const AuthenticatedAdminChatRoute = AuthenticatedAdminChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminBroadcastRoute =
+  AuthenticatedAdminBroadcastRouteImport.update({
+    id: '/broadcast',
+    path: '/broadcast',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminAllocationsRoute =
   AuthenticatedAdminAllocationsRouteImport.update({
     id: '/allocations',
@@ -272,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
@@ -309,6 +317,7 @@ export interface FileRoutesByTo {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
@@ -350,6 +359,7 @@ export interface FileRoutesById {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
@@ -391,6 +401,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog/'
     | '/admin/allocations'
+    | '/admin/broadcast'
     | '/admin/chat'
     | '/admin/customers'
     | '/admin/emails'
@@ -428,6 +439,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog'
     | '/admin/allocations'
+    | '/admin/broadcast'
     | '/admin/chat'
     | '/admin/customers'
     | '/admin/emails'
@@ -468,6 +480,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog/'
     | '/_authenticated/admin/allocations'
+    | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/chat'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/emails'
@@ -742,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminChatRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/broadcast': {
+      id: '/_authenticated/admin/broadcast'
+      path: '/broadcast'
+      fullPath: '/admin/broadcast'
+      preLoaderRoute: typeof AuthenticatedAdminBroadcastRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/allocations': {
       id: '/_authenticated/admin/allocations'
       path: '/allocations'
@@ -782,6 +802,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
+  AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
   AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
@@ -794,6 +815,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAllocationsRoute: AuthenticatedAdminAllocationsRoute,
+  AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
   AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,

@@ -359,7 +359,7 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
 
     let allocated = 0;
     let short = 0;
-    let lastError: string | null = null;
+    let hadError = false;
     let synced = 0;
 
     for (const orderId of ids) {
@@ -367,12 +367,17 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
         const r = await allocateProxiesForOrder(orderId);
         allocated += r.allocated;
         short += r.short;
-        if (r.error) lastError = r.error;
+        if (r.error) {
+          hadError = true;
+          console.error(`[syncMyAllocations] order ${orderId} error:`, r.error);
+        }
         synced += 1;
       } catch (e) {
-        lastError = e instanceof Error ? e.message : String(e);
+        hadError = true;
+        console.error(`[syncMyAllocations] order ${orderId} threw:`, e);
       }
     }
 
-    return { synced, allocated, short, error: lastError };
+    // Nunca devolvemos detalhe técnico ao cliente — apenas um flag genérico.
+    return { synced, allocated, short, error: hadError ? "unavailable" : null };
   });

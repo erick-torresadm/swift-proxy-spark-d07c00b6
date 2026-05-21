@@ -163,10 +163,7 @@ function SuccessPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Quantidade</span>
               <span className="font-semibold">
-                {order.quantity}
-                {order.block_size > 1
-                  ? ` (${order.quantity * order.block_size} IPs)`
-                  : ""}
+                {order.quantity * order.block_size} proxies
               </span>
             </div>
             <div className="flex justify-between">
@@ -183,7 +180,7 @@ function SuccessPage() {
             </div>
             {isPaid && (
               <div className="flex justify-between pt-2 border-t border-border">
-                <span className="text-muted-foreground">Proxies alocados</span>
+                <span className="text-muted-foreground">Proxies prontos</span>
                 <span
                   className={`font-bold ${
                     order.allocated_count > 0 ? "text-primary" : "text-amber-400"
@@ -225,8 +222,8 @@ function SuccessPage() {
           <div className="mt-6 p-4 rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-200 text-sm">
             {polling ? (
               <>
-                <strong>Liberando seus proxies…</strong> Estamos comprando o
-                estoque do provedor em tempo real. Pode levar até 30 segundos.
+                <strong>Liberando seus proxies…</strong> Estamos preparando
+                tudo para você. Pode levar até 30 segundos.
               </>
             ) : (
               <>

@@ -25,8 +25,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated.dashboard.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as BlogTagSlugRouteImport } from './routes/blog.tag.$slug'
 import { Route as BlogCSlugRouteImport } from './routes/blog.c.$slug'
@@ -142,16 +142,17 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedDashboardIndexRoute =
+  AuthenticatedDashboardIndexRouteImport.update({
+    id: '/dashboard/',
+    path: '/dashboard/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -174,27 +175,27 @@ const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
 } as any)
 const AuthenticatedDashboardSettingsRoute =
   AuthenticatedDashboardSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AuthenticatedDashboardRoute,
+    id: '/dashboard/settings',
+    path: '/dashboard/settings',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedDashboardProxiesRoute =
   AuthenticatedDashboardProxiesRouteImport.update({
-    id: '/proxies',
-    path: '/proxies',
-    getParentRoute: () => AuthenticatedDashboardRoute,
+    id: '/dashboard/proxies',
+    path: '/dashboard/proxies',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedDashboardOrdersRoute =
   AuthenticatedDashboardOrdersRouteImport.update({
-    id: '/orders',
-    path: '/orders',
-    getParentRoute: () => AuthenticatedDashboardRoute,
+    id: '/dashboard/orders',
+    path: '/dashboard/orders',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedDashboardNotificacoesRoute =
   AuthenticatedDashboardNotificacoesRouteImport.update({
-    id: '/notificacoes',
-    path: '/notificacoes',
-    getParentRoute: () => AuthenticatedDashboardRoute,
+    id: '/dashboard/notificacoes',
+    path: '/dashboard/notificacoes',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminProviderRoute =
   AuthenticatedAdminProviderRouteImport.update({
@@ -351,9 +352,9 @@ const AuthenticatedAdminBlogIdRoute =
   } as any)
 const AuthenticatedDashboardProxyIdQuickRoute =
   AuthenticatedDashboardProxyIdQuickRouteImport.update({
-    id: '/proxy/$id/quick',
-    path: '/proxy/$id/quick',
-    getParentRoute: () => AuthenticatedDashboardRoute,
+    id: '/dashboard/proxy/$id/quick',
+    path: '/dashboard/proxy/$id/quick',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -370,7 +371,6 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
-  '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
@@ -394,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
   '/admin/blog/categorias': typeof AuthenticatedAdminBlogCategoriasRoute
   '/admin/blog/comentarios': typeof AuthenticatedAdminBlogComentariosRoute
@@ -422,7 +423,6 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
-  '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog': typeof BlogIndexRoute
@@ -445,6 +445,7 @@ export interface FileRoutesByTo {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
   '/admin/blog/categorias': typeof AuthenticatedAdminBlogCategoriasRoute
   '/admin/blog/comentarios': typeof AuthenticatedAdminBlogComentariosRoute
@@ -477,7 +478,6 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
@@ -501,6 +501,7 @@ export interface FileRoutesById {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
   '/_authenticated/admin/blog/categorias': typeof AuthenticatedAdminBlogCategoriasRoute
   '/_authenticated/admin/blog/comentarios': typeof AuthenticatedAdminBlogComentariosRoute
@@ -533,7 +534,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/termos'
     | '/admin'
-    | '/dashboard'
     | '/blog/$slug'
     | '/checkout/success'
     | '/blog/'
@@ -557,6 +557,7 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin/'
+    | '/dashboard/'
     | '/admin/blog/$id'
     | '/admin/blog/categorias'
     | '/admin/blog/comentarios'
@@ -585,7 +586,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
-    | '/dashboard'
     | '/blog/$slug'
     | '/checkout/success'
     | '/blog'
@@ -608,6 +608,7 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin'
+    | '/dashboard'
     | '/admin/blog/$id'
     | '/admin/blog/categorias'
     | '/admin/blog/comentarios'
@@ -639,7 +640,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/termos'
     | '/_authenticated/admin'
-    | '/_authenticated/dashboard'
     | '/blog/$slug'
     | '/checkout/success'
     | '/blog/'
@@ -663,6 +663,7 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/_authenticated/admin/'
+    | '/_authenticated/dashboard/'
     | '/_authenticated/admin/blog/$id'
     | '/_authenticated/admin/blog/categorias'
     | '/_authenticated/admin/blog/comentarios'
@@ -816,18 +817,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard/': {
+      id: '/_authenticated/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/': {
@@ -860,31 +861,31 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/dashboard/settings': {
       id: '/_authenticated/dashboard/settings'
-      path: '/settings'
+      path: '/dashboard/settings'
       fullPath: '/dashboard/settings'
       preLoaderRoute: typeof AuthenticatedDashboardSettingsRouteImport
-      parentRoute: typeof AuthenticatedDashboardRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard/proxies': {
       id: '/_authenticated/dashboard/proxies'
-      path: '/proxies'
+      path: '/dashboard/proxies'
       fullPath: '/dashboard/proxies'
       preLoaderRoute: typeof AuthenticatedDashboardProxiesRouteImport
-      parentRoute: typeof AuthenticatedDashboardRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard/orders': {
       id: '/_authenticated/dashboard/orders'
-      path: '/orders'
+      path: '/dashboard/orders'
       fullPath: '/dashboard/orders'
       preLoaderRoute: typeof AuthenticatedDashboardOrdersRouteImport
-      parentRoute: typeof AuthenticatedDashboardRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard/notificacoes': {
       id: '/_authenticated/dashboard/notificacoes'
-      path: '/notificacoes'
+      path: '/dashboard/notificacoes'
       fullPath: '/dashboard/notificacoes'
       preLoaderRoute: typeof AuthenticatedDashboardNotificacoesRouteImport
-      parentRoute: typeof AuthenticatedDashboardRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/provider': {
       id: '/_authenticated/admin/provider'
@@ -1070,10 +1071,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/dashboard/proxy/$id/quick': {
       id: '/_authenticated/dashboard/proxy/$id/quick'
-      path: '/proxy/$id/quick'
+      path: '/dashboard/proxy/$id/quick'
       fullPath: '/dashboard/proxy/$id/quick'
       preLoaderRoute: typeof AuthenticatedDashboardProxyIdQuickRouteImport
-      parentRoute: typeof AuthenticatedDashboardRoute
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
@@ -1147,38 +1148,26 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
-interface AuthenticatedDashboardRouteChildren {
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardNotificacoesRoute: typeof AuthenticatedDashboardNotificacoesRoute
   AuthenticatedDashboardOrdersRoute: typeof AuthenticatedDashboardOrdersRoute
   AuthenticatedDashboardProxiesRoute: typeof AuthenticatedDashboardProxiesRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
+  AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedDashboardProxyIdQuickRoute: typeof AuthenticatedDashboardProxyIdQuickRoute
-}
-
-const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
-  {
-    AuthenticatedDashboardNotificacoesRoute:
-      AuthenticatedDashboardNotificacoesRoute,
-    AuthenticatedDashboardOrdersRoute: AuthenticatedDashboardOrdersRoute,
-    AuthenticatedDashboardProxiesRoute: AuthenticatedDashboardProxiesRoute,
-    AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
-    AuthenticatedDashboardProxyIdQuickRoute:
-      AuthenticatedDashboardProxyIdQuickRoute,
-  }
-
-const AuthenticatedDashboardRouteWithChildren =
-  AuthenticatedDashboardRoute._addFileChildren(
-    AuthenticatedDashboardRouteChildren,
-  )
-
-interface AuthenticatedRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
+  AuthenticatedDashboardNotificacoesRoute:
+    AuthenticatedDashboardNotificacoesRoute,
+  AuthenticatedDashboardOrdersRoute: AuthenticatedDashboardOrdersRoute,
+  AuthenticatedDashboardProxiesRoute: AuthenticatedDashboardProxiesRoute,
+  AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
+  AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  AuthenticatedDashboardProxyIdQuickRoute:
+    AuthenticatedDashboardProxyIdQuickRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -1238,3 +1227,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

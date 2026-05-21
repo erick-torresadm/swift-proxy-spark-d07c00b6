@@ -438,13 +438,61 @@ function CheckoutPage() {
             </div>
           </section>
 
-          {/* Coupon notice */}
-          <div className="mb-6 p-4 rounded-xl border border-border bg-background/60 flex items-start gap-3">
-            <Tag className="w-4 h-4 mt-0.5 text-primary shrink-0" />
-            <div className="text-sm text-muted-foreground">
-              Tem um <strong className="text-foreground">cupom de desconto</strong>? Você
-              aplica no próximo passo, no campo "Adicionar código promocional" do Stripe.
+          {/* Coupon */}
+          <div className="mb-6 p-4 rounded-xl border border-border bg-background/60">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4 text-primary" />
+              <span className="text-sm font-bold">Cupom de desconto</span>
             </div>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+                <div className="text-sm">
+                  <span className="font-bold text-primary">{appliedCoupon.code}</span>
+                  <span className="text-muted-foreground">
+                    {" "}— desconto de {formatBRL(appliedCoupon.discount_cents)}
+                  </span>
+                </div>
+                <button
+                  onClick={removeCoupon}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider"
+                >
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyCoupon();
+                    }
+                  }}
+                  placeholder="Digite o código"
+                  maxLength={40}
+                  className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-sm font-mono uppercase tracking-wider focus:border-primary focus:outline-none"
+                />
+                <button
+                  onClick={applyCoupon}
+                  disabled={couponBusy || !couponCode.trim()}
+                  className="h-10 px-4 rounded-lg bg-foreground text-background font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 transition"
+                >
+                  {couponBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Aplicar"}
+                </button>
+              </div>
+            )}
+            {couponMsg && (
+              <p
+                className={`text-xs mt-2 ${
+                  couponMsg.kind === "ok" ? "text-emerald-400" : "text-destructive"
+                }`}
+              >
+                {couponMsg.text}
+              </p>
+            )}
           </div>
 
           {/* Summary */}
@@ -474,6 +522,16 @@ function CheckoutPage() {
                 {billing === "yearly" ? "Anual" : "Mensal"}
               </span>
             </div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-semibold">{formatBRL(subtotal)}</span>
+            </div>
+            {appliedCoupon && (
+              <div className="flex justify-between text-sm mb-2 text-emerald-400">
+                <span>Cupom {appliedCoupon.code}</span>
+                <span className="font-bold">-{formatBRL(appliedCoupon.discount_cents)}</span>
+              </div>
+            )}
             <div className="border-t border-border my-3" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold">
@@ -484,6 +542,7 @@ function CheckoutPage() {
               </span>
             </div>
           </div>
+
 
           {error && (
             <div className="mt-4 p-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-sm">

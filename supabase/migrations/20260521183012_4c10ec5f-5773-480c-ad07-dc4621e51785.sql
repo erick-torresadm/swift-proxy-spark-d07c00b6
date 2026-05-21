@@ -1,0 +1,1 @@
+UPDATE public.provider_settings SET dry_run = false WHERE provider = 'proxyseller';

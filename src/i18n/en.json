@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "plans": "Plans",
+    "features": "Features",
+    "blog": "Blog",
+    "faq": "FAQ",
+    "login": "Log in",
+    "signup": "Sign up",
+    "dashboard": "Dashboard"
+  },
+  "hero": {
+    "badge": "Replacement Guarantee on Every Plan",
+    "title_1": "Proxies that",
+    "title_2": "Never",
+    "title_3": "Stop Working",
+    "subtitle": "Forget proxies that die mid-campaign. With FastProxy you get automatic replacement — no red tape, no wasted time.",
+    "cta_primary": "Pick my Plan",
+    "cta_secondary": "How It Works",
+    "trust_replacement": "Replacement Guaranteed",
+    "trust_delivery": "Instant Delivery",
+    "trust_support": "24/7 Support"
+  },
+  "features": {
+    "tag": "Benefits",
+    "title_1": "Everything you need,",
+    "title_2": "nothing in the way",
+    "subtitle": "Built for people who take automation seriously.",
+    "items": {
+      "speed_title": "Real Speed",
+      "speed_desc": "Infrastructure optimized for scraping, automation and bots. Stable connection even at high volume.",
+      "replace_title": "Auto Replacement",
+      "replace_desc": "Proxy blocked? We swap it without you having to open a ticket. Guaranteed on every plan.",
+      "dedicated_title": "Dedicated & Anonymous",
+      "dedicated_desc": "Exclusive IPs that are yours alone. No sharing, no trail, no ban risk from other users.",
+      "tech_title": "IPv6, IPv4 and ISP",
+      "tech_desc": "Three technologies to fit your use case — from cheapest to most compatible.",
+      "support_title": "24/7 Support",
+      "support_desc": "Human team that actually understands proxies. Reply in under 15 min on the VIP plan.",
+      "panel_title": "Full Dashboard",
+      "panel_desc": "Track your proxies, invoices and IP rotation in real time. All in one place."
+    }
+  },
+  "plans": {
+    "tag": "Plans",
+    "title_1": "Fair price per",
+    "title_2": "proxy",
+    "subtitle": "No lock-in, no gotchas. Pay per unit and cancel anytime.",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "discount_badge": "-17.5%",
+    "per_month": "per proxy / month",
+    "per_month_yearly": "per proxy / month (yearly)",
+    "from": "from",
+    "ideal_for": "Ideal for:",
+    "cta_featured": "Get started",
+    "cta_select": "Select",
+    "trust": {
+      "no_lock": "No lock-in",
+      "instant": "Instant delivery",
+      "payments": "Card, Pix and boleto",
+      "support": "24/7 human support"
+    },
+    "badges": {
+      "recommended": "Recommended",
+      "premium": "Premium"
+    },
+    "ipv6": {
+      "name": "IPv6 Proxy",
+      "tagline": "Cost-efficient at scale",
+      "best_for": "High-volume automation & scraping",
+      "f1": "HTTP/S and SOCKS5",
+      "f2": "Instant delivery",
+      "f3": "Replacement guaranteed"
+    },
+    "ipv4": {
+      "name": "Dedicated IPv4",
+      "tagline": "Maximum compatibility",
+      "best_for": "Strict sites and platforms",
+      "f1": "Exclusive dedicated IP",
+      "f2": "Unlimited bandwidth",
+      "f3": "Priority support"
+    },
+    "fbads": {
+      "name": "IPv6 for Facebook Ads",
+      "tagline": "Professional contingency",
+      "best_for": "Media buyers and BMs",
+      "highlight": "1 proxy + 10 free swaps",
+      "f1": "10 IP rotations",
+      "f2": "High BM compatibility",
+      "f3": "VIP support"
+    },
+    "isp": {
+      "name": "ISP Proxy",
+      "tagline": "Pure residential",
+      "best_for": "Operations that need residential IP",
+      "f1": "100 Mbps speed",
+      "f2": "Genuine residential IP",
+      "f3": "Undetectable"
+    }
+  },
+  "cta": {
+    "title_1": "Ready to stop losing",
+    "title_2": "sales",
+    "title_3": "to bad proxies?",
+    "subtitle": "Over 500 companies already automate with FastProxy. Live in seconds, replacement guaranteed, human support.",
+    "primary": "Get started",
+    "secondary": "See all plans"
+  },
+  "footer": {
+    "tagline": "IPv6, IPv4 and ISP dedicated proxies from Brazil. Real speed, replacement guaranteed, 24/7 support.",
+    "product": "Product",
+    "plans": "Plans",
+    "benefits": "Benefits",
+    "faq": "FAQ",
+    "blog": "Blog",
+    "account": "Account",
+    "login": "Log in",
+    "signup": "Sign up",
+    "dashboard": "Dashboard",
+    "legal": "Legal",
+    "privacy": "Privacy",
+    "terms": "Terms of Use",
+    "refund": "Refunds",
+    "rights": "All rights reserved.",
+    "made_in": "Made in Brazil 🇧🇷"
+  },
+  "common": {
+    "language": "Language",
+    "theme_light": "Light theme",
+    "theme_dark": "Dark theme",
+    "currency": "Currency"
+  }
+}

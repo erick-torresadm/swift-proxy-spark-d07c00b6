@@ -36,6 +36,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/broadcast", label: "Notificações", icon: Megaphone },
   { to: "/admin/inventory", label: "Estoque", icon: Package },
   { to: "/admin/pricing", label: "Preços", icon: DollarSign },
+  { to: "/admin/cupons", label: "Cupons", icon: Tag },
   { to: "/admin/orders", label: "Pedidos", icon: Receipt },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/equipe", label: "Equipe", icon: Users2 },

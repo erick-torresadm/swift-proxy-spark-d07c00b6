@@ -144,6 +144,7 @@ export async function purchaseIpv6Block(params: {
   countryId: number;
   periodId: string;
   quantity: number;
+  protocol?: "HTTPS" | "SOCKS5";
 }): Promise<{
   externalOrderId: string;
   baseOrderNumber: string;
@@ -154,6 +155,7 @@ export async function purchaseIpv6Block(params: {
     countryId: params.countryId,
     periodId: params.periodId,
     quantity: params.quantity,
+    protocol: params.protocol ?? "HTTPS",
     paymentId: 1,
     authorization: "",
   });

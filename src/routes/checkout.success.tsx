@@ -211,9 +211,9 @@ function SuccessPage() {
           <div className="mt-6 p-4 rounded-xl border border-border bg-background/60 flex items-start gap-3">
             <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
             <div className="text-sm text-foreground/90">
-              Enviamos um <strong>link de acesso</strong> para{" "}
-              <strong>{order?.masked_email}</strong>. Clique nele para entrar no
-              painel e ver suas credenciais. Cheque também a caixa de spam.
+              Enviamos um <strong>link de acesso</strong> para o e-mail
+              cadastrado na compra. Clique nele para entrar no painel e ver
+              suas credenciais. Cheque também a caixa de spam.
             </div>
           </div>
         )}

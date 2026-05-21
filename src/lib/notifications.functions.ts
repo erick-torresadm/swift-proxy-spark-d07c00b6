@@ -74,6 +74,10 @@ export const sendTestNotification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { enqueueNotification } = await import("./notifications.server");
+    const { count } = await supabaseAdmin
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", context.userId);
     await enqueueNotification({
       userId: context.userId,
       kind: "system",
@@ -83,7 +87,7 @@ export const sendTestNotification = createServerFn({ method: "POST" })
       dedupeKey: `test-${Date.now()}`,
       sendImmediately: true,
     });
-    return { ok: true };
+    return { ok: true, subscriptions: count ?? 0 };
   });
 
 /** Quantos proxies do usuário expiram nos próximos 7 dias (badge). */

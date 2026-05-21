@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRole } from "@/hooks/use-role";
 import { useAppBadge } from "@/hooks/use-app-badge";
 import { InstallBanner } from "@/components/install-banner";
+import { NotificationPrompt } from "@/components/notification-prompt";
 import { getExpiringCount } from "@/lib/notifications.functions";
 import logo from "@/assets/logo-fastproxy.png";
 

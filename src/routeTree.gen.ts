@@ -39,15 +39,24 @@ import { Route as AuthenticatedAdminProviderRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated.admin.pricing'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated.admin.orders'
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated.admin.inventory'
+import { Route as AuthenticatedAdminEquipeRouteImport } from './routes/_authenticated.admin.equipe'
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
 import { Route as AuthenticatedAdminChatRouteImport } from './routes/_authenticated.admin.chat'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated.admin.broadcast'
+import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authenticated.admin.blog'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated.admin.allocations'
+import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
+import { Route as AuthenticatedAdminBlogTagsRouteImport } from './routes/_authenticated.admin.blog.tags'
+import { Route as AuthenticatedAdminBlogProgramaticasRouteImport } from './routes/_authenticated.admin.blog.programaticas'
+import { Route as AuthenticatedAdminBlogNewRouteImport } from './routes/_authenticated.admin.blog.new'
+import { Route as AuthenticatedAdminBlogComentariosRouteImport } from './routes/_authenticated.admin.blog.comentarios'
+import { Route as AuthenticatedAdminBlogCategoriasRouteImport } from './routes/_authenticated.admin.blog.categorias'
+import { Route as AuthenticatedAdminBlogIdRouteImport } from './routes/_authenticated.admin.blog.$id'
 import { Route as AuthenticatedDashboardProxyIdQuickRouteImport } from './routes/_authenticated.dashboard.proxy.$id.quick'
 
 const TermosRoute = TermosRouteImport.update({
@@ -207,6 +216,12 @@ const AuthenticatedAdminInventoryRoute =
     path: '/inventory',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminEquipeRoute =
+  AuthenticatedAdminEquipeRouteImport.update({
+    id: '/equipe',
+    path: '/equipe',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminEmailsRoute =
   AuthenticatedAdminEmailsRouteImport.update({
     id: '/emails',
@@ -230,11 +245,22 @@ const AuthenticatedAdminBroadcastRoute =
     path: '/broadcast',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminBlogRoute = AuthenticatedAdminBlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminAllocationsRoute =
   AuthenticatedAdminAllocationsRouteImport.update({
     id: '/allocations',
     path: '/allocations',
     getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminBlogIndexRoute =
+  AuthenticatedAdminBlogIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
   } as any)
 const ApiPublicHooksStripeSyncRoute =
   ApiPublicHooksStripeSyncRouteImport.update({
@@ -259,6 +285,42 @@ const ApiPublicCronHealthcheckRoute =
     id: '/api/public/cron/healthcheck',
     path: '/api/public/cron/healthcheck',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedAdminBlogTagsRoute =
+  AuthenticatedAdminBlogTagsRouteImport.update({
+    id: '/tags',
+    path: '/tags',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
+  } as any)
+const AuthenticatedAdminBlogProgramaticasRoute =
+  AuthenticatedAdminBlogProgramaticasRouteImport.update({
+    id: '/programaticas',
+    path: '/programaticas',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
+  } as any)
+const AuthenticatedAdminBlogNewRoute =
+  AuthenticatedAdminBlogNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
+  } as any)
+const AuthenticatedAdminBlogComentariosRoute =
+  AuthenticatedAdminBlogComentariosRouteImport.update({
+    id: '/comentarios',
+    path: '/comentarios',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
+  } as any)
+const AuthenticatedAdminBlogCategoriasRoute =
+  AuthenticatedAdminBlogCategoriasRouteImport.update({
+    id: '/categorias',
+    path: '/categorias',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
+  } as any)
+const AuthenticatedAdminBlogIdRoute =
+  AuthenticatedAdminBlogIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminBlogRoute,
   } as any)
 const AuthenticatedDashboardProxyIdQuickRoute =
   AuthenticatedDashboardProxyIdQuickRouteImport.update({
@@ -286,10 +348,12 @@ export interface FileRoutesByFullPath {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
+  '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
@@ -302,10 +366,17 @@ export interface FileRoutesByFullPath {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
+  '/admin/blog/categorias': typeof AuthenticatedAdminBlogCategoriasRoute
+  '/admin/blog/comentarios': typeof AuthenticatedAdminBlogComentariosRoute
+  '/admin/blog/new': typeof AuthenticatedAdminBlogNewRoute
+  '/admin/blog/programaticas': typeof AuthenticatedAdminBlogProgramaticasRoute
+  '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
+  '/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
   '/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 export interface FileRoutesByTo {
@@ -329,6 +400,7 @@ export interface FileRoutesByTo {
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
+  '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
@@ -341,10 +413,17 @@ export interface FileRoutesByTo {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
+  '/admin/blog/categorias': typeof AuthenticatedAdminBlogCategoriasRoute
+  '/admin/blog/comentarios': typeof AuthenticatedAdminBlogComentariosRoute
+  '/admin/blog/new': typeof AuthenticatedAdminBlogNewRoute
+  '/admin/blog/programaticas': typeof AuthenticatedAdminBlogProgramaticasRoute
+  '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
+  '/admin/blog': typeof AuthenticatedAdminBlogIndexRoute
   '/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 export interface FileRoutesById {
@@ -368,10 +447,12 @@ export interface FileRoutesById {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
+  '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
@@ -384,10 +465,17 @@ export interface FileRoutesById {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
+  '/_authenticated/admin/blog/categorias': typeof AuthenticatedAdminBlogCategoriasRoute
+  '/_authenticated/admin/blog/comentarios': typeof AuthenticatedAdminBlogComentariosRoute
+  '/_authenticated/admin/blog/new': typeof AuthenticatedAdminBlogNewRoute
+  '/_authenticated/admin/blog/programaticas': typeof AuthenticatedAdminBlogProgramaticasRoute
+  '/_authenticated/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
+  '/_authenticated/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
   '/_authenticated/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
 export interface FileRouteTypes {
@@ -411,10 +499,12 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog/'
     | '/admin/allocations'
+    | '/admin/blog'
     | '/admin/broadcast'
     | '/admin/chat'
     | '/admin/customers'
     | '/admin/emails'
+    | '/admin/equipe'
     | '/admin/inventory'
     | '/admin/orders'
     | '/admin/pricing'
@@ -427,10 +517,17 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin/'
+    | '/admin/blog/$id'
+    | '/admin/blog/categorias'
+    | '/admin/blog/comentarios'
+    | '/admin/blog/new'
+    | '/admin/blog/programaticas'
+    | '/admin/blog/tags'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
+    | '/admin/blog/'
     | '/dashboard/proxy/$id/quick'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -454,6 +551,7 @@ export interface FileRouteTypes {
     | '/admin/chat'
     | '/admin/customers'
     | '/admin/emails'
+    | '/admin/equipe'
     | '/admin/inventory'
     | '/admin/orders'
     | '/admin/pricing'
@@ -466,10 +564,17 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin'
+    | '/admin/blog/$id'
+    | '/admin/blog/categorias'
+    | '/admin/blog/comentarios'
+    | '/admin/blog/new'
+    | '/admin/blog/programaticas'
+    | '/admin/blog/tags'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
+    | '/admin/blog'
     | '/dashboard/proxy/$id/quick'
   id:
     | '__root__'
@@ -492,10 +597,12 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog/'
     | '/_authenticated/admin/allocations'
+    | '/_authenticated/admin/blog'
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/chat'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/emails'
+    | '/_authenticated/admin/equipe'
     | '/_authenticated/admin/inventory'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/pricing'
@@ -508,10 +615,17 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/_authenticated/admin/'
+    | '/_authenticated/admin/blog/$id'
+    | '/_authenticated/admin/blog/categorias'
+    | '/_authenticated/admin/blog/comentarios'
+    | '/_authenticated/admin/blog/new'
+    | '/_authenticated/admin/blog/programaticas'
+    | '/_authenticated/admin/blog/tags'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
+    | '/_authenticated/admin/blog/'
     | '/_authenticated/dashboard/proxy/$id/quick'
   fileRoutesById: FileRoutesById
 }
@@ -748,6 +862,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInventoryRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/equipe': {
+      id: '/_authenticated/admin/equipe'
+      path: '/equipe'
+      fullPath: '/admin/equipe'
+      preLoaderRoute: typeof AuthenticatedAdminEquipeRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/emails': {
       id: '/_authenticated/admin/emails'
       path: '/emails'
@@ -776,12 +897,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBroadcastRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/blog': {
+      id: '/_authenticated/admin/blog'
+      path: '/blog'
+      fullPath: '/admin/blog'
+      preLoaderRoute: typeof AuthenticatedAdminBlogRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/allocations': {
       id: '/_authenticated/admin/allocations'
       path: '/allocations'
       fullPath: '/admin/allocations'
       preLoaderRoute: typeof AuthenticatedAdminAllocationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/blog/': {
+      id: '/_authenticated/admin/blog/'
+      path: '/'
+      fullPath: '/admin/blog/'
+      preLoaderRoute: typeof AuthenticatedAdminBlogIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
     }
     '/api/public/hooks/stripe-sync': {
       id: '/api/public/hooks/stripe-sync'
@@ -811,6 +946,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronHealthcheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/blog/tags': {
+      id: '/_authenticated/admin/blog/tags'
+      path: '/tags'
+      fullPath: '/admin/blog/tags'
+      preLoaderRoute: typeof AuthenticatedAdminBlogTagsRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
+    }
+    '/_authenticated/admin/blog/programaticas': {
+      id: '/_authenticated/admin/blog/programaticas'
+      path: '/programaticas'
+      fullPath: '/admin/blog/programaticas'
+      preLoaderRoute: typeof AuthenticatedAdminBlogProgramaticasRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
+    }
+    '/_authenticated/admin/blog/new': {
+      id: '/_authenticated/admin/blog/new'
+      path: '/new'
+      fullPath: '/admin/blog/new'
+      preLoaderRoute: typeof AuthenticatedAdminBlogNewRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
+    }
+    '/_authenticated/admin/blog/comentarios': {
+      id: '/_authenticated/admin/blog/comentarios'
+      path: '/comentarios'
+      fullPath: '/admin/blog/comentarios'
+      preLoaderRoute: typeof AuthenticatedAdminBlogComentariosRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
+    }
+    '/_authenticated/admin/blog/categorias': {
+      id: '/_authenticated/admin/blog/categorias'
+      path: '/categorias'
+      fullPath: '/admin/blog/categorias'
+      preLoaderRoute: typeof AuthenticatedAdminBlogCategoriasRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
+    }
+    '/_authenticated/admin/blog/$id': {
+      id: '/_authenticated/admin/blog/$id'
+      path: '/$id'
+      fullPath: '/admin/blog/$id'
+      preLoaderRoute: typeof AuthenticatedAdminBlogIdRouteImport
+      parentRoute: typeof AuthenticatedAdminBlogRoute
+    }
     '/_authenticated/dashboard/proxy/$id/quick': {
       id: '/_authenticated/dashboard/proxy/$id/quick'
       path: '/proxy/$id/quick'
@@ -821,12 +998,43 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminBlogRouteChildren {
+  AuthenticatedAdminBlogIdRoute: typeof AuthenticatedAdminBlogIdRoute
+  AuthenticatedAdminBlogCategoriasRoute: typeof AuthenticatedAdminBlogCategoriasRoute
+  AuthenticatedAdminBlogComentariosRoute: typeof AuthenticatedAdminBlogComentariosRoute
+  AuthenticatedAdminBlogNewRoute: typeof AuthenticatedAdminBlogNewRoute
+  AuthenticatedAdminBlogProgramaticasRoute: typeof AuthenticatedAdminBlogProgramaticasRoute
+  AuthenticatedAdminBlogTagsRoute: typeof AuthenticatedAdminBlogTagsRoute
+  AuthenticatedAdminBlogIndexRoute: typeof AuthenticatedAdminBlogIndexRoute
+}
+
+const AuthenticatedAdminBlogRouteChildren: AuthenticatedAdminBlogRouteChildren =
+  {
+    AuthenticatedAdminBlogIdRoute: AuthenticatedAdminBlogIdRoute,
+    AuthenticatedAdminBlogCategoriasRoute:
+      AuthenticatedAdminBlogCategoriasRoute,
+    AuthenticatedAdminBlogComentariosRoute:
+      AuthenticatedAdminBlogComentariosRoute,
+    AuthenticatedAdminBlogNewRoute: AuthenticatedAdminBlogNewRoute,
+    AuthenticatedAdminBlogProgramaticasRoute:
+      AuthenticatedAdminBlogProgramaticasRoute,
+    AuthenticatedAdminBlogTagsRoute: AuthenticatedAdminBlogTagsRoute,
+    AuthenticatedAdminBlogIndexRoute: AuthenticatedAdminBlogIndexRoute,
+  }
+
+const AuthenticatedAdminBlogRouteWithChildren =
+  AuthenticatedAdminBlogRoute._addFileChildren(
+    AuthenticatedAdminBlogRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
+  AuthenticatedAdminBlogRoute: typeof AuthenticatedAdminBlogRouteWithChildren
   AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
   AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
+  AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
@@ -836,10 +1044,12 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAllocationsRoute: AuthenticatedAdminAllocationsRoute,
+  AuthenticatedAdminBlogRoute: AuthenticatedAdminBlogRouteWithChildren,
   AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
   AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,
+  AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,
   AuthenticatedAdminInventoryRoute: AuthenticatedAdminInventoryRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,

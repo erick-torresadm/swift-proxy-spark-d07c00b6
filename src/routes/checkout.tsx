@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
+import { validateCouponPublic } from "@/lib/coupons.functions";
 
 type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us";
 type Country = "BR" | "US";
@@ -118,6 +119,7 @@ function CheckoutPage() {
   const location = useLocation();
   const search = Route.useSearch();
   const startCheckout = useServerFn(createCheckoutSession);
+  const validateCoupon = useServerFn(validateCouponPublic);
 
   if (location.pathname !== "/checkout") {
     return <Outlet />;
@@ -134,6 +136,10 @@ function CheckoutPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponMsg, setCouponMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_cents: number } | null>(null);
 
   const plansForCountry = useMemo(
     () => (Object.values(CATALOG) as CatalogItem[]).filter((p) => p.country === country),
@@ -142,8 +148,41 @@ function CheckoutPage() {
 
   const item = CATALOG[slug];
   const unitCents = billing === "yearly" ? item.yearly : item.monthly;
-  const total = unitCents * qty;
+  const subtotal = unitCents * qty;
+  const discount = appliedCoupon?.discount_cents ?? 0;
+  const total = Math.max(0, subtotal - discount);
   const ipsTotal = qty * item.blockSize;
+
+  // Re-validate coupon whenever the total changes
+  async function applyCoupon() {
+    setCouponMsg(null);
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+    setCouponBusy(true);
+    try {
+      const res = await validateCoupon({
+        data: { code, amount_cents: subtotal, billing },
+      });
+      if (res.valid && res.discount_cents) {
+        setAppliedCoupon({ code: res.code ?? code, discount_cents: res.discount_cents });
+        setCouponMsg({ kind: "ok", text: `Cupom aplicado: -${formatBRL(res.discount_cents)}` });
+      } else {
+        setAppliedCoupon(null);
+        setCouponMsg({ kind: "err", text: res.reason ?? "Cupom inválido" });
+      }
+    } catch (e) {
+      setAppliedCoupon(null);
+      setCouponMsg({ kind: "err", text: e instanceof Error ? e.message : "Erro ao validar" });
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  function removeCoupon() {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponMsg(null);
+  }
 
   function handleCountry(c: Country) {
     setCountry(c);
@@ -170,7 +209,14 @@ function CheckoutPage() {
     setSubmitting(true);
     try {
       const res = await startCheckout({
-        data: { productSlug: slug, quantity: qty, billing, email: cleanEmail, name: cleanName },
+        data: {
+          productSlug: slug,
+          quantity: qty,
+          billing,
+          email: cleanEmail,
+          name: cleanName,
+          couponCode: appliedCoupon?.code ?? null,
+        },
       });
       if (res?.url) {
         window.location.href = res.url;
@@ -392,13 +438,61 @@ function CheckoutPage() {
             </div>
           </section>
 
-          {/* Coupon notice */}
-          <div className="mb-6 p-4 rounded-xl border border-border bg-background/60 flex items-start gap-3">
-            <Tag className="w-4 h-4 mt-0.5 text-primary shrink-0" />
-            <div className="text-sm text-muted-foreground">
-              Tem um <strong className="text-foreground">cupom de desconto</strong>? Você
-              aplica no próximo passo, no campo "Adicionar código promocional" do Stripe.
+          {/* Coupon */}
+          <div className="mb-6 p-4 rounded-xl border border-border bg-background/60">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4 text-primary" />
+              <span className="text-sm font-bold">Cupom de desconto</span>
             </div>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+                <div className="text-sm">
+                  <span className="font-bold text-primary">{appliedCoupon.code}</span>
+                  <span className="text-muted-foreground">
+                    {" "}— desconto de {formatBRL(appliedCoupon.discount_cents)}
+                  </span>
+                </div>
+                <button
+                  onClick={removeCoupon}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider"
+                >
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyCoupon();
+                    }
+                  }}
+                  placeholder="Digite o código"
+                  maxLength={40}
+                  className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-sm font-mono uppercase tracking-wider focus:border-primary focus:outline-none"
+                />
+                <button
+                  onClick={applyCoupon}
+                  disabled={couponBusy || !couponCode.trim()}
+                  className="h-10 px-4 rounded-lg bg-foreground text-background font-bold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50 transition"
+                >
+                  {couponBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Aplicar"}
+                </button>
+              </div>
+            )}
+            {couponMsg && (
+              <p
+                className={`text-xs mt-2 ${
+                  couponMsg.kind === "ok" ? "text-emerald-400" : "text-destructive"
+                }`}
+              >
+                {couponMsg.text}
+              </p>
+            )}
           </div>
 
           {/* Summary */}
@@ -428,6 +522,16 @@ function CheckoutPage() {
                 {billing === "yearly" ? "Anual" : "Mensal"}
               </span>
             </div>
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-semibold">{formatBRL(subtotal)}</span>
+            </div>
+            {appliedCoupon && (
+              <div className="flex justify-between text-sm mb-2 text-emerald-400">
+                <span>Cupom {appliedCoupon.code}</span>
+                <span className="font-bold">-{formatBRL(appliedCoupon.discount_cents)}</span>
+              </div>
+            )}
             <div className="border-t border-border my-3" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold">
@@ -438,6 +542,7 @@ function CheckoutPage() {
               </span>
             </div>
           </div>
+
 
           {error && (
             <div className="mt-4 p-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-sm">

@@ -3,7 +3,10 @@ import { motion } from "framer-motion";
 import { Check, Globe, Monitor, Target, Building2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useCurrency } from "@/lib/currency";
+import { getPublicCatalog } from "@/lib/catalog.functions";
 
 type PlanKey = "ipv6" | "ipv4" | "fbads" | "isp";
 type Billing = "monthly" | "yearly";
@@ -48,6 +51,23 @@ export function Plans() {
   const [billing, setBilling] = useState<Billing>("monthly");
   const { t } = useTranslation();
   const { parts, format } = useCurrency();
+
+  // Live prices from DB (admin-editable). Fallback to hardcoded defaults.
+  const fetchCatalog = useServerFn(getPublicCatalog);
+  const { data: catalog } = useQuery({
+    queryKey: ["public-catalog"],
+    queryFn: () => fetchCatalog(),
+    staleTime: 60_000,
+  });
+  const priceBySlug = new Map(
+    (catalog ?? []).map((p) => [
+      p.slug,
+      {
+        monthly: p.price_monthly_cents / 100,
+        yearly: p.price_yearly_cents ? p.price_yearly_cents / 100 : null,
+      },
+    ]),
+  );
 
   return (
     <section id="planos" className="py-20 md:py-28 relative overflow-hidden">
@@ -105,7 +125,11 @@ export function Plans() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
           {planDefs.map((plan, i) => {
-            const priceBrl = billing === "yearly" ? plan.price * (1 - YEARLY_DISCOUNT) : plan.price;
+            const live = priceBySlug.get(SLUG_MAP[plan.key]);
+            const monthly = live?.monthly ?? plan.price;
+            const yearlyMonthly =
+              live?.yearly != null ? live.yearly / 12 : monthly * (1 - YEARLY_DISCOUNT);
+            const priceBrl = billing === "yearly" ? yearlyMonthly : monthly;
             const { symbol, int, dec } = parts(priceBrl);
             const accent = accentMap[plan.accent];
             const isFeatured = plan.badge?.variant === "recommended";

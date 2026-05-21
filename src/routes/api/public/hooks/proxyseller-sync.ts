@@ -15,15 +15,14 @@ import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getBalance, purchaseIpv6Block, psDateToIso, safe } from "@/lib/proxyseller.server";
 import { getUsdBrl } from "@/lib/fx.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
 
         const summary = {
           fx: null as { rate: number; source: string } | null,

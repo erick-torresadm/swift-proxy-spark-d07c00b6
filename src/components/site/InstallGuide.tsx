@@ -169,21 +169,21 @@ export function InstallGuide() {
   );
 }
 
-function AndroidSteps() {
-  const steps = [
-    { icon: Chrome, label: "Abra o Chrome", desc: "Acesse fastproxy.com no navegador Chrome." },
-    { icon: ArrowDownToLine, label: "Toque no menu", desc: "Clique nos três pontinhos (⋮) no canto superior direito." },
-    { icon: PlusSquare, label: "Adicionar à tela", desc: 'Selecione "Adicionar à tela inicial" ou "Instalar app".' },
-    { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece no seu launcher." },
-  ];
+type Step = { icon: typeof Chrome; label: string; desc: string };
+
+function StepsList({ steps }: { steps: Step[] }) {
   return (
-    <ol className="space-y-5">
+    <motion.ol
+      className="space-y-5"
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+      }}
+    >
       {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          variants={fadeUp}
-          className="flex items-start gap-4"
-        >
+        <motion.li key={i} variants={fadeUp} className="flex items-start gap-4">
           <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
             <s.icon className="w-5 h-5 text-primary" />
             <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
@@ -196,38 +196,33 @@ function AndroidSteps() {
           </div>
         </motion.li>
       ))}
-    </ol>
+    </motion.ol>
+  );
+}
+
+function AndroidSteps() {
+  return (
+    <StepsList
+      steps={[
+        { icon: Chrome, label: "Abra o Chrome", desc: "Acesse fastproxy.com no navegador Chrome." },
+        { icon: ArrowDownToLine, label: "Toque no menu", desc: "Clique nos três pontinhos (⋮) no canto superior direito." },
+        { icon: PlusSquare, label: "Adicionar à tela", desc: 'Selecione "Adicionar à tela inicial" ou "Instalar app".' },
+        { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece no seu launcher." },
+      ]}
+    />
   );
 }
 
 function IOSSteps() {
-  const steps = [
-    { icon: Apple, label: "Abra o Safari", desc: "Acesse fastproxy.com pelo Safari (iPhone/iPad)." },
-    { icon: Share2, label: "Toque em Compartilhar", desc: "Clique no ícone de compartilhar na barra inferior." },
-    { icon: ArrowDownToLine, label: "Adicionar à Tela de Início", desc: 'Deslize e toque em "Adicionar à Tela de Início".' },
-    { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece na sua home screen." },
-  ];
   return (
-    <ol className="space-y-5">
-      {steps.map((s, i) => (
-        <motion.li
-          key={i}
-          variants={fadeUp}
-          className="flex items-start gap-4"
-        >
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
-            <s.icon className="w-5 h-5 text-primary" />
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border border-background">
-              {i + 1}
-            </span>
-          </div>
-          <div>
-            <p className="font-semibold text-sm">{s.label}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
-          </div>
-        </motion.li>
-      ))}
-    </ol>
+    <StepsList
+      steps={[
+        { icon: Apple, label: "Abra o Safari", desc: "Acesse fastproxy.com pelo Safari (iPhone/iPad)." },
+        { icon: Share2, label: "Toque em Compartilhar", desc: "Clique no ícone de compartilhar na barra inferior." },
+        { icon: ArrowDownToLine, label: "Adicionar à Tela de Início", desc: 'Deslize e toque em "Adicionar à Tela de Início".' },
+        { icon: CheckCircle2, label: "Pronto!", desc: "O ícone do FastProxy aparece na sua home screen." },
+      ]}
+    />
   );
 }
 

@@ -78,7 +78,8 @@ function ProxiesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-proxies"],
     queryFn: () => fetchProxies(),
-    refetchInterval: (q) => ((q.state.data?.length ?? 0) === 0 ? 5000 : 60000),
+    // Quando vazio, atualiza a cada 15s (cobre o tempo de provisionamento do provedor)
+    refetchInterval: (q) => ((q.state.data?.length ?? 0) === 0 ? 15000 : 60000),
   });
   const { data: health } = useQuery({
     queryKey: ["my-proxies-health"],
@@ -92,8 +93,15 @@ function ProxiesPage() {
     onSuccess: (r) => {
       if (r.allocated > 0) {
         toast.success(`${r.allocated} proxies sincronizados!`);
+      } else if (r.pending) {
+        toast.info(
+          "Estamos preparando seus proxies (até 1 min). A página atualiza sozinha.",
+          { duration: 6000 },
+        );
       } else if (r.error) {
-        toast.error("Não conseguimos liberar seus proxies agora. Nossa equipe já foi avisada e em instantes eles aparecem aqui.");
+        toast.error(
+          "Não conseguimos liberar seus proxies agora. Nossa equipe já foi avisada e em instantes eles aparecem aqui.",
+        );
       } else if (r.synced === 0) {
         toast.info("Nenhum pedido pago encontrado.");
       } else {

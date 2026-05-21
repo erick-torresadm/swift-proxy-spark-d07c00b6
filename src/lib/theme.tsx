@@ -11,11 +11,11 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void; setTheme:
 const STORAGE_KEY = "fp_theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
     const stored = (typeof window !== "undefined" && (localStorage.getItem(STORAGE_KEY) as Theme | null)) || null;
-    const initial: Theme = stored ?? "light";
+    const initial: Theme = stored ?? "dark";
     setThemeState(initial);
     document.documentElement.classList.toggle("dark", initial === "dark");
   }, []);

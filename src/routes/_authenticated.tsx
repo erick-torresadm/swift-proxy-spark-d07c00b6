@@ -138,6 +138,7 @@ function AuthenticatedLayout() {
           <Outlet />
         </div>
       </main>
+      <NotificationPrompt />
     </div>
   );
 }

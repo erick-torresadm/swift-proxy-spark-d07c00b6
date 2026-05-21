@@ -62,7 +62,7 @@ function PricingPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
                     Calculando custos…
                   </td>
                 </tr>
@@ -72,7 +72,7 @@ function PricingPage() {
               ))}
               {!isLoading && (data ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
                     Nenhum produto cadastrado.
                   </td>
                 </tr>

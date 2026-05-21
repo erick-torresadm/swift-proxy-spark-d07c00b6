@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
 
 const CheckoutSchema = z.object({

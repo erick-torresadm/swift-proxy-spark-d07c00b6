@@ -1,6 +1,6 @@
 // Server-only: envio de emails via Resend.
 // Lê RESEND_API_KEY de process.env dentro de cada chamada.
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
 const RESEND_URL = "https://api.resend.com/emails";
 

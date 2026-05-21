@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useLocation, redirect } from "@tanstack/
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail, DollarSign, Wrench, AlertCircle, MessageCircle, Megaphone, FileText, Users2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-custom/client";
 import { countOpenIssues } from "@/lib/admin-ops.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({

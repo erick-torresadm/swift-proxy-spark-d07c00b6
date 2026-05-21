@@ -2,7 +2,7 @@
  * Conversão de moeda. Busca cotação USD→BRL da AwesomeAPI (pública, sem chave)
  * e cacheia em `fx_rates`. Fallback: última cotação salva.
  */
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
 const FRESH_MS = 30 * 60 * 1000; // 30 min
 

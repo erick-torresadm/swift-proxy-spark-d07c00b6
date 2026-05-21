@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "@/lib/stripe.server";
 import { allocateProxiesForOrder } from "@/lib/allocation.server";
 import type Stripe from "stripe";

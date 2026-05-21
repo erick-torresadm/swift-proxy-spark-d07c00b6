@@ -2,7 +2,7 @@
 // .functions.ts: client-safe import, executado server-side.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 import {
   sendEmail,
   tplTest,
@@ -11,7 +11,7 @@ import {
   tplRenewalWarning,
   tplGracePeriod,
 } from "./email.server";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
 async function requireAdmin(userId: string) {
   const { data } = await supabaseAdmin

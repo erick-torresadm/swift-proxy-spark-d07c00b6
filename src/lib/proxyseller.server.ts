@@ -9,7 +9,7 @@
  * IMPORTANT: never expose this to the client. Server-only.
  */
 
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
 const BASE = "https://proxy-seller.com/personal/api/v1";
 

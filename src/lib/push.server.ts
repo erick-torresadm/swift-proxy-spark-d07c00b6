@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { VAPID_PUBLIC_KEY } from "./push-config";
 
 let configured = false;

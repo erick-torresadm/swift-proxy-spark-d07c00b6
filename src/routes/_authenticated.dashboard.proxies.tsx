@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag, Activity } from "lucide-react";
+import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag, Activity, ShoppingCart } from "lucide-react";
 import { listMyProxies, rotateProxyIp, createReactivateCheckout, syncMyAllocations } from "@/lib/dashboard.functions";
 import { reportProxyIssue } from "@/lib/admin-ops.functions";
 import { getMyProxiesHealth } from "@/lib/health.functions";
+import { BuyMoreDialog } from "@/components/buy-more-dialog";
 import { toast } from "sonner";
 
 function HealthBadge({ stockId, health }: { stockId: string | null; health?: Record<string, { last_ok: boolean | null; uptime_24h: number | null; last_latency_ms: number | null; samples_24h: number }> }) {

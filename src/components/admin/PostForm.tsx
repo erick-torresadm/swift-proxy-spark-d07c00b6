@@ -143,17 +143,18 @@ export function PostForm({
     navigate({ to: "/admin/blog" });
   }
 
-  async function ai(kind: Parameters<typeof aiFn>[0]["data"]["kind"]) {
+  type AIKind = "title" | "meta_title" | "meta_description" | "excerpt" | "faq" | "outline" | "section" | "rewrite";
+  async function ai(kind: AIKind) {
     setAiBusy(kind);
     try {
       const ctx = kind === "title" || kind === "outline"
         ? `Tema/keyword: ${kwPrimary || title}\nResumo desejado: ${excerpt}`
         : `Título: ${title}\nKeyword: ${kwPrimary}\nResumo: ${excerpt}\n\nConteúdo:\n${content.slice(0, 6000)}`;
-      const res = await aiFn({ data: { kind, context: ctx, keyword: kwPrimary || undefined } });
-      if (kind === "faq" && "faq" in res && res.faq.length) {
+      const res = (await aiFn({ data: { kind, context: ctx, keyword: kwPrimary || undefined } })) as { text?: string; faq?: FaqItem[] };
+      if (kind === "faq" && res.faq && res.faq.length) {
         setFaq([...faq, ...res.faq]);
         toast.success(`${res.faq.length} perguntas adicionadas`);
-      } else if ("text" in res && res.text) {
+      } else if (res.text) {
         if (kind === "title") {
           toast.message("Sugestões geradas", { description: res.text });
         } else if (kind === "meta_title") {

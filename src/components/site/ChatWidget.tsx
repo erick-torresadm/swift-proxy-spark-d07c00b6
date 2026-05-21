@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase-custom/client";
 import {
   startConversation,
+  startConversationAuth,
   guestSendMessage,
   guestGetMessages,
   clientSendMessage,

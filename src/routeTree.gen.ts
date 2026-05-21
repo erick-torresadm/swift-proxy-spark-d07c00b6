@@ -51,6 +51,7 @@ import { Route as AuthenticatedAdminInventoryIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
+import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
@@ -290,6 +291,12 @@ const ApiPublicHooksProxysellerSyncRoute =
     path: '/api/public/hooks/proxyseller-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProxysellerBackfillRoute =
+  ApiPublicHooksProxysellerBackfillRouteImport.update({
+    id: '/api/public/hooks/proxyseller-backfill',
+    path: '/api/public/hooks/proxyseller-backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksNotificationsDispatchRoute =
   ApiPublicHooksNotificationsDispatchRouteImport.update({
     id: '/api/public/hooks/notifications-dispatch',
@@ -405,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
+  '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
@@ -456,6 +464,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
+  '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog': typeof AuthenticatedAdminBlogIndexRoute
@@ -512,6 +521,7 @@ export interface FileRoutesById {
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
+  '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/_authenticated/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
@@ -568,6 +578,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
+    | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog/'
@@ -619,6 +630,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
+    | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog'
@@ -674,6 +686,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
+    | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
     | '/_authenticated/admin/blog/'
@@ -699,6 +712,7 @@ export interface RootRouteChildren {
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
+  ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
@@ -999,6 +1013,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProxysellerSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/proxyseller-backfill': {
+      id: '/api/public/hooks/proxyseller-backfill'
+      path: '/api/public/hooks/proxyseller-backfill'
+      fullPath: '/api/public/hooks/proxyseller-backfill'
+      preLoaderRoute: typeof ApiPublicHooksProxysellerBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/notifications-dispatch': {
       id: '/api/public/hooks/notifications-dispatch'
       path: '/api/public/hooks/notifications-dispatch'
@@ -1221,6 +1242,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
   ApiPublicHooksNotificationsDispatchRoute:
     ApiPublicHooksNotificationsDispatchRoute,
+  ApiPublicHooksProxysellerBackfillRoute:
+    ApiPublicHooksProxysellerBackfillRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }

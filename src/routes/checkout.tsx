@@ -148,8 +148,41 @@ function CheckoutPage() {
 
   const item = CATALOG[slug];
   const unitCents = billing === "yearly" ? item.yearly : item.monthly;
-  const total = unitCents * qty;
+  const subtotal = unitCents * qty;
+  const discount = appliedCoupon?.discount_cents ?? 0;
+  const total = Math.max(0, subtotal - discount);
   const ipsTotal = qty * item.blockSize;
+
+  // Re-validate coupon whenever the total changes
+  async function applyCoupon() {
+    setCouponMsg(null);
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+    setCouponBusy(true);
+    try {
+      const res = await validateCoupon({
+        data: { code, amount_cents: subtotal, billing },
+      });
+      if (res.valid && res.discount_cents) {
+        setAppliedCoupon({ code: res.code ?? code, discount_cents: res.discount_cents });
+        setCouponMsg({ kind: "ok", text: `Cupom aplicado: -${formatBRL(res.discount_cents)}` });
+      } else {
+        setAppliedCoupon(null);
+        setCouponMsg({ kind: "err", text: res.reason ?? "Cupom inválido" });
+      }
+    } catch (e) {
+      setAppliedCoupon(null);
+      setCouponMsg({ kind: "err", text: e instanceof Error ? e.message : "Erro ao validar" });
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  function removeCoupon() {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponMsg(null);
+  }
 
   function handleCountry(c: Country) {
     setCountry(c);

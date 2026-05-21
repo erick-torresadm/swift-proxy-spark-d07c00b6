@@ -110,6 +110,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   return {
     allocated: (existing ?? 0) + picks.length,
     short: remaining - picks.length,
+    error: purchaseError,
   };
 }
 

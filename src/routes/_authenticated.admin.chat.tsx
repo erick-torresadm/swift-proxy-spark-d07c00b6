@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -76,6 +76,20 @@ function AdminChatPage() {
   }, [convs, play]);
 
   // realtime: invalida lista
+  const loadMessages = useCallback(
+    async (id: string, scroll = true) => {
+      try {
+        const r = await getMsgsFn({ data: { conversationId: id } });
+        setMessages(r.messages as Msg[]);
+        if (scroll) requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 99999 }));
+      } catch (e) {
+        toast.error((e as Error).message);
+      }
+    },
+    [getMsgsFn],
+  );
+
+  // realtime: invalida lista
   useEffect(() => {
     const ch = supabase
       .channel("admin-chat-feed")
@@ -90,23 +104,13 @@ function AdminChatPage() {
     return () => {
       supabase.removeChannel(ch);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, qc]);
-
-  const loadMessages = async (id: string, scroll = true) => {
-    try {
-      const r = await getMsgsFn({ data: { conversationId: id } });
-      setMessages(r.messages as Msg[]);
-      if (scroll) requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 99999 }));
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
+  }, [selectedId, qc, loadMessages]);
 
   const selectConv = (id: string) => {
     setSelectedId(id);
     loadMessages(id);
   };
+
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();

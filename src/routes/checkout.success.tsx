@@ -223,9 +223,24 @@ function SuccessPage() {
 
         {isPaid && isLoggedIn && order?.allocated_count === 0 && (
           <div className="mt-6 p-4 rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-200 text-sm">
-            Pagamento ok, mas ainda não há proxies suficientes no estoque para
-            sua quantidade. Nossa equipe foi notificada e vamos liberar nas
-            próximas horas.
+            {polling ? (
+              <>
+                <strong>Liberando seus proxies…</strong> Estamos comprando o
+                estoque do provedor em tempo real. Pode levar até 30 segundos.
+              </>
+            ) : (
+              <>
+                Pagamento ok, mas o provedor não respondeu a tempo. Vá em{" "}
+                <strong>Meus proxies</strong> e clique em{" "}
+                <strong>Sincronizar agora</strong> — normalmente resolve em
+                segundos.
+              </>
+            )}
+            {syncError && (
+              <div className="mt-2 text-xs opacity-80">
+                Detalhe técnico: {syncError}
+              </div>
+            )}
           </div>
         )}
 

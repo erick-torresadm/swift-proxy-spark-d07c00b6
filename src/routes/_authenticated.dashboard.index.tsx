@@ -6,7 +6,7 @@ import { Server, Receipt, Clock, TrendingUp, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getMyOverview } from "@/lib/dashboard.functions";
 
-export const Route = createFileRoute("/_authenticated/dashboard")({
+export const Route = createFileRoute("/_authenticated/dashboard/")({
   component: DashboardHome,
   head: () => ({ meta: [{ title: "Painel — FastProxy" }] }),
 });

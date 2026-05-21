@@ -47,6 +47,101 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_conversations: {
+        Row: {
+          assigned_admin_id: string | null
+          created_at: string
+          guest_email: string | null
+          guest_ip: string | null
+          guest_name: string | null
+          guest_phone: string | null
+          guest_token: string | null
+          id: string
+          last_message_at: string
+          last_message_preview: string | null
+          status: Database["public"]["Enums"]["chat_status"]
+          subject: string | null
+          unread_admin: number
+          unread_client: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_admin_id?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_ip?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          guest_token?: string | null
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          status?: Database["public"]["Enums"]["chat_status"]
+          subject?: string | null
+          unread_admin?: number
+          unread_client?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_admin_id?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_ip?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          guest_token?: string | null
+          id?: string
+          last_message_at?: string
+          last_message_preview?: string | null
+          status?: Database["public"]["Enums"]["chat_status"]
+          subject?: string | null
+          unread_admin?: number
+          unread_client?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender: Database["public"]["Enums"]["chat_sender"]
+          sender_user_id: string | null
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender: Database["public"]["Enums"]["chat_sender"]
+          sender_user_id?: string | null
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender?: Database["public"]["Enums"]["chat_sender"]
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_proxies: {
         Row: {
           allocated_at: string
@@ -960,6 +1055,8 @@ export type Database = {
     Enums: {
       allocation_status: "active" | "grace" | "released" | "cancelled"
       app_role: "admin" | "customer"
+      chat_sender: "client" | "admin" | "system"
+      chat_status: "waiting" | "active" | "closed"
       comment_status: "visible" | "hidden" | "flagged"
       delivery_mode: "stock" | "direct"
       notification_kind:
@@ -1112,6 +1209,8 @@ export const Constants = {
     Enums: {
       allocation_status: ["active", "grace", "released", "cancelled"],
       app_role: ["admin", "customer"],
+      chat_sender: ["client", "admin", "system"],
+      chat_status: ["waiting", "active", "closed"],
       comment_status: ["visible", "hidden", "flagged"],
       delivery_mode: ["stock", "direct"],
       notification_kind: [

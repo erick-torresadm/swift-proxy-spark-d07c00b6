@@ -10,6 +10,7 @@ import {
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ChatWidget } from "@/components/site/ChatWidget";
 
 import appCss from "../styles.css?url";
 
@@ -146,6 +147,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthSync />
       <Outlet />
+      <ChatWidget />
       <Toaster theme="dark" position="top-right" richColors closeButton />
     </QueryClientProvider>
   );

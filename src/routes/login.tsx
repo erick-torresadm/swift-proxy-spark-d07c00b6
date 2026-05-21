@@ -4,7 +4,21 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-custom/client";
+import { lovable } from "@/integrations/lovable";
 import logo from "@/assets/logo-fastproxy.png";
+
+async function handleGoogleSignIn(setGoogleLoading: (v: boolean) => void) {
+  setGoogleLoading(true);
+  const result = await lovable.auth.signInWithOAuth("google", {
+    redirect_uri: window.location.origin + "/dashboard",
+  });
+  if (result.error) {
+    setGoogleLoading(false);
+    toast.error("Não foi possível entrar com Google.");
+    return;
+  }
+  if (result.redirected) return;
+}
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,

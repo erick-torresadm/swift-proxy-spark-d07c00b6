@@ -41,6 +41,7 @@ import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminInventoryRouteImport } from './routes/_authenticated.admin.inventory'
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
+import { Route as AuthenticatedAdminChatRouteImport } from './routes/_authenticated.admin.chat'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated.admin.allocations'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
@@ -216,6 +217,11 @@ const AuthenticatedAdminCustomersRoute =
     path: '/customers',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminChatRoute = AuthenticatedAdminChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminAllocationsRoute =
   AuthenticatedAdminAllocationsRouteImport.update({
     id: '/allocations',
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
+  '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/_authenticated/admin/inventory': typeof AuthenticatedAdminInventoryRoute
@@ -382,6 +391,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog/'
     | '/admin/allocations'
+    | '/admin/chat'
     | '/admin/customers'
     | '/admin/emails'
     | '/admin/inventory'
@@ -418,6 +428,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog'
     | '/admin/allocations'
+    | '/admin/chat'
     | '/admin/customers'
     | '/admin/emails'
     | '/admin/inventory'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/blog/'
     | '/_authenticated/admin/allocations'
+    | '/_authenticated/admin/chat'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/emails'
     | '/_authenticated/admin/inventory'
@@ -723,6 +735,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCustomersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/chat': {
+      id: '/_authenticated/admin/chat'
+      path: '/chat'
+      fullPath: '/admin/chat'
+      preLoaderRoute: typeof AuthenticatedAdminChatRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/allocations': {
       id: '/_authenticated/admin/allocations'
       path: '/allocations'
@@ -763,6 +782,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
+  AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
   AuthenticatedAdminInventoryRoute: typeof AuthenticatedAdminInventoryRoute
@@ -774,6 +794,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAllocationsRoute: AuthenticatedAdminAllocationsRoute,
+  AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,
   AuthenticatedAdminInventoryRoute: AuthenticatedAdminInventoryRoute,

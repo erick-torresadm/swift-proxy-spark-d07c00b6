@@ -107,7 +107,7 @@ export async function calcOrder(
   kind: PsProxyKind,
   params: Record<string, unknown>,
 ): Promise<PsOrderCalcResult> {
-  return psPost(`/order/calc/${kind}`, params);
+  return psPost(`/order/calc`, params);
 }
 
 // ─────────────────────────── Order make ───────────────────────────

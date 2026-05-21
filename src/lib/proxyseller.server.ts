@@ -106,7 +106,7 @@ export async function calcOrder(
   kind: PsProxyKind,
   params: Record<string, unknown>,
 ): Promise<PsOrderCalcResult> {
-  return psPost(`/order/calc`, params);
+  return psPost(`/order/calc`, normalizeOrderParams(kind, params));
 }
 
 // ─────────────────────────── Order make ───────────────────────────
@@ -144,6 +144,8 @@ export async function purchaseIpv6Block(params: {
   periodId: string;
   quantity: number;
   protocol?: "HTTPS" | "SOCKS5";
+  targetSectionId?: number;
+  targetId?: number;
 }): Promise<{
   externalOrderId: string;
   baseOrderNumber: string;
@@ -151,10 +153,7 @@ export async function purchaseIpv6Block(params: {
   proxies: PsProxyItem[];
 }> {
   const order = await psPost<PsOrderMakeData>("/order/make", {
-    countryId: params.countryId,
-    periodId: params.periodId,
-    quantity: params.quantity,
-    protocol: params.protocol ?? "HTTPS",
+    ...normalizeOrderParams("ipv6", params),
     paymentId: 1,
     authorization: "",
   });
@@ -171,6 +170,19 @@ export async function purchaseIpv6Block(params: {
     baseOrderNumber,
     costCents: Math.round((order.total ?? 0) * 100),
     proxies: list.items ?? [],
+  };
+}
+
+function normalizeOrderParams(
+  kind: PsProxyKind,
+  params: Record<string, unknown>,
+): Record<string, unknown> {
+  if (kind !== "ipv6") return params;
+  return {
+    ...params,
+    protocol: params.protocol ?? "HTTPS",
+    targetSectionId: params.targetSectionId ?? 8,
+    targetId: params.targetId ?? 1768,
   };
 }
 

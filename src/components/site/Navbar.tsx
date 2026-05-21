@@ -30,7 +30,15 @@ export function Navbar() {
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-[60] h-8 flex items-center justify-end px-3 sm:px-6 gap-1 bg-background/80 backdrop-blur-md border-b border-border/40">
+      <div
+        className="fixed inset-x-0 top-0 z-[60] flex items-center justify-end gap-1 bg-background/80 backdrop-blur-md border-b border-border/40"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
+          paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+          minHeight: "calc(2rem + env(safe-area-inset-top))",
+        }}
+      >
         <ThemeToggle className="scale-90" />
         <LangCurrencyMenu className="scale-90" />
       </div>
@@ -39,7 +47,8 @@ export function Navbar() {
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed inset-x-0 top-8 sm:top-10 z-50 px-3 sm:px-6 pointer-events-none"
+        className="fixed inset-x-0 z-50 px-3 sm:px-6 pointer-events-none"
+        style={{ top: "calc(env(safe-area-inset-top) + 2rem)" }}
       >
         <motion.div
           animate={{

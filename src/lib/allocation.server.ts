@@ -13,6 +13,7 @@ import { purchaseIpv6Block, psDateToIso } from "./proxyseller.server";
 export async function allocateProxiesForOrder(orderId: string): Promise<{
   allocated: number;
   short: number;
+  error?: string;
 }> {
   const { data: order, error: orderErr } = await supabaseAdmin
     .from("orders")

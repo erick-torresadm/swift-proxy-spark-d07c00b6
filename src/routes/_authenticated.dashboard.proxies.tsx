@@ -235,6 +235,7 @@ function ProxiesPage() {
                     <th className="text-left px-4 py-3 font-semibold">Usuário</th>
                     <th className="text-left px-4 py-3 font-semibold">Senha</th>
                     <th className="text-left px-4 py-3 font-semibold">Rotação IP</th>
+                    <th className="text-left px-4 py-3 font-semibold">Saúde</th>
                     <th className="text-left px-4 py-3 font-semibold">Status</th>
                     <th className="text-right px-4 py-3 font-semibold">Ações</th>
                   </tr>

@@ -787,8 +787,10 @@ export const bulkUpdatePosts = createServerFn({ method: "POST" })
       await supabaseAdmin.from("posts").delete().in("id", data.ids);
       return { ok: true, count: data.ids.length };
     }
-    const statusMap = { publish: "published", draft: "draft", archive: "archived" } as const;
-    const update: Record<string, unknown> = { status: statusMap[data.action] };
+    const statusMap = { publish: "published" as const, draft: "draft" as const, archive: "archived" as const };
+    const update: { status: "published" | "draft" | "archived"; published_at?: string } = {
+      status: statusMap[data.action],
+    };
     if (data.action === "publish") update.published_at = new Date().toISOString();
     await supabaseAdmin.from("posts").update(update).in("id", data.ids);
     return { ok: true, count: data.ids.length };

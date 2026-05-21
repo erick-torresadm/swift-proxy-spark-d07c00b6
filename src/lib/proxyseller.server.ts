@@ -56,19 +56,23 @@ async function psCall<T>(
     errMsg = e instanceof Error ? e.message : "fetch failed";
   }
 
-  // Best-effort audit (non-blocking)
-  void supabaseAdmin.from("audit_log").insert({
-    source: "proxy_seller",
-    action: `${method} ${path}`,
-    status: errMsg ? "error" : "ok",
-    request: (body ?? null) as never,
-    response: {
-      http: status,
-      duration_ms: Date.now() - started,
-      body: parsed as unknown,
-      error: errMsg ?? null,
-    } as never,
-  });
+  // Persist audit synchronously to survive Worker lifecycle.
+  try {
+    await supabaseAdmin.from("audit_log").insert({
+      source: "proxy_seller",
+      action: `${method} ${path}`,
+      status: errMsg ? "error" : "ok",
+      request: (body ?? null) as never,
+      response: {
+        http: status,
+        duration_ms: Date.now() - started,
+        body: parsed as unknown,
+        error: errMsg ?? null,
+      } as never,
+    });
+  } catch {
+    // never let audit failure mask the real call result
+  }
 
   if (errMsg || !parsed || !parsed.data) {
     throw new Error(`ProxySeller ${path}: ${errMsg ?? "no data"}`);
@@ -161,16 +165,40 @@ export async function purchaseIpv6Block(params: {
   const baseOrderNumber = order.listBaseOrderNumbers?.[0];
   if (!baseOrderNumber) throw new Error("ProxySeller: no baseOrderNumber returned");
 
-  const list = await psGet<{ items: PsProxyItem[] }>(
-    `/proxy/list/ipv6?orderId=${encodeURIComponent(baseOrderNumber)}`,
-  );
+  // ProxySeller provisioning may take seconds to a minute — poll /proxy/list
+  // with backoff until IPs appear or we time out. On timeout we still return
+  // success (with empty proxies) so the caller can persist a pending order
+  // for the backfill job to finish later.
+  const proxies = await pollProxiesForOrder(baseOrderNumber, params.quantity);
 
   return {
     externalOrderId: String(order.orderId),
     baseOrderNumber,
     costCents: Math.round((order.total ?? 0) * 100),
-    proxies: list.items ?? [],
+    proxies,
   };
+}
+
+/** Poll /proxy/list/ipv6?orderId=… until ≥ expected items or backoff exhausted. */
+export async function pollProxiesForOrder(
+  baseOrderNumber: string,
+  expected: number,
+  delaysMs: number[] = [1000, 2000, 4000, 8000, 15000],
+): Promise<PsProxyItem[]> {
+  let last: PsProxyItem[] = [];
+  for (let i = 0; i < delaysMs.length; i++) {
+    await new Promise((r) => setTimeout(r, delaysMs[i]));
+    try {
+      const list = await psGet<{ items: PsProxyItem[] }>(
+        `/proxy/list/ipv6?orderId=${encodeURIComponent(baseOrderNumber)}`,
+      );
+      last = list.items ?? [];
+      if (last.length >= expected) return last;
+    } catch {
+      // swallow transient errors and try again
+    }
+  }
+  return last;
 }
 
 function normalizeOrderParams(

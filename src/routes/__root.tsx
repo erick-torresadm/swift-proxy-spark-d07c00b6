@@ -11,6 +11,7 @@ import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ChatWidget } from "@/components/site/ChatWidget";
+import { CookieBanner } from "@/components/site/CookieBanner";
 import { ThemeProvider, themeInitScript, useTheme } from "@/lib/theme";
 import { CurrencyProvider } from "@/lib/currency";
 import "@/lib/i18n";

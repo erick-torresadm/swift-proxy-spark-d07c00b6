@@ -67,6 +67,8 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-1 shrink-0">
+            <ThemeToggle className="scale-90" />
+            <LangCurrencyMenu className="scale-90" />
             {loading ? (
               <div className="w-24 h-9 rounded-full bg-card animate-pulse ml-2" />
             ) : user ? (
@@ -96,6 +98,8 @@ export function Navbar() {
           </div>
 
           <div className="md:hidden flex items-center gap-1">
+            <ThemeToggle className="scale-90" />
+            <LangCurrencyMenu className="scale-90" />
             <button
               onClick={() => setOpen(!open)}
               className="p-2 rounded-full hover:bg-foreground/5 transition"

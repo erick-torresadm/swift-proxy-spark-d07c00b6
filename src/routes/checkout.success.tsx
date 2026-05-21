@@ -222,8 +222,8 @@ function SuccessPage() {
           <div className="mt-6 p-4 rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-200 text-sm">
             {polling ? (
               <>
-                <strong>Liberando seus proxies…</strong> Estamos comprando o
-                estoque do provedor em tempo real. Pode levar até 30 segundos.
+                <strong>Liberando seus proxies…</strong> Estamos preparando
+                tudo para você. Pode levar até 30 segundos.
               </>
             ) : (
               <>

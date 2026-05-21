@@ -132,7 +132,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
     const { data: post } = await supabaseAdmin
       .from("posts")
       .select(
-        "id, slug, title, excerpt, content_md, cover_image_url, status, published_at, meta_title, meta_description, keyword_primary, keywords_secondary, faq, reading_time_minutes, view_count, post_categories(slug, name), post_tag_map(post_tags(slug, name))",
+        "id, slug, title, excerpt, content_md, cover_image_url, status, published_at, meta_title, meta_description, keyword_primary, keywords_secondary, faq, reading_time_minutes, view_count, display_author_name, post_categories(slug, name), post_tag_map(post_tags(slug, name))",
       )
       .eq("slug", data.slug)
       .eq("status", "published")

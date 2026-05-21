@@ -71,7 +71,30 @@ export function InstallGuide() {
                 </div>
               </div>
               <div className="pt-10 px-4 pb-4 h-full flex flex-col">
-                <div className="flex items-center gap-2 mb-4">
+                {/* Barra do navegador simulada — muda conforme a aba */}
+                <motion.div
+                  key={`bar-${activeTab}`}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center gap-2 mb-3 px-2 py-1.5 rounded-lg bg-secondary/70 border border-border text-[10px]"
+                >
+                  {activeTab === "android" ? (
+                    <>
+                      <Chrome className="w-3 h-3 text-primary" />
+                      <span className="truncate text-muted-foreground">fastproxy.com</span>
+                      <span className="ml-auto font-bold text-foreground/80">⋮</span>
+                    </>
+                  ) : (
+                    <>
+                      <Apple className="w-3 h-3 text-primary" />
+                      <span className="truncate text-muted-foreground">fastproxy.com</span>
+                      <Share2 className="w-3 h-3 ml-auto text-foreground/80" />
+                    </>
+                  )}
+                </motion.div>
+
+                <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                     <ZapIcon />
                   </div>
@@ -92,15 +115,32 @@ export function InstallGuide() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-auto p-3 rounded-2xl bg-primary/10 border border-primary/20">
+                <motion.div
+                  key={`cta-${activeTab}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="mt-auto relative p-3 rounded-2xl bg-primary/10 border border-primary/20"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowDownToLine className="w-4 h-4 text-primary" />
                     <span className="text-xs font-bold">Adicionar à tela inicial</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Acesse o FastProxy com um toque, sem digitar o endereço.
+                    {activeTab === "android"
+                      ? "Toque em ⋮ → Instalar app no Chrome."
+                      : "Toque em Compartilhar → Adicionar à Tela de Início."}
                   </p>
-                </div>
+                  <motion.div
+                    aria-hidden
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1, 1, 0.8], x: [0, 4, -2, 0], y: [0, -2, 2, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 0.6 }}
+                    className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-primary/30 border border-primary flex items-center justify-center"
+                  >
+                    <MousePointerClick className="w-3.5 h-3.5 text-primary" />
+                  </motion.div>
+                </motion.div>
               </div>
               <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/3 to-transparent pointer-events-none" />
             </div>

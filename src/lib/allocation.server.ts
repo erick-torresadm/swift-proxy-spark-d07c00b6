@@ -1,10 +1,19 @@
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { purchaseIpv6Block, pollProxiesForOrder, psDateToIso } from "./proxyseller.server";
+import {
+  purchaseIpv6Block,
+  pollProxiesForOrder,
+  psDateToIso,
+  calcOrder,
+  generateSimulatedProxies,
+} from "./proxyseller.server";
 import type { PsProxyItem } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
 const PENDING_REUSE_MAX_AGE_MS = 5 * 60_000;
+// Simulated provisioning delay range (mimics real ProxySeller 3-5min)
+const DRY_RUN_DELAY_MIN_MS = 3 * 60_000;
+const DRY_RUN_DELAY_MAX_MS = 5 * 60_000;
 
 /**
  * Allocates proxies from stock to a paid order.

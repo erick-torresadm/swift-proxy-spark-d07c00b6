@@ -361,6 +361,91 @@ export const deleteStockItem = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---- Bulk add ----
+const bulkAddInput = z.object({
+  product_id: z.string().uuid(),
+  text: z.string().min(1).max(200_000),
+  default_protocol: z.string().max(20).optional(),
+  default_country: z.string().max(8).optional(),
+});
+
+function parseProxyLine(raw: string): {
+  host: string; port: number; username: string | null; password: string | null;
+} | null {
+  const line = raw.trim();
+  if (!line || line.startsWith("#")) return null;
+  // Suporta:  host:port  |  host:port:user:pass  |  user:pass@host:port
+  let host = "", port = 0, username: string | null = null, password: string | null = null;
+  if (line.includes("@")) {
+    const [creds, hp] = line.split("@");
+    const [u, p] = creds.split(":");
+    username = u || null; password = p ?? null;
+    const [h, po] = hp.split(":");
+    host = h; port = Number(po);
+  } else {
+    const parts = line.split(":");
+    if (parts.length < 2) return null;
+    host = parts[0];
+    port = Number(parts[1]);
+    if (parts[2]) username = parts[2];
+    if (parts[3]) password = parts[3];
+  }
+  if (!host || !port || isNaN(port) || port < 1 || port > 65535) return null;
+  return { host, port, username, password };
+}
+
+export const bulkAddStock = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => bulkAddInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const lines = data.text.split(/\r?\n/);
+    const rows: Array<Record<string, unknown>> = [];
+    let invalid = 0;
+    for (const l of lines) {
+      const p = parseProxyLine(l);
+      if (!p) { if (l.trim()) invalid++; continue; }
+      rows.push({
+        product_id: data.product_id,
+        host: p.host,
+        port: p.port,
+        username: p.username,
+        password: p.password,
+        protocol: data.default_protocol ?? "http",
+        country_code: data.default_country ?? null,
+        status: "available",
+      });
+    }
+    if (!rows.length) throw new Error("Nenhum proxy válido para inserir");
+    const { error } = await supabaseAdmin.from("proxy_stock").insert(rows as never);
+    if (error) throw new Error(error.message);
+    return { ok: true, inserted: rows.length, invalid };
+  });
+
+// ---- Bulk delete ----
+const bulkDeleteInput = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(1000),
+});
+
+export const bulkDeleteStock = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => bulkDeleteInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    // Bloqueia se algum estiver alocado
+    const { data: allocs } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("stock_id")
+      .in("stock_id", data.ids)
+      .in("status", ["active", "grace"]);
+    const blocked = new Set((allocs ?? []).map((a) => a.stock_id));
+    const deletable = data.ids.filter((id) => !blocked.has(id));
+    if (!deletable.length) throw new Error("Todos os proxies selecionados estão alocados a clientes.");
+    const { error } = await supabaseAdmin.from("proxy_stock").delete().in("id", deletable);
+    if (error) throw new Error(error.message);
+    return { ok: true, deleted: deletable.length, skipped: blocked.size };
+  });
+
 // ---- Direct price editing ----
 const setProductPriceInput = z.object({
   product_id: z.string().uuid(),

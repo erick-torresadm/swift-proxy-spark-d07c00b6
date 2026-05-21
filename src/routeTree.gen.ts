@@ -47,6 +47,7 @@ import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_aut
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
+import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
 import { Route as AuthenticatedDashboardProxyIdQuickRouteImport } from './routes/_authenticated.dashboard.proxy.$id.quick'
 
 const TermosRoute = TermosRouteImport.update({
@@ -253,6 +254,12 @@ const ApiPublicHooksNotificationsDispatchRoute =
     path: '/api/public/hooks/notifications-dispatch',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronHealthcheckRoute =
+  ApiPublicCronHealthcheckRouteImport.update({
+    id: '/api/public/cron/healthcheck',
+    path: '/api/public/cron/healthcheck',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedDashboardProxyIdQuickRoute =
   AuthenticatedDashboardProxyIdQuickRouteImport.update({
     id: '/proxy/$id/quick',
@@ -295,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
@@ -333,6 +341,7 @@ export interface FileRoutesByTo {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
@@ -375,6 +384,7 @@ export interface FileRoutesById {
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin/'
+    | '/api/public/cron/healthcheck'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin'
+    | '/api/public/cron/healthcheck'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
@@ -496,6 +508,7 @@ export interface FileRouteTypes {
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/_authenticated/admin/'
+    | '/api/public/cron/healthcheck'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
@@ -517,6 +530,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
@@ -790,6 +804,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksNotificationsDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/healthcheck': {
+      id: '/api/public/cron/healthcheck'
+      path: '/api/public/cron/healthcheck'
+      fullPath: '/api/public/cron/healthcheck'
+      preLoaderRoute: typeof ApiPublicCronHealthcheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/dashboard/proxy/$id/quick': {
       id: '/_authenticated/dashboard/proxy/$id/quick'
       path: '/proxy/$id/quick'
@@ -910,6 +931,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksNotificationsDispatchRoute:
     ApiPublicHooksNotificationsDispatchRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,

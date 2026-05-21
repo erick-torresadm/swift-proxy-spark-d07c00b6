@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
+import { allocateProxiesForOrder } from "./allocation.server";
 
 
 
@@ -334,3 +335,44 @@ export const createReactivateCheckout = createServerFn({ method: "POST" })
     return { url: session.url };
   });
 
+
+/**
+ * Re-runs proxy allocation for the current user's paid orders that don't
+ * yet have proxies attached. Used when the stock auto-purchase failed
+ * during the Stripe webhook (e.g. ProxySeller temporarily unavailable).
+ */
+export const syncMyAllocations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+
+    const { data: orders } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("user_id", userId)
+      .in("status", ["paid", "past_due", "grace"]);
+
+    const ids = (orders ?? []).map((o) => o.id);
+    if (ids.length === 0) {
+      return { synced: 0, allocated: 0, short: 0, error: null as string | null };
+    }
+
+    let allocated = 0;
+    let short = 0;
+    let lastError: string | null = null;
+    let synced = 0;
+
+    for (const orderId of ids) {
+      try {
+        const r = await allocateProxiesForOrder(orderId);
+        allocated += r.allocated;
+        short += r.short;
+        if (r.error) lastError = r.error;
+        synced += 1;
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    return { synced, allocated, short, error: lastError };
+  });

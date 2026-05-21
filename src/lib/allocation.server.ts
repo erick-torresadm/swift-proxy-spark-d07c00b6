@@ -13,6 +13,7 @@ import { purchaseIpv6Block, psDateToIso } from "./proxyseller.server";
 export async function allocateProxiesForOrder(orderId: string): Promise<{
   allocated: number;
   short: number;
+  error?: string;
 }> {
   const { data: order, error: orderErr } = await supabaseAdmin
     .from("orders")
@@ -63,6 +64,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
   const stillShort = remaining - picks.length;
 
+  let purchaseError: string | undefined;
   if (stillShort > 0 && isIpv6) {
     try {
       await autoPurchaseIpv6IntoStock(product, stillShort);
@@ -75,13 +77,14 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
         .limit(remaining);
       picks = pool2 ?? [];
     } catch (e) {
+      purchaseError = e instanceof Error ? e.message : String(e);
       console.error("[allocation] auto-purchase IPv6 failed:", e);
       // fall through; we'll just report `short`
     }
   }
 
   if (picks.length === 0) {
-    return { allocated: existing ?? 0, short: remaining };
+    return { allocated: existing ?? 0, short: remaining, error: purchaseError };
   }
 
   // Insert allocations
@@ -107,6 +110,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   return {
     allocated: (existing ?? 0) + picks.length,
     short: remaining - picks.length,
+    error: purchaseError,
   };
 }
 

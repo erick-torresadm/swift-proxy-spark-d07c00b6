@@ -191,6 +191,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                     "allocate_proxies",
                     result.short > 0 ? "partial" : "ok",
                     { orderId, ...result },
+                    result.error,
                   );
                 } catch (err) {
                   await logAudit(

@@ -138,6 +138,8 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -146,6 +148,13 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     background-image:
       radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.62 0.18 145 / 0.08), transparent),
       radial-gradient(ellipse 60% 50% at 80% 60%, oklch(0.55 0.2 200 / 0.04), transparent);

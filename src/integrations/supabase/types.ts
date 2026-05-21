@@ -485,6 +485,7 @@ export type Database = {
           content_md: string
           cover_image_url: string | null
           created_at: string
+          display_author_name: string
           excerpt: string | null
           faq: Json
           id: string
@@ -506,6 +507,7 @@ export type Database = {
           content_md?: string
           cover_image_url?: string | null
           created_at?: string
+          display_author_name?: string
           excerpt?: string | null
           faq?: Json
           id?: string
@@ -527,6 +529,7 @@ export type Database = {
           content_md?: string
           cover_image_url?: string | null
           created_at?: string
+          display_author_name?: string
           excerpt?: string | null
           faq?: Json
           id?: string
@@ -1088,7 +1091,7 @@ export type Database = {
     }
     Enums: {
       allocation_status: "active" | "grace" | "released" | "cancelled"
-      app_role: "admin" | "customer"
+      app_role: "admin" | "customer" | "editor" | "moderator"
       chat_sender: "client" | "admin" | "system"
       chat_status: "waiting" | "active" | "closed"
       comment_status: "visible" | "hidden" | "flagged"
@@ -1242,7 +1245,7 @@ export const Constants = {
   public: {
     Enums: {
       allocation_status: ["active", "grace", "released", "cancelled"],
-      app_role: ["admin", "customer"],
+      app_role: ["admin", "customer", "editor", "moderator"],
       chat_sender: ["client", "admin", "system"],
       chat_status: ["waiting", "active", "closed"],
       comment_status: ["visible", "hidden", "flagged"],

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { listProxies, type PsProxyKind } from "@/lib/proxyseller.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 /**
  * Healthcheck periódico chamado por pg_cron a cada 5 minutos.

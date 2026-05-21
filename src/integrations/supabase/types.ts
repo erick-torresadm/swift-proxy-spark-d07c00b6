@@ -866,6 +866,7 @@ export type Database = {
           quantity: number
           raw_payload: Json | null
           status: Database["public"]["Enums"]["provider_order_status"]
+          triggered_by_order_id: string | null
         }
         Insert: {
           auto_renew?: boolean
@@ -880,6 +881,7 @@ export type Database = {
           quantity: number
           raw_payload?: Json | null
           status?: Database["public"]["Enums"]["provider_order_status"]
+          triggered_by_order_id?: string | null
         }
         Update: {
           auto_renew?: boolean
@@ -894,6 +896,7 @@ export type Database = {
           quantity?: number
           raw_payload?: Json | null
           status?: Database["public"]["Enums"]["provider_order_status"]
+          triggered_by_order_id?: string | null
         }
         Relationships: [
           {
@@ -1063,6 +1066,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      purchase_locks: {
+        Row: {
+          created_at: string
+          locked_by: string | null
+          locked_until: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          locked_by?: string | null
+          locked_until: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          locked_by?: string | null
+          locked_until?: string
+          product_id?: string
+        }
+        Relationships: []
       }
       push_subscriptions: {
         Row: {

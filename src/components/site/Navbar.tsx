@@ -2,20 +2,24 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { Menu, X, LayoutDashboard } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
+import { ThemeToggle } from "./ThemeToggle";
+import { LangCurrencyMenu } from "./LangCurrencyMenu";
 import logo from "@/assets/logo-fastproxy.png";
-
-const links = [
-  { href: "/#planos", label: "Planos" },
-  { href: "/#recursos", label: "Recursos" },
-  { href: "/blog", label: "Blog" },
-  { href: "/#faq", label: "FAQ" },
-];
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { user, loading } = useAuth();
+  const { t } = useTranslation();
+
+  const links = [
+    { href: "/#planos", label: t("nav.plans") },
+    { href: "/#recursos", label: t("nav.features") },
+    { href: "/blog", label: t("nav.blog") },
+    { href: "/#faq", label: t("nav.faq") },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -33,15 +37,15 @@ export function Navbar() {
     >
       <motion.div
         animate={{
-          maxWidth: scrolled ? 880 : 1120,
+          maxWidth: scrolled ? 980 : 1200,
           paddingLeft: scrolled ? 14 : 20,
           paddingRight: scrolled ? 14 : 20,
         }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className={`pointer-events-auto mx-auto h-14 sm:h-16 flex items-center justify-between rounded-full border backdrop-blur-2xl transition-colors ${
           scrolled
-            ? "bg-background/70 border-border/70 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]"
-            : "bg-background/40 border-border/40 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.3)]"
+            ? "bg-background/70 border-border/70 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.2)]"
+            : "bg-background/40 border-border/40 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.15)]"
         }`}
       >
         <Link to="/" className="flex items-center shrink-0">
@@ -60,42 +64,48 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2 shrink-0">
+        <div className="hidden md:flex items-center gap-1 shrink-0">
+          <ThemeToggle />
+          <LangCurrencyMenu />
           {loading ? (
-            <div className="w-24 h-9 rounded-full bg-card animate-pulse" />
+            <div className="w-24 h-9 rounded-full bg-card animate-pulse ml-2" />
           ) : user ? (
             <Link
               to="/dashboard"
-              className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition flex items-center gap-2"
+              className="ml-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition flex items-center gap-2"
             >
               <LayoutDashboard className="w-4 h-4" />
-              Meu painel
+              {t("nav.dashboard")}
             </Link>
           ) : (
             <>
               <Link
                 to="/login"
-                className="px-4 py-2 rounded-full text-sm font-semibold text-foreground hover:bg-foreground/5 transition"
+                className="ml-2 px-4 py-2 rounded-full text-sm font-semibold text-foreground hover:bg-foreground/5 transition"
               >
-                Entrar
+                {t("nav.login")}
               </Link>
               <Link
                 to="/signup"
                 className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 transition"
               >
-                Criar conta
+                {t("nav.signup")}
               </Link>
             </>
           )}
         </div>
 
-        <button
-          onClick={() => setOpen(!open)}
-          className="md:hidden p-2 rounded-full hover:bg-foreground/5 transition"
-          aria-label="Menu"
-        >
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="md:hidden flex items-center gap-1">
+          <ThemeToggle />
+          <LangCurrencyMenu />
+          <button
+            onClick={() => setOpen(!open)}
+            className="p-2 rounded-full hover:bg-foreground/5 transition"
+            aria-label="Menu"
+          >
+            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </motion.div>
 
       {open && (
@@ -103,7 +113,7 @@ export function Navbar() {
           initial={{ opacity: 0, y: -8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.2 }}
-          className="md:hidden pointer-events-auto mt-2 mx-auto max-w-[560px] rounded-3xl bg-background/85 backdrop-blur-2xl border border-border/70 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.6)] overflow-hidden"
+          className="md:hidden pointer-events-auto mt-2 mx-auto max-w-[560px] rounded-3xl bg-background/85 backdrop-blur-2xl border border-border/70 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.3)] overflow-hidden"
         >
           <div className="px-3 py-3 space-y-1">
             {links.map((l) => (
@@ -123,7 +133,7 @@ export function Navbar() {
                   onClick={() => setOpen(false)}
                   className="block w-full text-center py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-bold"
                 >
-                  Meu painel
+                  {t("nav.dashboard")}
                 </Link>
               ) : (
                 <>
@@ -132,14 +142,14 @@ export function Navbar() {
                     onClick={() => setOpen(false)}
                     className="block w-full text-center py-2.5 rounded-full border border-border text-sm font-semibold"
                   >
-                    Entrar
+                    {t("nav.login")}
                   </Link>
                   <Link
                     to="/signup"
                     onClick={() => setOpen(false)}
                     className="block w-full text-center py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-bold"
                   >
-                    Criar conta
+                    {t("nav.signup")}
                   </Link>
                 </>
               )}
@@ -150,4 +160,3 @@ export function Navbar() {
     </motion.header>
   );
 }
-

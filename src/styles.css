@@ -6,7 +6,7 @@
 
 /*
  * FastProxy Design System
- * Dark-first, green accent (matches original brand)
+ * Suporta light + dark theme. Default: light.
  */
 
 @theme inline {
@@ -44,10 +44,54 @@
   --font-sans: "Inter", system-ui, sans-serif;
 }
 
+/* ===== LIGHT (default) ===== */
 :root {
   --radius: 0.875rem;
 
-  /* Dark by default — FastProxy is a dark-first product */
+  --background: oklch(0.99 0.003 240);
+  --foreground: oklch(0.18 0.02 240);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 240);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 240);
+
+  --primary: oklch(0.62 0.18 145);
+  --primary-foreground: oklch(0.99 0.003 240);
+  --primary-glow: oklch(0.72 0.2 145);
+
+  --secondary: oklch(0.96 0.008 240);
+  --secondary-foreground: oklch(0.2 0.02 240);
+
+  --muted: oklch(0.96 0.008 240);
+  --muted-foreground: oklch(0.45 0.018 240);
+
+  --accent: oklch(0.62 0.18 145 / 0.1);
+  --accent-foreground: oklch(0.5 0.18 145);
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.99 0.003 240);
+
+  --border: oklch(0.18 0.02 240 / 0.1);
+  --input: oklch(0.18 0.02 240 / 0.12);
+  --ring: oklch(0.62 0.18 145);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.62 0.18 145) 0%, oklch(0.72 0.2 145) 100%);
+  --gradient-hero: radial-gradient(ellipse at top, oklch(0.62 0.18 145 / 0.12) 0%, transparent 50%),
+                   radial-gradient(ellipse at bottom right, oklch(0.55 0.2 200 / 0.08) 0%, transparent 50%);
+  --gradient-card: linear-gradient(180deg, oklch(0.62 0.18 145 / 0.04) 0%, oklch(1 0 0) 100%);
+
+  --shadow-glow: 0 0 60px oklch(0.62 0.18 145 / 0.25);
+  --shadow-card: 0 20px 60px -20px oklch(0.18 0.02 240 / 0.15), 0 0 40px oklch(0.62 0.18 145 / 0.05);
+  --shadow-elegant: 0 30px 80px -30px oklch(0.62 0.18 145 / 0.3);
+
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ===== DARK ===== */
+.dark {
   --background: oklch(0.16 0.015 240);
   --foreground: oklch(0.98 0.005 240);
 
@@ -57,7 +101,6 @@
   --popover: oklch(0.19 0.018 240);
   --popover-foreground: oklch(0.98 0.005 240);
 
-  /* FastProxy green — derived from #22c55e / #16a34a */
   --primary: oklch(0.72 0.19 145);
   --primary-foreground: oklch(0.14 0.02 240);
   --primary-glow: oklch(0.82 0.21 145);
@@ -78,7 +121,6 @@
   --input: oklch(1 0 0 / 0.1);
   --ring: oklch(0.72 0.19 145);
 
-  /* Brand gradients & shadows */
   --gradient-primary: linear-gradient(135deg, oklch(0.72 0.19 145) 0%, oklch(0.82 0.21 145) 100%);
   --gradient-hero: radial-gradient(ellipse at top, oklch(0.72 0.19 145 / 0.18) 0%, transparent 50%),
                    radial-gradient(ellipse at bottom right, oklch(0.65 0.22 200 / 0.1) 0%, transparent 50%);
@@ -87,15 +129,6 @@
   --shadow-glow: 0 0 60px oklch(0.72 0.19 145 / 0.35);
   --shadow-card: 0 20px 60px -20px oklch(0 0 0 / 0.5), 0 0 40px oklch(0.72 0.19 145 / 0.08);
   --shadow-elegant: 0 30px 80px -30px oklch(0.72 0.19 145 / 0.4);
-
-  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.dark {
-  /* same as :root — dark is default */
-  --background: oklch(0.16 0.015 240);
-  --foreground: oklch(0.98 0.005 240);
 }
 
 @layer base {
@@ -114,9 +147,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.62 0.18 145 / 0.08), transparent),
+      radial-gradient(ellipse 60% 50% at 80% 60%, oklch(0.55 0.2 200 / 0.04), transparent);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
       radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.72 0.19 145 / 0.12), transparent),
       radial-gradient(ellipse 60% 50% at 80% 60%, oklch(0.65 0.22 200 / 0.06), transparent);
-    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -151,20 +190,43 @@
 
   .grid-bg {
     background-image:
-      linear-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(1 0 0 / 0.04) 1px, transparent 1px);
+      linear-gradient(oklch(0.18 0.02 240 / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.18 0.02 240 / 0.05) 1px, transparent 1px);
     background-size: 48px 48px;
     mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%);
   }
 
+  .dark .grid-bg {
+    background-image:
+      linear-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.04) 1px, transparent 1px);
+  }
+
   .glass {
-    background: oklch(0.19 0.018 240 / 0.7);
+    background: oklch(1 0 0 / 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    border: 1px solid oklch(0.18 0.02 240 / 0.08);
+  }
+
+  .dark .glass {
+    background: oklch(0.19 0.018 240 / 0.7);
     border: 1px solid oklch(1 0 0 / 0.08);
   }
 
   .aurora {
+    background:
+      conic-gradient(from 180deg at 50% 50%,
+        oklch(0.62 0.18 145 / 0.14) 0deg,
+        transparent 90deg,
+        oklch(0.55 0.2 200 / 0.08) 180deg,
+        transparent 270deg,
+        oklch(0.62 0.18 145 / 0.14) 360deg);
+    animation: aurora-spin 22s linear infinite;
+    filter: blur(60px);
+  }
+
+  .dark .aurora {
     background:
       conic-gradient(from 180deg at 50% 50%,
         oklch(0.72 0.19 145 / 0.18) 0deg,
@@ -172,8 +234,6 @@
         oklch(0.65 0.22 200 / 0.12) 180deg,
         transparent 270deg,
         oklch(0.72 0.19 145 / 0.18) 360deg);
-    animation: aurora-spin 22s linear infinite;
-    filter: blur(60px);
   }
 
   @keyframes aurora-spin {
@@ -181,8 +241,11 @@
   }
 }
 
-/* Custom scrollbar */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: oklch(0.16 0.015 240); }
-::-webkit-scrollbar-thumb { background: oklch(0.72 0.19 145 / 0.3); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: oklch(0.72 0.19 145 / 0.5); }
+::-webkit-scrollbar-track { background: oklch(0.96 0.008 240); }
+::-webkit-scrollbar-thumb { background: oklch(0.62 0.18 145 / 0.4); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.62 0.18 145 / 0.6); }
+.dark ::-webkit-scrollbar-track { background: oklch(0.16 0.015 240); }
+.dark ::-webkit-scrollbar-thumb { background: oklch(0.72 0.19 145 / 0.3); }
+.dark ::-webkit-scrollbar-thumb:hover { background: oklch(0.72 0.19 145 / 0.5); }

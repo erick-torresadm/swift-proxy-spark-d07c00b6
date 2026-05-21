@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "plans": "Planos",
+    "features": "Recursos",
+    "blog": "Blog",
+    "faq": "FAQ",
+    "login": "Entrar",
+    "signup": "Criar conta",
+    "dashboard": "Meu painel"
+  },
+  "hero": {
+    "badge": "Garantia de Reposição em Todo Plano",
+    "title_1": "Proxies que",
+    "title_2": "Nunca",
+    "title_3": "Param de Funcionar",
+    "subtitle": "Esqueça proxies que param no meio da campanha. Com a FastProxy você recebe reposição automática — sem burocracia, sem perda de tempo.",
+    "cta_primary": "Escolher meu Plano",
+    "cta_secondary": "Como Funciona",
+    "trust_replacement": "Reposição Garantida",
+    "trust_delivery": "Entrega Imediata",
+    "trust_support": "Suporte 24/7"
+  },
+  "features": {
+    "tag": "Benefícios",
+    "title_1": "Tudo que você precisa,",
+    "title_2": "nada que atrapalha",
+    "subtitle": "Construído para quem leva automação a sério.",
+    "items": {
+      "speed_title": "Velocidade Real",
+      "speed_desc": "Infraestrutura otimizada para scraping, automação e bots. Conexão estável mesmo em alto volume.",
+      "replace_title": "Reposição Automática",
+      "replace_desc": "Proxy bloqueado? Substituímos sem você precisar abrir chamado. Garantia em todo plano.",
+      "dedicated_title": "Dedicado e Anônimo",
+      "dedicated_desc": "IPs exclusivos seus. Sem compartilhamento, sem rastro, sem risco de banimento por outros.",
+      "tech_title": "IPv6, IPv4 e ISP",
+      "tech_desc": "Três tecnologias para encaixar no seu caso de uso — do mais barato ao mais compatível.",
+      "support_title": "Suporte 24/7",
+      "support_desc": "Time humano que entende de proxy. Resposta em até 15 minutos no plano VIP.",
+      "panel_title": "Painel Completo",
+      "panel_desc": "Acompanhe seus proxies, faturas e regeneração de IP em tempo real. Tudo num só lugar."
+    }
+  },
+  "plans": {
+    "tag": "Planos",
+    "title_1": "Preço justo por",
+    "title_2": "proxy",
+    "subtitle": "Sem fidelidade, sem pegadinhas. Você paga por unidade e cancela quando quiser.",
+    "monthly": "Mensal",
+    "yearly": "Anual",
+    "discount_badge": "-17,5%",
+    "per_month": "por proxy / mês",
+    "per_month_yearly": "por proxy / mês (anual)",
+    "from": "de",
+    "ideal_for": "Ideal para:",
+    "cta_featured": "Quero contratar",
+    "cta_select": "Selecionar",
+    "trust": {
+      "no_lock": "Sem fidelidade",
+      "instant": "Entrega imediata",
+      "payments": "Pix, cartão e boleto",
+      "support": "Suporte humano 24/7"
+    },
+    "badges": {
+      "recommended": "Recomendado",
+      "premium": "Premium"
+    },
+    "ipv6": {
+      "name": "Proxy IPv6",
+      "tagline": "Econômico para escala",
+      "best_for": "Automação e scraping em volume",
+      "f1": "HTTP/S e SOCKS5",
+      "f2": "Entrega instantânea",
+      "f3": "Reposição garantida"
+    },
+    "ipv4": {
+      "name": "IPv4 Dedicado",
+      "tagline": "Compatibilidade máxima",
+      "best_for": "Sites e plataformas exigentes",
+      "f1": "IP dedicado exclusivo",
+      "f2": "Banda ilimitada",
+      "f3": "Suporte prioritário"
+    },
+    "fbads": {
+      "name": "IPv6 p/ Facebook Ads",
+      "tagline": "Contingência profissional",
+      "best_for": "Gestores de tráfego e BMs",
+      "highlight": "1 proxy + 10 trocas grátis",
+      "f1": "10 rotações de IP",
+      "f2": "Alta compatibilidade BM",
+      "f3": "Suporte VIP"
+    },
+    "isp": {
+      "name": "Proxy ISP",
+      "tagline": "Residencial puro",
+      "best_for": "Operações que exigem IP residencial",
+      "f1": "Velocidade 100 Mbps",
+      "f2": "IP residencial genuíno",
+      "f3": "Indetectável"
+    }
+  },
+  "cta": {
+    "title_1": "Pronto pra parar de perder",
+    "title_2": "vendas",
+    "title_3": "por causa de proxy ruim?",
+    "subtitle": "Mais de 500 empresas já automatizam com FastProxy. Entrada em segundos, reposição garantida, suporte humano.",
+    "primary": "Começar agora",
+    "secondary": "Ver todos os planos"
+  },
+  "footer": {
+    "tagline": "Proxies IPv6, IPv4 e ISP dedicados no Brasil. Velocidade real, reposição garantida, suporte 24/7.",
+    "product": "Produto",
+    "plans": "Planos",
+    "benefits": "Benefícios",
+    "faq": "FAQ",
+    "blog": "Blog",
+    "account": "Conta",
+    "login": "Entrar",
+    "signup": "Criar conta",
+    "dashboard": "Painel",
+    "legal": "Legal",
+    "privacy": "Privacidade",
+    "terms": "Termos de Uso",
+    "refund": "Reembolso",
+    "rights": "Todos os direitos reservados.",
+    "made_in": "Feito no Brasil 🇧🇷"
+  },
+  "common": {
+    "language": "Idioma",
+    "theme_light": "Tema claro",
+    "theme_dark": "Tema escuro",
+    "currency": "Moeda"
+  }
+}

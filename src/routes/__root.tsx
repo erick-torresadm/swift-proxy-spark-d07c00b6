@@ -11,6 +11,9 @@ import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ChatWidget } from "@/components/site/ChatWidget";
+import { ThemeProvider, themeInitScript, useTheme } from "@/lib/theme";
+import { CurrencyProvider } from "@/lib/currency";
+import "@/lib/i18n";
 
 import appCss from "../styles.css?url";
 
@@ -128,8 +131,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <HeadContent />
       </head>
       <body>
@@ -145,12 +149,21 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSync />
-      <Outlet />
-      <ChatWidget />
-      <Toaster theme="dark" position="top-right" richColors closeButton />
+      <ThemeProvider>
+        <CurrencyProvider>
+          <AuthSync />
+          <Outlet />
+          <ChatWidget />
+          <ThemedToaster />
+        </CurrencyProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return <Toaster theme={theme} position="top-right" richColors closeButton />;
 }
 
 function AuthSync() {

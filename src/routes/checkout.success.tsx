@@ -11,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { z } from "zod";
-import { getOrderPublicStatus } from "@/lib/dashboard.functions";
+import { getOrderPublicStatus, syncMyAllocations } from "@/lib/dashboard.functions";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
@@ -37,10 +37,12 @@ function SuccessPage() {
   const { order: orderId } = Route.useSearch();
   const { user, loading: authLoading } = useAuth();
   const fetchOrder = useServerFn(getOrderPublicStatus);
+  const syncAllocations = useServerFn(syncMyAllocations);
 
   const [order, setOrder] = useState<OrderStatus>(null);
   const [polling, setPolling] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
@@ -51,8 +53,9 @@ function SuccessPage() {
     }
 
     let cancelled = false;
-    const MAX = 20; // ~40s
+    const MAX = 30; // ~60s
     let i = 0;
+    let triedSync = false;
 
     async function tick() {
       i++;
@@ -61,7 +64,27 @@ function SuccessPage() {
         const data = await fetchOrder({ data: { orderId: orderId! } });
         if (cancelled) return;
         setOrder(data);
-        if (data?.status === "paid") {
+
+        // Pago mas sem proxies → dispara sync (1x) e continua polling
+        if (
+          data?.status === "paid" &&
+          (data.allocated_count ?? 0) === 0 &&
+          !triedSync &&
+          user
+        ) {
+          triedSync = true;
+          try {
+            const r = await syncAllocations();
+            if (!cancelled && r.error) setSyncError(r.error);
+          } catch (e) {
+            if (!cancelled) {
+              setSyncError(e instanceof Error ? e.message : String(e));
+            }
+          }
+        }
+
+        // Sucesso completo: pago E alocado
+        if (data?.status === "paid" && (data.allocated_count ?? 0) > 0) {
           setPolling(false);
           return;
         }
@@ -80,7 +103,7 @@ function SuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, fetchOrder]);
+  }, [orderId, fetchOrder, syncAllocations, user]);
 
   const isPaid = order?.status === "paid";
   const isLoggedIn = !!user && !authLoading;
@@ -176,7 +199,7 @@ function SuccessPage() {
         {/* Body messages */}
         {polling && !isPaid && (
           <div className="mt-6 text-center text-xs text-muted-foreground">
-            Tentativa {attempts}/20…
+            Tentativa {attempts}/30…
           </div>
         )}
 
@@ -200,9 +223,24 @@ function SuccessPage() {
 
         {isPaid && isLoggedIn && order?.allocated_count === 0 && (
           <div className="mt-6 p-4 rounded-xl border border-amber-400/30 bg-amber-400/10 text-amber-200 text-sm">
-            Pagamento ok, mas ainda não há proxies suficientes no estoque para
-            sua quantidade. Nossa equipe foi notificada e vamos liberar nas
-            próximas horas.
+            {polling ? (
+              <>
+                <strong>Liberando seus proxies…</strong> Estamos comprando o
+                estoque do provedor em tempo real. Pode levar até 30 segundos.
+              </>
+            ) : (
+              <>
+                Pagamento ok, mas o provedor não respondeu a tempo. Vá em{" "}
+                <strong>Meus proxies</strong> e clique em{" "}
+                <strong>Sincronizar agora</strong> — normalmente resolve em
+                segundos.
+              </>
+            )}
+            {syncError && (
+              <div className="mt-2 text-xs opacity-80">
+                Detalhe técnico: {syncError}
+              </div>
+            )}
           </div>
         )}
 

@@ -1074,6 +1074,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_blog: { Args: { _user_id: string }; Returns: boolean }
+      can_moderate_comments: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1081,6 +1083,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       prune_proxy_metrics: { Args: never; Returns: undefined }
       release_expired_grace_proxies: {
         Args: never

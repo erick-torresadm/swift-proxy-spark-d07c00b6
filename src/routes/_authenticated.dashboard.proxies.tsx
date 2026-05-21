@@ -254,6 +254,16 @@ function ProxiesPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                setReportTarget(p.id);
+                                setReportMsg("");
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10 transition"
+                              title="Reportar erro"
+                            >
+                              <Flag className="w-3.5 h-3.5" />
+                            </button>
                             <Link
                               to="/dashboard/proxy/$id/quick"
                               params={{ id: p.id }}

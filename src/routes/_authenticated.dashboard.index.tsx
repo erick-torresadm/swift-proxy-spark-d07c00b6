@@ -2,9 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Server, Receipt, Clock, TrendingUp, ArrowRight } from "lucide-react";
+import { Server, Receipt, Clock, TrendingUp, ArrowRight, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getMyOverview } from "@/lib/dashboard.functions";
+import { BuyMoreDialog } from "@/components/buy-more-dialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard/")({
   component: DashboardHome,
@@ -76,13 +77,25 @@ function DashboardHome() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h1 className="text-2xl sm:text-3xl font-black mb-1">
-          Olá, {firstName} 👋
-        </h1>
-        <p className="text-muted-foreground mb-8">
-          Aqui está o resumo da sua conta.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black mb-1">
+              Olá, {firstName} 👋
+            </h1>
+            <p className="text-muted-foreground">
+              Aqui está o resumo da sua conta.
+            </p>
+          </div>
+          <BuyMoreDialog>
+            <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition">
+              <ShoppingCart className="w-4 h-4" />
+              Comprar mais proxies
+            </button>
+          </BuyMoreDialog>
+        </div>
       </motion.div>
+
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((s, i) => (
@@ -143,12 +156,12 @@ function DashboardHome() {
             Assim que você contratar um plano, seus proxies aparecem aqui com
             host, porta, usuário, senha.
           </p>
-          <a
-            href="/#planos"
-            className="inline-flex px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition"
-          >
-            Ver planos
-          </a>
+          <BuyMoreDialog>
+            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition">
+              <ShoppingCart className="w-4 h-4" />
+              Comprar proxies agora
+            </button>
+          </BuyMoreDialog>
         </div>
       )}
     </div>

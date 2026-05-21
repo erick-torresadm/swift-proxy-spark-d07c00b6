@@ -1,15 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { ArrowLeft, Pencil, Trash2, Save, X, User } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ArrowLeft, Pencil, Trash2, Save, X, User, Plus } from "lucide-react";
 import {
   listProductStock,
   updateStockItem,
   deleteStockItem,
+  bulkAddStock,
+  bulkDeleteStock,
 } from "@/lib/inventory.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -52,6 +64,8 @@ function ProductStockPage() {
   const listFn = useServerFn(listProductStock);
   const updateFn = useServerFn(updateStockItem);
   const deleteFn = useServerFn(deleteStockItem);
+  const bulkAddFn = useServerFn(bulkAddStock);
+  const bulkDeleteFn = useServerFn(bulkDeleteStock);
 
   const { data, isLoading } = useQuery({
     queryKey: ["product-stock", productId],
@@ -60,6 +74,13 @@ function ProductStockPage() {
 
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<StockRow>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [addOpen, setAddOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkProto, setBulkProto] = useState("http");
+  const [bulkCountry, setBulkCountry] = useState("");
+  const [confirmText, setConfirmText] = useState("");
 
   const updateMut = useMutation({
     mutationFn: updateFn,
@@ -76,6 +97,31 @@ function ProductStockPage() {
     mutationFn: deleteFn,
     onSuccess: () => {
       toast.success("Proxy excluído");
+      qc.invalidateQueries({ queryKey: ["product-stock", productId] });
+      qc.invalidateQueries({ queryKey: ["admin-inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkAddMut = useMutation({
+    mutationFn: bulkAddFn,
+    onSuccess: (res: { inserted: number; invalid: number }) => {
+      toast.success(`${res.inserted} proxies adicionados${res.invalid ? ` (${res.invalid} inválidos ignorados)` : ""}`);
+      setAddOpen(false);
+      setBulkText("");
+      qc.invalidateQueries({ queryKey: ["product-stock", productId] });
+      qc.invalidateQueries({ queryKey: ["admin-inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkDelMut = useMutation({
+    mutationFn: bulkDeleteFn,
+    onSuccess: (res: { deleted: number; skipped: number }) => {
+      toast.success(`${res.deleted} excluídos${res.skipped ? ` · ${res.skipped} alocados ignorados` : ""}`);
+      setDelOpen(false);
+      setConfirmText("");
+      setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["product-stock", productId] });
       qc.invalidateQueries({ queryKey: ["admin-inventory"] });
     },
@@ -115,6 +161,24 @@ function ProductStockPage() {
   const product = data?.product;
   const stock = (data?.stock ?? []) as StockRow[];
 
+  const allSelected = stock.length > 0 && selected.size === stock.length;
+  const someSelected = selected.size > 0;
+
+  function toggleAll() {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(stock.map((s) => s.id)));
+  }
+  function toggleOne(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  }
+
+  const previewCount = useMemo(() => {
+    return bulkText.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("#")).length;
+  }, [bulkText]);
+
   return (
     <div>
       <Link
@@ -124,13 +188,29 @@ function ProductStockPage() {
         <ArrowLeft className="w-4 h-4" /> Voltar para estoque
       </Link>
 
-      <h2 className="text-xl font-bold mb-1">
-        {product?.name ?? "Produto"}
-      </h2>
-      <p className="text-sm text-muted-foreground mb-6">
-        {product?.category} · {product?.country_code} · entrega:{" "}
-        {product?.delivery_mode} — {stock.length} proxies
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+        <div>
+          <h2 className="text-xl font-bold mb-1">{product?.name ?? "Produto"}</h2>
+          <p className="text-sm text-muted-foreground">
+            {product?.category} · {product?.country_code} · entrega:{" "}
+            {product?.delivery_mode} — {stock.length} proxies
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {someSelected && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => { setConfirmText(""); setDelOpen(true); }}
+            >
+              <Trash2 className="w-4 h-4" /> Excluir {selected.size}
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="w-4 h-4" /> Adicionar em massa
+          </Button>
+        </div>
+      </div>
 
       {isLoading && (
         <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -149,6 +229,9 @@ function ProductStockPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                </TableHead>
                 <TableHead>Host:Port</TableHead>
                 <TableHead>Credenciais</TableHead>
                 <TableHead>Protocolo</TableHead>
@@ -163,6 +246,12 @@ function ProductStockPage() {
                 const isEdit = editing === s.id;
                 return (
                   <TableRow key={s.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(s.id)}
+                        onCheckedChange={() => toggleOne(s.id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-xs">
                       {isEdit ? (
                         <div className="flex gap-1">
@@ -322,13 +411,9 @@ function ProductStockPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              if (
-                                confirm(
-                                  "Excluir este proxy do estoque? Esta ação não pode ser desfeita.",
-                                )
-                              ) {
-                                deleteMut.mutate({ data: { id: s.id } });
-                              }
+                              setSelected(new Set([s.id]));
+                              setConfirmText("");
+                              setDelOpen(true);
                             }}
                             disabled={deleteMut.isPending}
                           >
@@ -344,6 +429,94 @@ function ProductStockPage() {
           </Table>
         </div>
       )}
+
+      {/* Bulk add dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Adicionar proxies em massa</DialogTitle>
+            <DialogDescription>
+              Um proxy por linha. Formatos aceitos:
+              <code className="ml-1">host:port</code>,
+              <code className="ml-1">host:port:user:pass</code> ou
+              <code className="ml-1">user:pass@host:port</code>.
+              Linhas iniciadas com # são ignoradas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Textarea
+              rows={10}
+              placeholder={"1.2.3.4:8080:user:pass\n5.6.7.8:3128"}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              className="font-mono text-xs"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Protocolo padrão</label>
+                <Input value={bulkProto} onChange={(e) => setBulkProto(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">País padrão (ex: BR)</label>
+                <Input value={bulkCountry} onChange={(e) => setBulkCountry(e.target.value.toUpperCase())} />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {previewCount} linha(s) detectada(s).
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() =>
+                bulkAddMut.mutate({
+                  data: {
+                    product_id: productId,
+                    text: bulkText,
+                    default_protocol: bulkProto || "http",
+                    default_country: bulkCountry || undefined,
+                  },
+                })
+              }
+              disabled={bulkAddMut.isPending || !bulkText.trim()}
+            >
+              {bulkAddMut.isPending ? "Adicionando…" : `Adicionar ${previewCount}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk delete confirm dialog */}
+      <Dialog open={delOpen} onOpenChange={(o) => { setDelOpen(o); if (!o) setConfirmText(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Excluir {selected.size} proxy(s)?</DialogTitle>
+            <DialogDescription>
+              Esta ação é <b>permanente</b> e não pode ser desfeita. Proxies alocados a clientes serão ignorados automaticamente.
+              <br />
+              Para confirmar, digite <b>EXCLUIR</b> abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="EXCLUIR"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDelOpen(false)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              disabled={confirmText.trim().toUpperCase() !== "EXCLUIR" || bulkDelMut.isPending}
+              onClick={() =>
+                bulkDelMut.mutate({ data: { ids: Array.from(selected) } })
+              }
+            >
+              {bulkDelMut.isPending ? "Excluindo…" : "Excluir definitivamente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

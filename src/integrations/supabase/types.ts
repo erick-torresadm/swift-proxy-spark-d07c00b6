@@ -485,6 +485,7 @@ export type Database = {
           content_md: string
           cover_image_url: string | null
           created_at: string
+          display_author_name: string
           excerpt: string | null
           faq: Json
           id: string
@@ -506,6 +507,7 @@ export type Database = {
           content_md?: string
           cover_image_url?: string | null
           created_at?: string
+          display_author_name?: string
           excerpt?: string | null
           faq?: Json
           id?: string
@@ -527,6 +529,7 @@ export type Database = {
           content_md?: string
           cover_image_url?: string | null
           created_at?: string
+          display_author_name?: string
           excerpt?: string | null
           faq?: Json
           id?: string
@@ -1071,6 +1074,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_blog: { Args: { _user_id: string }; Returns: boolean }
+      can_moderate_comments: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1078,6 +1083,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       prune_proxy_metrics: { Args: never; Returns: undefined }
       release_expired_grace_proxies: {
         Args: never
@@ -1088,7 +1094,7 @@ export type Database = {
     }
     Enums: {
       allocation_status: "active" | "grace" | "released" | "cancelled"
-      app_role: "admin" | "customer"
+      app_role: "admin" | "customer" | "editor" | "moderator"
       chat_sender: "client" | "admin" | "system"
       chat_status: "waiting" | "active" | "closed"
       comment_status: "visible" | "hidden" | "flagged"
@@ -1242,7 +1248,7 @@ export const Constants = {
   public: {
     Enums: {
       allocation_status: ["active", "grace", "released", "cancelled"],
-      app_role: ["admin", "customer"],
+      app_role: ["admin", "customer", "editor", "moderator"],
       chat_sender: ["client", "admin", "system"],
       chat_status: ["waiting", "active", "closed"],
       comment_status: ["visible", "hidden", "flagged"],

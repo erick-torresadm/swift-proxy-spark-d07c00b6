@@ -16,14 +16,31 @@ const faqSchema = z.array(
   }),
 );
 
-async function assertAdmin(userId: string) {
+async function getRoles(userId: string): Promise<string[]> {
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (!data) throw new Error("Acesso negado: apenas admin");
+    .eq("user_id", userId);
+  return (data ?? []).map((r) => r.role as string);
+}
+
+async function assertAdmin(userId: string) {
+  const roles = await getRoles(userId);
+  if (!roles.includes("admin")) throw new Error("Acesso negado: apenas admin");
+}
+
+async function assertBlogEditor(userId: string) {
+  const roles = await getRoles(userId);
+  if (!roles.some((r) => r === "admin" || r === "editor")) {
+    throw new Error("Acesso negado: precisa ser admin ou editor");
+  }
+}
+
+async function assertCommentMod(userId: string) {
+  const roles = await getRoles(userId);
+  if (!roles.some((r) => r === "admin" || r === "editor" || r === "moderator")) {
+    throw new Error("Acesso negado: precisa moderar comentários");
+  }
 }
 
 function estimateReadingMinutes(md: string): number {
@@ -115,7 +132,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
     const { data: post } = await supabaseAdmin
       .from("posts")
       .select(
-        "id, slug, title, excerpt, content_md, cover_image_url, status, published_at, meta_title, meta_description, keyword_primary, keywords_secondary, faq, reading_time_minutes, view_count, post_categories(slug, name), post_tag_map(post_tags(slug, name))",
+        "id, slug, title, excerpt, content_md, cover_image_url, status, published_at, meta_title, meta_description, keyword_primary, keywords_secondary, faq, reading_time_minutes, view_count, display_author_name, post_categories(slug, name), post_tag_map(post_tags(slug, name))",
       )
       .eq("slug", data.slug)
       .eq("status", "published")
@@ -144,6 +161,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
         keywords_secondary: post.keywords_secondary ?? [],
         faq: (post.faq as Array<{ question: string; answer: string }>) ?? [],
         reading_time_minutes: post.reading_time_minutes,
+        author_name: post.display_author_name ?? "FastProxy",
         category: post.post_categories
           ? { slug: post.post_categories.slug, name: post.post_categories.name }
           : null,
@@ -191,7 +209,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
 export const listCategories = createServerFn({ method: "GET" }).handler(async () => {
   const { data } = await supabaseAdmin
     .from("post_categories")
-    .select("slug, name, description")
+    .select("id, slug, name, description")
     .order("name");
   return data ?? [];
 });
@@ -323,7 +341,7 @@ export const moderateComment = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertCommentMod(context.userId);
     if (data.action === "delete") {
       await supabaseAdmin.from("post_comments").delete().eq("id", data.id);
     } else {
@@ -338,7 +356,7 @@ export const moderateComment = createServerFn({ method: "POST" })
 export const listAllComments = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertCommentMod(context.userId);
     const { data: rows } = await supabaseAdmin
       .from("post_comments")
       .select("id, body, status, created_at, user_id, post_id, posts(slug, title)")
@@ -365,13 +383,14 @@ const postUpsertSchema = z.object({
   keywords_secondary: z.array(z.string().max(80)).max(20).default([]),
   faq: faqSchema.default([]),
   tag_ids: z.array(z.string().uuid()).max(20).default([]),
+  display_author_name: z.string().min(1).max(80).default("FastProxy"),
 });
 
 export const upsertPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => postUpsertSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     const payload = {
       slug: data.slug,
       title: data.title,
@@ -391,6 +410,7 @@ export const upsertPost = createServerFn({ method: "POST" })
       keywords_secondary: data.keywords_secondary,
       faq: data.faq,
       reading_time_minutes: estimateReadingMinutes(data.content_md),
+      display_author_name: data.display_author_name,
     };
     let postId = data.id;
     if (postId) {
@@ -418,7 +438,7 @@ export const upsertPost = createServerFn({ method: "POST" })
 export const listAllPostsAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     const { data } = await supabaseAdmin
       .from("posts")
       .select("id, slug, title, status, published_at, view_count, post_categories(name)")
@@ -439,7 +459,7 @@ export const getPostAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     const { data: post } = await supabaseAdmin
       .from("posts")
       .select("*, post_tag_map(tag_id)")
@@ -458,7 +478,7 @@ export const deletePost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     await supabaseAdmin.from("posts").delete().eq("id", data.id);
     return { ok: true };
   });
@@ -478,7 +498,7 @@ export const upsertCategory = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     if (data.id) {
       await supabaseAdmin
         .from("post_categories")
@@ -496,7 +516,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     await supabaseAdmin.from("post_categories").delete().eq("id", data.id);
     return { ok: true };
   });
@@ -521,7 +541,7 @@ export const upsertTag = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     if (data.id) {
       await supabaseAdmin
         .from("post_tags")
@@ -537,7 +557,7 @@ export const deleteTag = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     await supabaseAdmin.from("post_tags").delete().eq("id", data.id);
     return { ok: true };
   });
@@ -547,7 +567,7 @@ export const deleteTag = createServerFn({ method: "POST" })
 export const listProgrammaticAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     const { data } = await supabaseAdmin
       .from("programmatic_pages")
       .select("id, slug, title, group_name, active, view_count, created_at")
@@ -576,7 +596,7 @@ export const generateProgrammaticBulk = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     const fill = (tpl: string, vars: Record<string, string>) =>
       tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
     const rows = data.items.map((vars) => ({
@@ -606,7 +626,7 @@ export const toggleProgrammatic = createServerFn({ method: "POST" })
     z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     await supabaseAdmin
       .from("programmatic_pages")
       .update({ active: data.active })
@@ -618,7 +638,7 @@ export const deleteProgrammatic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertBlogEditor(context.userId);
     await supabaseAdmin.from("programmatic_pages").delete().eq("id", data.id);
     return { ok: true };
   });

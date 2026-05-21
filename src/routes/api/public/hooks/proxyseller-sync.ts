@@ -14,6 +14,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getBalance, purchaseIpv6Block, psDateToIso, safe } from "@/lib/proxyseller.server";
 import { getUsdBrl } from "@/lib/fx.server";
+import { notifyAllAdmins } from "@/lib/notifications.server";
 
 export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
   server: {

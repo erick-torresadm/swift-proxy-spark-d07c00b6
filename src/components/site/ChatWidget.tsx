@@ -52,6 +52,7 @@ function ChatWidgetInner() {
   const { play } = useChatSound();
 
   const startFn = useServerFn(startConversation);
+  const startFnAuth = useServerFn(startConversationAuth);
   const guestSendFn = useServerFn(guestSendMessage);
   const guestPollFn = useServerFn(guestGetMessages);
   const clientSendFn = useServerFn(clientSendMessage);

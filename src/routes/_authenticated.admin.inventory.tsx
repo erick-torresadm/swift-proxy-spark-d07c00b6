@@ -65,8 +65,9 @@ function InventoryPage() {
                     <AlertTriangle className="w-3 h-3" /> Repor
                   </span>
                 )}
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

@@ -49,10 +49,10 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     return { allocated: existing ?? 0, short: 0 };
   }
 
-  let remaining = totalNeeded - (existing ?? 0);
+  const remaining = totalNeeded - (existing ?? 0);
 
   // ───────── 1) Pick available stock first (reuse freed IPs) ─────────
-  let { data: pool } = await supabaseAdmin
+  const { data: pool } = await supabaseAdmin
     .from("proxy_stock")
     .select("id")
     .eq("product_id", product.id)

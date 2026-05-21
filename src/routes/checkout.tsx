@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
+import { validateCouponPublic } from "@/lib/coupons.functions";
 
 type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us";
 type Country = "BR" | "US";

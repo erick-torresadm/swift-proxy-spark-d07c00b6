@@ -12,7 +12,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { pollProxiesForOrder, psDateToIso } from "@/lib/proxyseller.server";
+import { pollProxiesForOrder, psDateToIso, generateSimulatedProxies } from "@/lib/proxyseller.server";
 import { allocateProxiesForOrder } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 

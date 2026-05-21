@@ -45,6 +45,7 @@ function ProxiesPage() {
   const fetchProxies = useServerFn(listMyProxies);
   const rotateFn = useServerFn(rotateProxyIp);
   const reactivateFn = useServerFn(createReactivateCheckout);
+  const reportFn = useServerFn(reportProxyIssue);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["my-proxies"],
@@ -68,6 +69,16 @@ function ProxiesPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const report = useMutation({
+    mutationFn: (v: { allocationId: string; message: string }) =>
+      reportFn({ data: v }),
+    onSuccess: () => toast.success("Reportado. Nossa equipe vai trocar o IP."),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reportMsg, setReportMsg] = useState("");
 
 
   const [query, setQuery] = useState("");

@@ -52,6 +52,23 @@ export function Plans() {
   const { t } = useTranslation();
   const { parts, format } = useCurrency();
 
+  // Live prices from DB (admin-editable). Fallback to hardcoded defaults.
+  const fetchCatalog = useServerFn(getPublicCatalog);
+  const { data: catalog } = useQuery({
+    queryKey: ["public-catalog"],
+    queryFn: () => fetchCatalog(),
+    staleTime: 60_000,
+  });
+  const priceBySlug = new Map(
+    (catalog ?? []).map((p) => [
+      p.slug,
+      {
+        monthly: p.price_monthly_cents / 100,
+        yearly: p.price_yearly_cents ? p.price_yearly_cents / 100 : null,
+      },
+    ]),
+  );
+
   return (
     <section id="planos" className="py-20 md:py-28 relative overflow-hidden">
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[600px] bg-gradient-hero pointer-events-none" />

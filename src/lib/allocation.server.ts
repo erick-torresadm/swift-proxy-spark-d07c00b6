@@ -121,17 +121,12 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     status: "active" as const,
   }));
 
-  const { error: insErr } = await supabaseAdmin
-    .from("customer_proxies")
-    .insert(rows);
+  const { error: insErr } = await supabaseAdmin.from("customer_proxies").insert(rows);
   if (insErr) throw new Error(insErr.message);
 
   // Flip stock to allocated
   const ids = picks.map((p) => p.id);
-  await supabaseAdmin
-    .from("proxy_stock")
-    .update({ status: "allocated" })
-    .in("id", ids);
+  await supabaseAdmin.from("proxy_stock").update({ status: "allocated" }).in("id", ids);
 
   return {
     allocated: (existing ?? 0) + picks.length,
@@ -154,9 +149,7 @@ async function autoPurchaseIpv6IntoStock(
   needed: number,
 ): Promise<number> {
   if (!product.provider_tariff_id) {
-    throw new Error(
-      `product ${product.id} missing provider_tariff_id (ProxySeller config)`,
-    );
+    throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }
 
   let cfg: {
@@ -214,9 +207,7 @@ async function autoPurchaseIpv6IntoStock(
   }));
 
   if (stockRows.length === 0) return 0;
-  const { error: stockErr } = await supabaseAdmin
-    .from("proxy_stock")
-    .insert(stockRows);
+  const { error: stockErr } = await supabaseAdmin.from("proxy_stock").insert(stockRows);
   if (stockErr) throw new Error(`stock insert failed: ${stockErr.message}`);
   return stockRows.length;
 }

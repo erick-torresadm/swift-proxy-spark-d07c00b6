@@ -384,7 +384,10 @@ const postUpsertSchema = z.object({
   faq: faqSchema.default([]),
   tag_ids: z.array(z.string().uuid()).max(20).default([]),
   display_author_name: z.string().min(1).max(80).default("FastProxy"),
+  noindex: z.boolean().default(false),
+  canonical_url: z.string().url().max(500).optional().nullable(),
 });
+
 
 export const upsertPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

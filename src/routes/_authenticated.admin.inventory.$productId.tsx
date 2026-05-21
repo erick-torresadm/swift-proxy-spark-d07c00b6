@@ -62,7 +62,7 @@ function ProductStockPage() {
   const [draft, setDraft] = useState<Partial<StockRow>>({});
 
   const updateMut = useMutation({
-    mutationFn: (vars: Parameters<typeof updateFn>[0]["data"]) =>
+    mutationFn: (vars: Parameters<typeof updateStockItem>[0]["data"]) =>
       updateFn({ data: vars }),
     onSuccess: () => {
       toast.success("Proxy atualizado");

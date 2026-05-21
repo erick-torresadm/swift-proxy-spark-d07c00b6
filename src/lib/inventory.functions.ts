@@ -118,7 +118,7 @@ export const getProviderStatus = createServerFn({ method: "GET" })
     const [settingsRes, snapshotsRes, recentCallsRes, healthRes] = await Promise.all([
       supabaseAdmin
         .from("provider_settings")
-        .select("min_balance_usd, alert_email, auto_purchase_enabled")
+        .select("min_balance_usd, alert_email, auto_purchase_enabled, dry_run")
         .eq("provider", "proxyseller")
         .maybeSingle(),
       supabaseAdmin

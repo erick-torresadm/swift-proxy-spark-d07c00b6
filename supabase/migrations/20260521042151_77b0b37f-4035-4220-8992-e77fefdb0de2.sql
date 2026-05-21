@@ -1,0 +1,1 @@
+ALTER TABLE public.provider_settings ADD COLUMN IF NOT EXISTS dry_run boolean NOT NULL DEFAULT false;

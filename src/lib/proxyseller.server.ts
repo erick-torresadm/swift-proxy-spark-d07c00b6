@@ -214,6 +214,45 @@ function normalizeOrderParams(
   };
 }
 
+/**
+ * Generates fake (but valid-shaped) PsProxyItem rows for dry-run mode.
+ * Hosts are RFC 3849 documentation IPv6 (2001:db8::/32) so they never collide
+ * with real allocations and are obvious in logs/UI as simulated.
+ */
+export function generateSimulatedProxies(
+  baseOrderNumber: string,
+  quantity: number,
+  countryCode: string | null,
+): PsProxyItem[] {
+  const dateEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const dd = String(dateEnd.getUTCDate()).padStart(2, "0");
+  const mm = String(dateEnd.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = dateEnd.getUTCFullYear();
+  const dateStr = `${dd}.${mm}.${yyyy}`;
+  const country = (countryCode || "BR").toUpperCase();
+
+  return Array.from({ length: quantity }, (_, i) => {
+    const hex = Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+    const host = `2001:db8:dry:${baseOrderNumber.slice(-4)}::${hex.slice(0, 4)}:${hex.slice(4)}`;
+    const id = `dry-${baseOrderNumber.slice(-6)}-${i}`;
+    return {
+      id,
+      order_id: baseOrderNumber,
+      order_number: baseOrderNumber,
+      ip: `[${host}]:30000`,
+      ip_only: host,
+      protocol: "HTTPS",
+      port_socks: 30001,
+      port_http: 30000,
+      login: `dry_${id}`,
+      password: Math.random().toString(36).slice(2, 14),
+      country,
+      country_alpha3: country.padEnd(3, "X").slice(0, 3),
+      date_end: dateStr,
+    };
+  });
+}
+
 // ─────────────────────────── List proxies ───────────────────────────
 
 export async function listProxies(

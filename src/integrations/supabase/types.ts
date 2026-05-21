@@ -912,6 +912,7 @@ export type Database = {
         Row: {
           alert_email: string | null
           auto_purchase_enabled: boolean
+          dry_run: boolean
           id: string
           min_balance_usd: number
           provider: string
@@ -920,6 +921,7 @@ export type Database = {
         Insert: {
           alert_email?: string | null
           auto_purchase_enabled?: boolean
+          dry_run?: boolean
           id?: string
           min_balance_usd?: number
           provider?: string
@@ -928,6 +930,7 @@ export type Database = {
         Update: {
           alert_email?: string | null
           auto_purchase_enabled?: boolean
+          dry_run?: boolean
           id?: string
           min_balance_usd?: number
           provider?: string

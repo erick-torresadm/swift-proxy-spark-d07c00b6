@@ -12,7 +12,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { pollProxiesForOrder, psDateToIso } from "@/lib/proxyseller.server";
+import { pollProxiesForOrder, psDateToIso, generateSimulatedProxies } from "@/lib/proxyseller.server";
 import { allocateProxiesForOrder } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 
@@ -52,12 +52,27 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-backfill")({
         };
 
         for (const po of pending ?? []) {
-          const baseOrderNumber = (po.raw_payload as { baseOrderNumber?: string } | null)
-            ?.baseOrderNumber;
+          const payload = po.raw_payload as {
+            baseOrderNumber?: string;
+            dryRun?: boolean;
+            simulateReadyAt?: string;
+            quantityRequested?: number;
+          } | null;
+          const baseOrderNumber = payload?.baseOrderNumber;
           if (!baseOrderNumber || !po.product_id) continue;
 
           try {
-            const proxies = await pollProxiesForOrder(baseOrderNumber, 1, [0]);
+            let proxies;
+            if (payload?.dryRun) {
+              // Simulated order — wait until fake provisioning window passes
+              if (!payload.simulateReadyAt || new Date(payload.simulateReadyAt) > new Date()) {
+                continue;
+              }
+              const qty = payload.quantityRequested || 1;
+              proxies = generateSimulatedProxies(baseOrderNumber, qty, po.country_code);
+            } else {
+              proxies = await pollProxiesForOrder(baseOrderNumber, 1, [0]);
+            }
             if (proxies.length === 0) continue;
 
             const stockRows = proxies.map((p) => ({

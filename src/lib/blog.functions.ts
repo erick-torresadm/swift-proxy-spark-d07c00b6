@@ -384,7 +384,10 @@ const postUpsertSchema = z.object({
   faq: faqSchema.default([]),
   tag_ids: z.array(z.string().uuid()).max(20).default([]),
   display_author_name: z.string().min(1).max(80).default("FastProxy"),
+  noindex: z.boolean().default(false),
+  canonical_url: z.string().url().max(500).optional().nullable(),
 });
+
 
 export const upsertPost = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -411,6 +414,8 @@ export const upsertPost = createServerFn({ method: "POST" })
       faq: data.faq,
       reading_time_minutes: estimateReadingMinutes(data.content_md),
       display_author_name: data.display_author_name,
+      noindex: data.noindex,
+      canonical_url: data.canonical_url ?? null,
     };
     let postId = data.id;
     if (postId) {
@@ -441,19 +446,41 @@ export const listAllPostsAdmin = createServerFn({ method: "GET" })
     await assertBlogEditor(context.userId);
     const { data } = await supabaseAdmin
       .from("posts")
-      .select("id, slug, title, status, published_at, view_count, post_categories(name)")
+      .select(
+        "id, slug, title, status, published_at, view_count, updated_at, meta_title, meta_description, keyword_primary, cover_image_url, faq, content_md, noindex, post_categories(id, name)",
+      )
       .order("created_at", { ascending: false })
-      .limit(200);
-    return (data ?? []).map((p) => ({
-      id: p.id,
-      slug: p.slug,
-      title: p.title,
-      status: p.status,
-      published_at: p.published_at,
-      view_count: p.view_count,
-      category_name: p.post_categories?.name ?? null,
-    }));
+      .limit(500);
+    return (data ?? []).map((p) => {
+      const wordCount = (p.content_md ?? "").trim().split(/\s+/).filter(Boolean).length;
+      const faqArr = (p.faq as unknown[]) ?? [];
+      const seoChecks = {
+        meta_title: !!p.meta_title && p.meta_title.length >= 30 && p.meta_title.length <= 60,
+        meta_description: !!p.meta_description && p.meta_description.length >= 100 && p.meta_description.length <= 160,
+        cover: !!p.cover_image_url,
+        keyword: !!p.keyword_primary,
+        faq: faqArr.length > 0,
+        length: wordCount >= 300,
+      };
+      const passed = Object.values(seoChecks).filter(Boolean).length;
+      return {
+        id: p.id,
+        slug: p.slug,
+        title: p.title,
+        status: p.status,
+        published_at: p.published_at,
+        view_count: p.view_count,
+        updated_at: p.updated_at,
+        category_id: p.post_categories?.id ?? null,
+        category_name: p.post_categories?.name ?? null,
+        word_count: wordCount,
+        noindex: p.noindex ?? false,
+        seo_score: Math.round((passed / 6) * 100),
+        seo_checks: seoChecks,
+      };
+    });
   });
+
 
 export const getPostAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -641,4 +668,269 @@ export const deleteProgrammatic = createServerFn({ method: "POST" })
     await assertBlogEditor(context.userId);
     await supabaseAdmin.from("programmatic_pages").delete().eq("id", data.id);
     return { ok: true };
+  });
+
+/* ---------------- ANÚNCIOS DO BLOG ---------------- */
+
+const adPosition = z.enum(["top", "middle", "bottom"]);
+
+export const listBlogAdsPublic = createServerFn({ method: "GET" }).handler(async () => {
+  const { data } = await supabaseAdmin
+    .from("blog_ads")
+    .select("id, position, title, description, image_url, link_url, html, cta_label")
+    .eq("active", true)
+    .lte("starts_at", new Date().toISOString())
+    .or(`ends_at.is.null,ends_at.gt.${new Date().toISOString()}`)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+  return data ?? [];
+});
+
+export const listBlogAdsAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertBlogEditor(context.userId);
+    const { data } = await supabaseAdmin
+      .from("blog_ads")
+      .select("*")
+      .order("position", { ascending: true })
+      .order("sort_order", { ascending: true });
+    return data ?? [];
+  });
+
+const adUpsertSchema = z.object({
+  id: z.string().uuid().optional(),
+  position: adPosition,
+  title: z.string().min(1).max(200),
+  description: z.string().max(400).optional().nullable(),
+  image_url: z.string().url().max(2000).optional().nullable().or(z.literal("")),
+  link_url: z.string().url().max(2000),
+  html: z.string().max(5000).optional().nullable(),
+  cta_label: z.string().max(60).default("Saiba mais"),
+  active: z.boolean().default(true),
+  starts_at: z.string().optional().nullable(),
+  ends_at: z.string().optional().nullable(),
+  sort_order: z.number().int().min(0).max(9999).default(0),
+});
+
+export const upsertBlogAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => adUpsertSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await assertBlogEditor(context.userId);
+    const payload = {
+      position: data.position,
+      title: data.title,
+      description: data.description ?? null,
+      image_url: data.image_url || null,
+      link_url: data.link_url,
+      html: data.html ?? null,
+      cta_label: data.cta_label,
+      active: data.active,
+      starts_at: data.starts_at ?? new Date().toISOString(),
+      ends_at: data.ends_at ?? null,
+      sort_order: data.sort_order,
+    };
+    if (data.id) {
+      const { error } = await supabaseAdmin.from("blog_ads").update(payload).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { id: data.id };
+    }
+    const { data: ins, error } = await supabaseAdmin
+      .from("blog_ads")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: ins.id };
+  });
+
+export const deleteBlogAd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertBlogEditor(context.userId);
+    await supabaseAdmin.from("blog_ads").delete().eq("id", data.id);
+    return { ok: true };
+  });
+
+export const trackBlogAdClick = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: cur } = await supabaseAdmin
+      .from("blog_ads")
+      .select("click_count")
+      .eq("id", data.id)
+      .maybeSingle();
+    await supabaseAdmin
+      .from("blog_ads")
+      .update({ click_count: (cur?.click_count ?? 0) + 1 })
+      .eq("id", data.id);
+    return { ok: true };
+  });
+
+/* ---------------- BULK + DUPLICATE ---------------- */
+
+export const bulkUpdatePosts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        ids: z.array(z.string().uuid()).min(1).max(200),
+        action: z.enum(["publish", "draft", "archive", "delete"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertBlogEditor(context.userId);
+    if (data.action === "delete") {
+      await supabaseAdmin.from("posts").delete().in("id", data.ids);
+      return { ok: true, count: data.ids.length };
+    }
+    const statusMap = { publish: "published" as const, draft: "draft" as const, archive: "archived" as const };
+    const update: { status: "published" | "draft" | "archived"; published_at?: string } = {
+      status: statusMap[data.action],
+    };
+    if (data.action === "publish") update.published_at = new Date().toISOString();
+    await supabaseAdmin.from("posts").update(update).in("id", data.ids);
+    return { ok: true, count: data.ids.length };
+  });
+
+export const duplicatePost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertBlogEditor(context.userId);
+    const { data: src } = await supabaseAdmin
+      .from("posts")
+      .select("*, post_tag_map(tag_id)")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!src) throw new Error("Post não encontrado");
+    const baseSlug = `${src.slug}-copia`;
+    // garante slug único
+    let slug = baseSlug;
+    for (let i = 2; i < 50; i++) {
+      const { data: ex } = await supabaseAdmin.from("posts").select("id").eq("slug", slug).maybeSingle();
+      if (!ex) break;
+      slug = `${baseSlug}-${i}`;
+    }
+    const { data: ins, error } = await supabaseAdmin
+      .from("posts")
+      .insert({
+        slug,
+        title: `${src.title} (cópia)`,
+        excerpt: src.excerpt,
+        content_md: src.content_md,
+        cover_image_url: src.cover_image_url,
+        status: "draft",
+        category_id: src.category_id,
+        author_id: context.userId,
+        meta_title: src.meta_title,
+        meta_description: src.meta_description,
+        keyword_primary: src.keyword_primary,
+        keywords_secondary: src.keywords_secondary ?? [],
+        faq: src.faq ?? [],
+        reading_time_minutes: src.reading_time_minutes,
+        display_author_name: src.display_author_name,
+        noindex: src.noindex ?? false,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    const tagIds = (src.post_tag_map ?? []).map((m: { tag_id: string }) => m.tag_id);
+    if (tagIds.length) {
+      await supabaseAdmin
+        .from("post_tag_map")
+        .insert(tagIds.map((tag_id: string) => ({ post_id: ins.id, tag_id })));
+    }
+    return { id: ins.id };
+  });
+
+/* ---------------- IA: gerar conteúdo de blog ---------------- */
+
+const aiGenerateSchema = z.object({
+  kind: z.enum(["title", "meta_title", "meta_description", "excerpt", "faq", "outline", "section", "rewrite"]),
+  context: z.string().min(1).max(8000),
+  keyword: z.string().max(80).optional(),
+});
+
+async function callLovableAI(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages,
+    }),
+  });
+  if (res.status === 429) throw new Error("Rate limit. Tente em alguns segundos.");
+  if (res.status === 402) throw new Error("Créditos esgotados. Adicione créditos no Lovable.");
+  if (!res.ok) throw new Error(`Falha IA: ${res.status}`);
+  const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
+  return json.choices?.[0]?.message?.content ?? "";
+}
+
+export const aiGenerateBlog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => aiGenerateSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await assertBlogEditor(context.userId);
+    const kw = data.keyword ? `\nPalavra-chave alvo: "${data.keyword}".` : "";
+    const prompts: Record<typeof data.kind, { sys: string; user: string }> = {
+      title: {
+        sys: "Você é especialista em SEO em português brasileiro. Gere títulos magnéticos e otimizados (máx 60 caracteres).",
+        user: `Gere 5 sugestões de título para o post abaixo. Responda apenas com a lista numerada, sem comentários.${kw}\n\nResumo:\n${data.context}`,
+      },
+      meta_title: {
+        sys: "Você é especialista em SEO. Crie meta title entre 50-60 caracteres, com a palavra-chave no início quando possível.",
+        user: `Crie 1 meta title ideal. Responda APENAS com o texto, sem aspas.${kw}\n\nConteúdo:\n${data.context}`,
+      },
+      meta_description: {
+        sys: "Você é especialista em SEO. Crie meta description entre 140-160 caracteres, com CTA implícito e palavra-chave.",
+        user: `Crie 1 meta description ideal. Responda APENAS com o texto, sem aspas.${kw}\n\nConteúdo:\n${data.context}`,
+      },
+      excerpt: {
+        sys: "Escreva resumos envolventes para blog em português, 2-3 frases, máximo 200 caracteres.",
+        user: `Escreva o resumo (excerpt) do post. Responda APENAS com o texto.${kw}\n\nConteúdo:\n${data.context}`,
+      },
+      faq: {
+        sys: "Gere FAQs que respondem dúvidas reais que aparecem em People Also Ask do Google.",
+        user: `Com base no conteúdo, gere 5 perguntas frequentes com respostas curtas (2-3 frases). Responda em JSON puro no formato: [{"question":"...","answer":"..."}]. Sem markdown, sem cercas \`\`\`.${kw}\n\nConteúdo:\n${data.context}`,
+      },
+      outline: {
+        sys: "Você é estrategista de conteúdo SEO. Gere outlines (estrutura) ricos em entidades e cobrindo intenção de busca completa.",
+        user: `Gere um outline em markdown (H2 e H3) para um post sobre o tema abaixo. Cubra intenção informacional, transacional e comparativa.${kw}\n\nTema:\n${data.context}`,
+      },
+      section: {
+        sys: "Você escreve conteúdo SEO denso, com exemplos concretos, listas e dados. Tom profissional brasileiro.",
+        user: `Escreva uma seção em markdown bem completa (3-5 parágrafos + bullets quando útil). Use H2 no título da seção.${kw}\n\nContexto / pedido:\n${data.context}`,
+      },
+      rewrite: {
+        sys: "Você reescreve textos para serem mais claros, escaneáveis e otimizados para SEO, mantendo o significado.",
+        user: `Reescreva o texto abaixo melhorando clareza, tom e densidade da palavra-chave. Mantenha em markdown.${kw}\n\nTexto:\n${data.context}`,
+      },
+    };
+    const p = prompts[data.kind];
+    const out = await callLovableAI([
+      { role: "system", content: p.sys },
+      { role: "user", content: p.user },
+    ]);
+    // FAQ: parse JSON e devolve estrutura
+    if (data.kind === "faq") {
+      try {
+        const cleaned = out.replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed)) return { faq: parsed };
+      } catch {
+        // fallback: devolve texto bruto
+      }
+      return { faq: [], raw: out };
+    }
+    return { text: out.trim() };
   });

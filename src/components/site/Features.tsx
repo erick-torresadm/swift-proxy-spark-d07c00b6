@@ -1,40 +1,19 @@
 import { motion } from "framer-motion";
 import { Zap, ShieldCheck, RefreshCw, Globe2, Headphones, BarChart3 } from "lucide-react";
-
-const features = [
-  {
-    icon: Zap,
-    title: "Velocidade Real",
-    desc: "Infraestrutura otimizada para scraping, automação e bots. Conexão estável mesmo em alto volume.",
-  },
-  {
-    icon: RefreshCw,
-    title: "Reposição Automática",
-    desc: "Proxy bloqueado? Substituímos sem você precisar abrir chamado. Garantia em todo plano.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Dedicado e Anônimo",
-    desc: "IPs exclusivos seus. Sem compartilhamento, sem rastro, sem risco de banimento por outros.",
-  },
-  {
-    icon: Globe2,
-    title: "IPv6, IPv4 e ISP",
-    desc: "Três tecnologias para encaixar no seu caso de uso — do mais barato ao mais compatível.",
-  },
-  {
-    icon: Headphones,
-    title: "Suporte 24/7",
-    desc: "Time humano que entende de proxy. Resposta em até 15 minutos no plano VIP.",
-  },
-  {
-    icon: BarChart3,
-    title: "Painel Completo",
-    desc: "Acompanhe seus proxies, faturas e regeneração de IP em tempo real. Tudo num só lugar.",
-  },
-];
+import { useTranslation } from "react-i18next";
 
 export function Features() {
+  const { t } = useTranslation();
+
+  const features = [
+    { icon: Zap, title: t("features.items.speed_title"), desc: t("features.items.speed_desc") },
+    { icon: RefreshCw, title: t("features.items.replace_title"), desc: t("features.items.replace_desc") },
+    { icon: ShieldCheck, title: t("features.items.dedicated_title"), desc: t("features.items.dedicated_desc") },
+    { icon: Globe2, title: t("features.items.tech_title"), desc: t("features.items.tech_desc") },
+    { icon: Headphones, title: t("features.items.support_title"), desc: t("features.items.support_desc") },
+    { icon: BarChart3, title: t("features.items.panel_title"), desc: t("features.items.panel_desc") },
+  ];
+
   return (
     <section id="beneficios" className="py-24 md:py-32 relative">
       <div className="max-w-7xl mx-auto px-6">
@@ -46,15 +25,12 @@ export function Features() {
           className="text-center max-w-2xl mx-auto mb-16"
         >
           <div className="inline-block px-4 py-1.5 rounded-full bg-accent border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-4">
-            Benefícios
+            {t("features.tag")}
           </div>
           <h2 className="text-4xl md:text-5xl font-black mb-4">
-            Tudo que você precisa,{" "}
-            <span className="text-gradient">nada que atrapalha</span>
+            {t("features.title_1")} <span className="text-gradient">{t("features.title_2")}</span>
           </h2>
-          <p className="text-muted-foreground text-lg">
-            Construído para quem leva automação a sério.
-          </p>
+          <p className="text-muted-foreground text-lg">{t("features.subtitle")}</p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

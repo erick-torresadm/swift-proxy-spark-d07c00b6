@@ -1,8 +1,12 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/lib/currency";
 
 export function CTA() {
+  const { t } = useTranslation();
+  const { format } = useCurrency();
   return (
     <section className="py-24 md:py-32">
       <div className="max-w-5xl mx-auto px-6">
@@ -24,8 +28,7 @@ export function CTA() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="text-4xl md:text-6xl font-black mb-6"
             >
-              Pronto pra parar de perder{" "}
-              <span className="text-gradient">vendas</span> por causa de proxy ruim?
+              {t("cta.title_1")} <span className="text-gradient">{t("cta.title_2")}</span> {t("cta.title_3")}
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -34,8 +37,7 @@ export function CTA() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
             >
-              Mais de 500 empresas já automatizam com FastProxy. Entrada em segundos,
-              reposição garantida, suporte humano.
+              {t("cta.subtitle")}
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -48,14 +50,14 @@ export function CTA() {
                 to="/signup"
                 className="group inline-flex items-center justify-center gap-2 bg-gradient-primary text-primary-foreground font-bold px-8 py-4 rounded-2xl shadow-glow hover:shadow-elegant transition"
               >
-                Começar agora — R$ 29,90
+                {t("cta.primary")} — {format(29.9)}
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <a
                 href="#planos"
                 className="inline-flex items-center justify-center gap-2 border border-border bg-card/50 backdrop-blur text-foreground font-medium px-8 py-4 rounded-2xl hover:bg-card transition"
               >
-                Ver todos os planos
+                {t("cta.secondary")}
               </a>
             </motion.div>
           </div>

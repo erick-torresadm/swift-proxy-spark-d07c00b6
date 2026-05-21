@@ -69,6 +69,7 @@ function CopyButton({ value, label = "Copiar" }: { value: string; label?: string
 
 function ProxiesPage() {
   const fetchProxies = useServerFn(listMyProxies);
+  const fetchHealth = useServerFn(getMyProxiesHealth);
   const rotateFn = useServerFn(rotateProxyIp);
   const reactivateFn = useServerFn(createReactivateCheckout);
   const reportFn = useServerFn(reportProxyIssue);
@@ -77,6 +78,12 @@ function ProxiesPage() {
     queryKey: ["my-proxies"],
     queryFn: () => fetchProxies(),
     refetchInterval: 60000,
+  });
+  const { data: health } = useQuery({
+    queryKey: ["my-proxies-health"],
+    queryFn: () => fetchHealth(),
+    refetchInterval: 60000,
+    enabled: (data?.length ?? 0) > 0,
   });
 
   const rotate = useMutation({

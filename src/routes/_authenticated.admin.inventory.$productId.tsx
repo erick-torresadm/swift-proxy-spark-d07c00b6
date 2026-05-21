@@ -62,8 +62,7 @@ function ProductStockPage() {
   const [draft, setDraft] = useState<Partial<StockRow>>({});
 
   const updateMut = useMutation({
-    mutationFn: (vars: Parameters<typeof updateStockItem>[0]["data"]) =>
-      updateFn({ data: vars }),
+    mutationFn: updateFn,
     onSuccess: () => {
       toast.success("Proxy atualizado");
       setEditing(null);
@@ -74,7 +73,7 @@ function ProductStockPage() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    mutationFn: deleteFn,
     onSuccess: () => {
       toast.success("Proxy excluído");
       qc.invalidateQueries({ queryKey: ["product-stock", productId] });

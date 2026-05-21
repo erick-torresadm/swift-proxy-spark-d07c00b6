@@ -151,7 +151,10 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      allow_promotion_codes: true,
+      // Stripe rejects allow_promotion_codes when discounts[] is set
+      ...(appliedCoupon
+        ? { discounts: [{ coupon: appliedCoupon.stripe_coupon_id! }] }
+        : { allow_promotion_codes: true }),
       client_reference_id: order.id,
       line_items: [
         {
@@ -179,6 +182,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
           quantity: String(data.quantity),
           customer_email: data.email,
           customer_name: data.name,
+          coupon_code: appliedCoupon?.code ?? "",
         },
       },
       metadata: {
@@ -189,6 +193,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         quantity: String(data.quantity),
         customer_email: data.email,
         customer_name: data.name,
+        coupon_code: appliedCoupon?.code ?? "",
       },
       success_url: `${origin}/checkout/success?order=${order.id}`,
       cancel_url: `${origin}/checkout?plan=${product.slug}&billing=${data.billing}&qty=${data.quantity}&canceled=1`,
@@ -199,5 +204,24 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", order.id);
 
+    // Best-effort: log redemption + increment uses_count (kept simple; webhook
+    // may also record on paid status. We dedupe by order_id.)
+    if (appliedCoupon) {
+      await supabaseAdmin
+        .from("coupon_redemptions" as never)
+        .insert({
+          coupon_id: appliedCoupon.coupon_id,
+          order_id: order.id,
+          user_id: existingUserId,
+          customer_email: data.email,
+          amount_cents_before: totalAmount,
+          discount_cents: appliedCoupon.discount_cents,
+        } as never);
+      await supabaseAdmin.rpc("increment_coupon_uses" as never, {
+        _coupon_id: appliedCoupon.coupon_id,
+      } as never);
+    }
+
     return { url: session.url, sessionId: session.id, orderId: order.id };
   });
+

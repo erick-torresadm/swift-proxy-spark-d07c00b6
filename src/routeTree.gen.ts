@@ -41,6 +41,7 @@ import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminEquipeRouteImport } from './routes/_authenticated.admin.equipe'
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
 import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
+import { Route as AuthenticatedAdminCuponsRouteImport } from './routes/_authenticated.admin.cupons'
 import { Route as AuthenticatedAdminCloudRouteImport } from './routes/_authenticated.admin.cloud'
 import { Route as AuthenticatedAdminChatRouteImport } from './routes/_authenticated.admin.chat'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated.admin.broadcast'
@@ -230,6 +231,12 @@ const AuthenticatedAdminCustomersRoute =
     path: '/customers',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCuponsRoute =
+  AuthenticatedAdminCuponsRouteImport.update({
+    id: '/cupons',
+    path: '/cupons',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCloudRoute = AuthenticatedAdminCloudRouteImport.update({
   id: '/cloud',
   path: '/cloud',
@@ -365,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
+  '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
@@ -414,6 +422,7 @@ export interface FileRoutesByTo {
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
+  '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
@@ -468,6 +477,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/cloud': typeof AuthenticatedAdminCloudRoute
+  '/_authenticated/admin/cupons': typeof AuthenticatedAdminCuponsRoute
   '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/admin/broadcast'
     | '/admin/chat'
     | '/admin/cloud'
+    | '/admin/cupons'
     | '/admin/customers'
     | '/admin/emails'
     | '/admin/equipe'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/admin/broadcast'
     | '/admin/chat'
     | '/admin/cloud'
+    | '/admin/cupons'
     | '/admin/customers'
     | '/admin/emails'
     | '/admin/equipe'
@@ -624,6 +636,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/chat'
     | '/_authenticated/admin/cloud'
+    | '/_authenticated/admin/cupons'
     | '/_authenticated/admin/customers'
     | '/_authenticated/admin/emails'
     | '/_authenticated/admin/equipe'
@@ -901,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCustomersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/cupons': {
+      id: '/_authenticated/admin/cupons'
+      path: '/cupons'
+      fullPath: '/admin/cupons'
+      preLoaderRoute: typeof AuthenticatedAdminCuponsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/cloud': {
       id: '/_authenticated/admin/cloud'
       path: '/cloud'
@@ -1072,6 +1092,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
   AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCloudRoute: typeof AuthenticatedAdminCloudRoute
+  AuthenticatedAdminCuponsRoute: typeof AuthenticatedAdminCuponsRoute
   AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
   AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
@@ -1089,6 +1110,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
   AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCloudRoute: AuthenticatedAdminCloudRoute,
+  AuthenticatedAdminCuponsRoute: AuthenticatedAdminCuponsRoute,
   AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,
   AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,

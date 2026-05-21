@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DollarSign, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { DollarSign, AlertTriangle, CheckCircle2, RefreshCw, Wand2, Save } from "lucide-react";
 import { useState } from "react";
-import { getPricingSnapshots, upsertPricingRule } from "@/lib/inventory.functions";
+import { getPricingSnapshots, upsertPricingRule, setProductPrice } from "@/lib/inventory.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/pricing")({

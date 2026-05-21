@@ -163,10 +163,7 @@ function SuccessPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Quantidade</span>
               <span className="font-semibold">
-                {order.quantity}
-                {order.block_size > 1
-                  ? ` (${order.quantity * order.block_size} IPs)`
-                  : ""}
+                {order.quantity * order.block_size} proxies
               </span>
             </div>
             <div className="flex justify-between">
@@ -183,7 +180,7 @@ function SuccessPage() {
             </div>
             {isPaid && (
               <div className="flex justify-between pt-2 border-t border-border">
-                <span className="text-muted-foreground">Proxies alocados</span>
+                <span className="text-muted-foreground">Proxies prontos</span>
                 <span
                   className={`font-bold ${
                     order.allocated_count > 0 ? "text-primary" : "text-amber-400"

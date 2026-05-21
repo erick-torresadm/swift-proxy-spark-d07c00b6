@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, ChevronRight } from "lucide-react";
 import { getInventoryByProduct } from "@/lib/inventory.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/inventory")({
@@ -30,9 +30,11 @@ function InventoryPage() {
           const min = p.rule?.min_stock ?? 0;
           const low = p.delivery_mode === "stock" && p.available < min;
           return (
-            <div
+            <Link
               key={p.id}
-              className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap"
+              to="/admin/inventory/$productId"
+              params={{ productId: p.id }}
+              className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap hover:border-primary/50 hover:bg-accent/30 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -63,8 +65,9 @@ function InventoryPage() {
                     <AlertTriangle className="w-3 h-3" /> Repor
                   </span>
                 )}
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

@@ -77,8 +77,7 @@ async function psCall<T>(
 }
 
 const psGet = <T>(path: string) => psCall<T>("GET", path);
-const psPost = <T>(path: string, body: Record<string, unknown>) =>
-  psCall<T>("POST", path, body);
+const psPost = <T>(path: string, body: Record<string, unknown>) => psCall<T>("POST", path, body);
 
 // ─────────────────────────── Balance ───────────────────────────
 
@@ -144,6 +143,7 @@ export async function purchaseIpv6Block(params: {
   countryId: number;
   periodId: string;
   quantity: number;
+  protocol?: "HTTPS" | "SOCKS5";
 }): Promise<{
   externalOrderId: string;
   baseOrderNumber: string;
@@ -154,6 +154,7 @@ export async function purchaseIpv6Block(params: {
     countryId: params.countryId,
     periodId: params.periodId,
     quantity: params.quantity,
+    protocol: params.protocol ?? "HTTPS",
     paymentId: 1,
     authorization: "",
   });
@@ -225,9 +226,9 @@ export function psDateToIso(d: string): string | null {
 }
 
 /** Safe wrapper that doesn't throw — returns {ok, data, error}. */
-export async function safe<T>(fn: () => Promise<T>): Promise<
-  { ok: true; data: T } | { ok: false; error: string }
-> {
+export async function safe<T>(
+  fn: () => Promise<T>,
+): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
     return { ok: true, data: await fn() };
   } catch (e) {

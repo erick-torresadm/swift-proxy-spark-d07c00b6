@@ -143,10 +143,6 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 
 
     const origin = originFromRequest();
-    const productLabel =
-      product.block_size > 1
-        ? `${product.name} (bloco de ${product.block_size} IPs)`
-        : product.name;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -166,7 +162,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
               interval: data.billing === "yearly" ? "year" : "month",
             },
             product_data: {
-              name: productLabel,
+              name: product.name,
               description: product.description ?? undefined,
               metadata: { product_slug: product.slug, product_id: product.id },
             },

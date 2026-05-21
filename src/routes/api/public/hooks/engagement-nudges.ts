@@ -102,7 +102,7 @@ async function run(kind: Kind) {
     .from("orders")
     .select("user_id")
     .not("user_id", "is", null)
-    .in("status", ["paid", "active", "past_due", "canceled"]);
+    .in("status", ["paid", "past_due", "grace", "expired", "cancelled"]);
 
   const userIds = Array.from(
     new Set((orders ?? []).map((o) => o.user_id).filter(Boolean) as string[]),

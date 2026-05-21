@@ -10,6 +10,7 @@ const CheckoutSchema = z.object({
   billing: z.enum(["monthly", "yearly"]),
   email: z.string().trim().toLowerCase().email().max(255),
   name: z.string().trim().min(1).max(120),
+  couponCode: z.string().trim().min(1).max(40).optional().nullable(),
 });
 
 function originFromRequest(): string {

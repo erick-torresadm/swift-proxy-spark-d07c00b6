@@ -49,10 +49,10 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     return { allocated: existing ?? 0, short: 0 };
   }
 
-  let remaining = totalNeeded - (existing ?? 0);
+  const remaining = totalNeeded - (existing ?? 0);
 
   // ───────── 1) Pick available stock first (reuse freed IPs) ─────────
-  let { data: pool } = await supabaseAdmin
+  const { data: pool } = await supabaseAdmin
     .from("proxy_stock")
     .select("id")
     .eq("product_id", product.id)
@@ -121,17 +121,12 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     status: "active" as const,
   }));
 
-  const { error: insErr } = await supabaseAdmin
-    .from("customer_proxies")
-    .insert(rows);
+  const { error: insErr } = await supabaseAdmin.from("customer_proxies").insert(rows);
   if (insErr) throw new Error(insErr.message);
 
   // Flip stock to allocated
   const ids = picks.map((p) => p.id);
-  await supabaseAdmin
-    .from("proxy_stock")
-    .update({ status: "allocated" })
-    .in("id", ids);
+  await supabaseAdmin.from("proxy_stock").update({ status: "allocated" }).in("id", ids);
 
   return {
     allocated: (existing ?? 0) + picks.length,
@@ -143,7 +138,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 /**
  * Buys an IPv6 block from ProxySeller and inserts the proxies into stock.
  * Reads ProxySeller config from product.provider_tariff_id as JSON:
- *   { "countryId": 7, "periodId": "30" }
+ *   { "countryId": 20554, "periodId": "1m" }
  */
 async function autoPurchaseIpv6IntoStock(
   product: {
@@ -154,12 +149,16 @@ async function autoPurchaseIpv6IntoStock(
   needed: number,
 ): Promise<number> {
   if (!product.provider_tariff_id) {
-    throw new Error(
-      `product ${product.id} missing provider_tariff_id (ProxySeller config)`,
-    );
+    throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }
 
-  let cfg: { countryId?: number; periodId?: string };
+  let cfg: {
+    countryId?: number;
+    periodId?: string;
+    protocol?: "HTTPS" | "SOCKS5";
+    targetSectionId?: number;
+    targetId?: number;
+  };
   try {
     cfg = JSON.parse(product.provider_tariff_id);
   } catch {
@@ -173,6 +172,9 @@ async function autoPurchaseIpv6IntoStock(
     countryId: cfg.countryId,
     periodId: cfg.periodId,
     quantity: needed,
+    protocol: cfg.protocol,
+    targetSectionId: cfg.targetSectionId,
+    targetId: cfg.targetId,
   });
 
   // Record the provider order
@@ -205,9 +207,7 @@ async function autoPurchaseIpv6IntoStock(
   }));
 
   if (stockRows.length === 0) return 0;
-  const { error: stockErr } = await supabaseAdmin
-    .from("proxy_stock")
-    .insert(stockRows);
+  const { error: stockErr } = await supabaseAdmin.from("proxy_stock").insert(stockRows);
   if (stockErr) throw new Error(`stock insert failed: ${stockErr.message}`);
   return stockRows.length;
 }

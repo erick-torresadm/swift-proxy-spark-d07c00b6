@@ -1,10 +1,15 @@
-// Custom Supabase browser client — points to user's own Supabase project.
-// URL + publishable key are public by design (safe to ship in browser bundles).
+// Supabase browser client — now points to Lovable Cloud.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
-const SUPABASE_URL = 'https://qywamsrnopinsgfvbrks.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vcaxMae1R37-SiELlFL8Ew_S2p8wZIx';
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
+  (typeof process !== 'undefined' ? process.env.SUPABASE_URL : undefined) ??
+  '';
+const SUPABASE_PUBLISHABLE_KEY =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
+  (typeof process !== 'undefined' ? process.env.SUPABASE_PUBLISHABLE_KEY : undefined) ??
+  '';
 
 function createSupabaseClient() {
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

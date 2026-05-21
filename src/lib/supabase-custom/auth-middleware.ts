@@ -6,11 +6,11 @@ import type { Database } from '@/integrations/supabase/types';
 
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    const SUPABASE_URL = process.env.CUSTOM_SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = process.env.CUSTOM_SUPABASE_ANON_KEY;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      throw new Error('Missing CUSTOM_SUPABASE_URL / CUSTOM_SUPABASE_ANON_KEY');
+      throw new Error('Missing SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY');
     }
 
     const request = getRequest();

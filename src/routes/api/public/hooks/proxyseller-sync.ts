@@ -98,6 +98,15 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
 
             if ((avail ?? 0) >= rule.min_stock) continue;
 
+            // 🔔 Alerta admin: estoque abaixo do mínimo
+            void notifyAllAdmins({
+              title: "⚠️ Estoque abaixo do mínimo",
+              body: `${product.name}: ${avail ?? 0} disponíveis (mín. ${rule.min_stock}). Comprando ${rule.batch_quantity} IPs…`,
+              link: "/admin/inventory",
+              metadata: { productId: product.id, available: avail ?? 0, min: rule.min_stock },
+              dedupeKey: `stock-low:${product.id}:${new Date().toISOString().slice(0, 10)}`,
+            });
+
             try {
               const cfg = JSON.parse(product.provider_tariff_id);
               const result = await purchaseIpv6Block({
@@ -143,10 +152,26 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
                 bought: result.proxies.length,
                 cost_cents: result.costCents,
               });
+
+              // 🔔 Alerta admin: restock concluído
+              void notifyAllAdmins({
+                title: "📦 Estoque renovado",
+                body: `${product.name}: +${result.proxies.length} IPs (US$ ${(result.costCents / 100).toFixed(2)}).`,
+                link: "/admin/inventory",
+                metadata: { productId: product.id, bought: result.proxies.length },
+                dedupeKey: `restock-cron:${product.id}:${result.externalOrderId}`,
+              });
             } catch (e) {
-              summary.errors.push(
-                `restock ${product.slug}: ${e instanceof Error ? e.message : String(e)}`,
-              );
+              const msg = e instanceof Error ? e.message : String(e);
+              summary.errors.push(`restock ${product.slug}: ${msg}`);
+              // 🔔 Alerta admin: falha no restock
+              void notifyAllAdmins({
+                title: "🛑 Falha no restock automático",
+                body: `${product.name}: ${msg}`,
+                link: "/admin/inventory",
+                metadata: { productId: product.id, error: msg },
+                dedupeKey: `restock-cron-fail:${product.id}:${new Date().toISOString().slice(0, 13)}`,
+              });
             }
           }
         }

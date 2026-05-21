@@ -33,8 +33,11 @@ function saveGuest(v: { token: string; conversationId: string }) {
 
 export function ChatWidget() {
   const location = useLocation();
-  const hidden = location.pathname.startsWith("/admin");
-  if (hidden) return null;
+  if (location.pathname.startsWith("/admin")) return null;
+  return <ChatWidgetInner />;
+}
+
+function ChatWidgetInner() {
   const [open, setOpen] = useState(false);
   const [authUser, setAuthUser] = useState<{ id: string; email: string | null } | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);

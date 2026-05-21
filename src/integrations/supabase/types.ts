@@ -1076,6 +1076,17 @@ export type Database = {
     Functions: {
       can_manage_blog: { Args: { _user_id: string }; Returns: boolean }
       can_moderate_comments: { Args: { _user_id: string }; Returns: boolean }
+      get_db_total_size: { Args: never; Returns: number }
+      get_db_usage: {
+        Args: never
+        Returns: {
+          dead_rows: number
+          row_count: number
+          table_name: string
+          total_size_bytes: number
+          total_size_pretty: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1090,6 +1101,16 @@ export type Database = {
         Returns: {
           released_count: number
         }[]
+      }
+      run_cleanup: {
+        Args: {
+          _audit_days?: number
+          _closed_chats_days?: number
+          _metrics_days?: number
+          _notifications_days?: number
+          _vacuum?: boolean
+        }
+        Returns: Json
       }
     }
     Enums: {

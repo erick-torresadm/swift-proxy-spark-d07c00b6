@@ -238,9 +238,21 @@ function ProxiesPage() {
       ) : (data?.length ?? 0) === 0 ? (
         <div className="bg-card border border-border rounded-2xl p-10 text-center">
           <Server className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Nenhum proxy ativo. Após a contratação eles aparecem aqui automaticamente.
+          <p className="text-sm font-semibold mb-1">
+            {sync.isPending ? "Sincronizando seus proxies…" : "Nenhum proxy ativo ainda"}
           </p>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto mb-4">
+            Acabou de comprar? Em alguns segundos seus proxies aparecem aqui.
+            Se demorar, clique em <strong>Sincronizar agora</strong> para forçar.
+          </p>
+          <button
+            onClick={() => sync.mutate()}
+            disabled={sync.isPending}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold shadow-glow hover:bg-primary/90 disabled:opacity-50 transition"
+          >
+            <RefreshCw className={`w-4 h-4 ${sync.isPending ? "animate-spin" : ""}`} />
+            {sync.isPending ? "Sincronizando…" : "Sincronizar agora"}
+          </button>
         </div>
       ) : (
         <>

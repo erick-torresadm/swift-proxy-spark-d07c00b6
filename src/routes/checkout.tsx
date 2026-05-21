@@ -209,7 +209,14 @@ function CheckoutPage() {
     setSubmitting(true);
     try {
       const res = await startCheckout({
-        data: { productSlug: slug, quantity: qty, billing, email: cleanEmail, name: cleanName },
+        data: {
+          productSlug: slug,
+          quantity: qty,
+          billing,
+          email: cleanEmail,
+          name: cleanName,
+          couponCode: appliedCoupon?.code ?? null,
+        },
       });
       if (res?.url) {
         window.location.href = res.url;

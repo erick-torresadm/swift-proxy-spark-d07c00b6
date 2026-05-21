@@ -869,6 +869,39 @@ export type Database = {
         }
         Relationships: []
       }
+      proxy_metrics: {
+        Row: {
+          country_seen: string | null
+          error: string | null
+          id: string
+          latency_ms: number | null
+          ok: boolean
+          source: string
+          stock_id: string
+          ts: string
+        }
+        Insert: {
+          country_seen?: string | null
+          error?: string | null
+          id?: string
+          latency_ms?: number | null
+          ok: boolean
+          source?: string
+          stock_id: string
+          ts?: string
+        }
+        Update: {
+          country_seen?: string | null
+          error?: string | null
+          id?: string
+          latency_ms?: number | null
+          ok?: boolean
+          source?: string
+          stock_id?: string
+          ts?: string
+        }
+        Relationships: []
+      }
       proxy_stock: {
         Row: {
           country_code: string | null
@@ -1045,6 +1078,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      prune_proxy_metrics: { Args: never; Returns: undefined }
       release_expired_grace_proxies: {
         Args: never
         Returns: {

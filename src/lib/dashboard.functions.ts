@@ -109,7 +109,7 @@ export const listMyProxies = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("customer_proxies")
       .select(
-        "id, status, allocated_at, order_id, ip_rotations_used, rotations_reset_at, proxy_stock(host, port, username, password, protocol, country_code), orders(grace_until, products(name, slug, ip_rotations_per_month))",
+        "id, stock_id, status, allocated_at, order_id, ip_rotations_used, rotations_reset_at, proxy_stock(host, port, username, password, protocol, country_code), orders(grace_until, products(name, slug, ip_rotations_per_month))",
       )
       .eq("user_id", context.userId)
       .neq("status", "released")
@@ -117,6 +117,7 @@ export const listMyProxies = createServerFn({ method: "GET" })
 
     return (data ?? []).map((r) => ({
       id: r.id,
+      stock_id: r.stock_id,
       order_id: r.order_id,
 
       status: r.status as string,

@@ -2,10 +2,36 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag } from "lucide-react";
+import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag, Activity } from "lucide-react";
 import { listMyProxies, rotateProxyIp, createReactivateCheckout } from "@/lib/dashboard.functions";
 import { reportProxyIssue } from "@/lib/admin-ops.functions";
+import { getMyProxiesHealth } from "@/lib/health.functions";
 import { toast } from "sonner";
+
+function HealthBadge({ stockId, health }: { stockId: string | null; health?: Record<string, { last_ok: boolean | null; uptime_24h: number | null; last_latency_ms: number | null; samples_24h: number }> }) {
+  const h = stockId ? health?.[stockId] : undefined;
+  if (!h || h.samples_24h === 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-muted-foreground/15 text-muted-foreground" title="Aguardando primeira checagem">
+        <Activity className="w-3 h-3" /> —
+      </span>
+    );
+  }
+  const up = h.uptime_24h ?? 0;
+  const color =
+    up >= 99 ? "bg-primary/15 text-primary" :
+    up >= 90 ? "bg-amber-400/15 text-amber-400" :
+    "bg-red-500/15 text-red-400";
+  const label = up >= 99 ? "Saudável" : up >= 90 ? "Degradado" : "Offline";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${color}`}
+      title={`Uptime 24h: ${up.toFixed(1)}%${h.last_latency_ms ? ` · ${h.last_latency_ms}ms` : ""}`}
+    >
+      <Activity className="w-3 h-3" /> {label} {up.toFixed(0)}%
+    </span>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/dashboard/proxies")({
   component: ProxiesPage,
@@ -43,6 +69,7 @@ function CopyButton({ value, label = "Copiar" }: { value: string; label?: string
 
 function ProxiesPage() {
   const fetchProxies = useServerFn(listMyProxies);
+  const fetchHealth = useServerFn(getMyProxiesHealth);
   const rotateFn = useServerFn(rotateProxyIp);
   const reactivateFn = useServerFn(createReactivateCheckout);
   const reportFn = useServerFn(reportProxyIssue);
@@ -51,6 +78,12 @@ function ProxiesPage() {
     queryKey: ["my-proxies"],
     queryFn: () => fetchProxies(),
     refetchInterval: 60000,
+  });
+  const { data: health } = useQuery({
+    queryKey: ["my-proxies-health"],
+    queryFn: () => fetchHealth(),
+    refetchInterval: 60000,
+    enabled: (data?.length ?? 0) > 0,
   });
 
   const rotate = useMutation({
@@ -202,6 +235,7 @@ function ProxiesPage() {
                     <th className="text-left px-4 py-3 font-semibold">Usuário</th>
                     <th className="text-left px-4 py-3 font-semibold">Senha</th>
                     <th className="text-left px-4 py-3 font-semibold">Rotação IP</th>
+                    <th className="text-left px-4 py-3 font-semibold">Saúde</th>
                     <th className="text-left px-4 py-3 font-semibold">Status</th>
                     <th className="text-right px-4 py-3 font-semibold">Ações</th>
                   </tr>
@@ -242,6 +276,9 @@ function ProxiesPage() {
                           )}
                         </td>
                         <td className="px-4 py-3">
+                          <HealthBadge stockId={p.stock_id} health={health} />
+                        </td>
+                        <td className="px-4 py-3">
                           <span
                             className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               p.status === "active"
@@ -280,7 +317,7 @@ function ProxiesPage() {
                   })}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
                         Nenhum proxy corresponde ao filtro.
                       </td>
                     </tr>

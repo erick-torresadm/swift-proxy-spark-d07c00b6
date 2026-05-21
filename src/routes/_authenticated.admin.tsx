@@ -38,6 +38,8 @@ const adminNav: NavItem[] = [
   { to: "/admin/pricing", label: "Preços", icon: DollarSign },
   { to: "/admin/orders", label: "Pedidos", icon: Receipt },
   { to: "/admin/customers", label: "Clientes", icon: Users },
+  { to: "/admin/equipe", label: "Equipe", icon: Users2 },
+  { to: "/admin/blog", label: "Blog & SEO", icon: FileText },
   { to: "/admin/provider", label: "Provedor", icon: ServerCog },
   { to: "/admin/emails", label: "Emails", icon: Mail },
 ];

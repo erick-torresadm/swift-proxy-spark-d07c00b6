@@ -187,22 +187,29 @@ function ProxiesPage() {
     <div className="max-w-6xl">
       <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
         <h1 className="text-2xl sm:text-3xl font-black">Meus proxies</h1>
-        {(data?.length ?? 0) > 0 && (
-          <div className="flex gap-2">
-            <button
-              onClick={copyAll}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-foreground/40 text-sm font-semibold transition"
-            >
-              <Copy className="w-4 h-4" /> Copiar todos
+        <div className="flex flex-wrap gap-2">
+          <BuyMoreDialog>
+            <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-glow hover:bg-primary/90 transition">
+              <ShoppingCart className="w-4 h-4" /> Comprar mais
             </button>
-            <button
-              onClick={downloadList}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold shadow-glow hover:bg-primary/90 transition"
-            >
-              <Download className="w-4 h-4" /> Baixar .txt
-            </button>
-          </div>
-        )}
+          </BuyMoreDialog>
+          {(data?.length ?? 0) > 0 && (
+            <>
+              <button
+                onClick={copyAll}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-foreground/40 text-sm font-semibold transition"
+              >
+                <Copy className="w-4 h-4" /> Copiar todos
+              </button>
+              <button
+                onClick={downloadList}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-foreground/40 text-sm font-semibold transition"
+              >
+                <Download className="w-4 h-4" /> Baixar .txt
+              </button>
+            </>
+          )}
+        </div>
       </div>
       <p className="text-muted-foreground mb-6">
         Use no formato <code className="text-foreground">usuário:senha@host:porta</code>.

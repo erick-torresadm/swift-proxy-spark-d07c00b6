@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DollarSign, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
+import { DollarSign, AlertTriangle, CheckCircle2, RefreshCw, Wand2, Save } from "lucide-react";
 import { useState } from "react";
-import { getPricingSnapshots, upsertPricingRule } from "@/lib/inventory.functions";
+import { getPricingSnapshots, upsertPricingRule, setProductPrice } from "@/lib/inventory.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/pricing")({
@@ -51,19 +51,18 @@ function PricingPage() {
             <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="text-left p-3">Produto</th>
-                <th className="text-right p-3">Custo USD</th>
                 <th className="text-right p-3">Custo BRL</th>
                 <th className="text-right p-3">Markup %</th>
-                <th className="text-right p-3">Preço atual</th>
-                <th className="text-right p-3">Preço sugerido</th>
+                <th className="text-right p-3">Sugerido</th>
+                <th className="text-right p-3">Preço atual (BRL)</th>
                 <th className="text-right p-3">Margem</th>
-                <th className="text-right p-3">Ação</th>
+                <th className="text-right p-3">Ações</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
                     Calculando custos…
                   </td>
                 </tr>
@@ -73,7 +72,7 @@ function PricingPage() {
               ))}
               {!isLoading && (data ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
                     Nenhum produto cadastrado.
                   </td>
                 </tr>
@@ -95,14 +94,28 @@ type SnapshotRow = NonNullable<Awaited<ReturnType<typeof getPricingSnapshots>>>[
 
 function PricingRow({ row }: { row: SnapshotRow }) {
   const qc = useQueryClient();
-  const save = useServerFn(upsertPricingRule);
+  const saveRule = useServerFn(upsertPricingRule);
+  const savePrice = useServerFn(setProductPrice);
   const [markup, setMarkup] = useState<number>(row.markup_pct);
+  const [priceBrl, setPriceBrl] = useState<string>(
+    row.current_price_cents != null ? (row.current_price_cents / 100).toFixed(2) : "",
+  );
 
-  const m = useMutation({
-    mutationFn: save,
+  const ruleMut = useMutation({
+    mutationFn: saveRule,
     onSuccess: () => {
       toast.success(`Markup atualizado: ${row.product_name}`);
       qc.invalidateQueries({ queryKey: ["admin-pricing"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const priceMut = useMutation({
+    mutationFn: savePrice,
+    onSuccess: () => {
+      toast.success(`Preço atualizado: ${row.product_name}`);
+      qc.invalidateQueries({ queryKey: ["admin-pricing"] });
+      qc.invalidateQueries({ queryKey: ["public-catalog"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -116,58 +129,112 @@ function PricingRow({ row }: { row: SnapshotRow }) {
           ? "text-green-500"
           : "text-amber-500";
 
+  const applySuggested = () => {
+    if (row.suggested_price_cents == null) return;
+    priceMut.mutate({
+      data: {
+        product_id: row.product_id,
+        price_monthly_cents: row.suggested_price_cents,
+        auto_yearly: true,
+      },
+    });
+  };
+
+  const applyManual = () => {
+    const cents = Math.round(Number(priceBrl) * 100);
+    if (!Number.isFinite(cents) || cents < 100) {
+      toast.error("Preço inválido (mínimo R$ 1,00)");
+      return;
+    }
+    priceMut.mutate({
+      data: {
+        product_id: row.product_id,
+        price_monthly_cents: cents,
+        auto_yearly: true,
+      },
+    });
+  };
+
   return (
     <tr className="border-t border-border/50">
       <td className="p-3">
         <p className="font-semibold">{row.product_name}</p>
         <p className="text-xs text-muted-foreground">{row.product_slug}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Custo USD: <span className="font-mono">{fmtUsd(row.cost_usd)}</span>
+        </p>
         {row.error && (
           <p className="text-xs text-red-500 flex items-center gap-1 mt-0.5">
             <AlertTriangle className="w-3 h-3" /> {row.error}
           </p>
         )}
       </td>
-      <td className="p-3 text-right font-mono">{fmtUsd(row.cost_usd)}</td>
       <td className="p-3 text-right font-mono">{fmtBrl(row.cost_brl_cents)}</td>
       <td className="p-3 text-right">
-        <input
-          type="number"
-          min={0}
-          max={1000}
-          step={1}
-          value={markup}
-          onChange={(e) => setMarkup(Number(e.target.value))}
-          className="w-20 bg-muted/30 border border-border rounded px-2 py-1 text-right text-xs"
-        />
+        <div className="flex items-center justify-end gap-1">
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            step={1}
+            value={markup}
+            onChange={(e) => setMarkup(Number(e.target.value))}
+            className="w-16 bg-muted/30 border border-border rounded px-2 py-1 text-right text-xs"
+          />
+          <button
+            onClick={() =>
+              ruleMut.mutate({
+                data: { product_id: row.product_id, markup_pct: markup, min_margin_pct: 30 },
+              })
+            }
+            disabled={ruleMut.isPending || markup === row.markup_pct}
+            className="px-2 py-1 rounded bg-muted/40 hover:bg-muted text-[10px] font-bold disabled:opacity-30"
+            title="Salvar markup"
+          >
+            <Save className="w-3 h-3" />
+          </button>
+        </div>
       </td>
-      <td className="p-3 text-right font-mono">{fmtBrl(row.current_price_cents)}</td>
       <td className="p-3 text-right font-mono font-bold">{fmtBrl(row.suggested_price_cents)}</td>
+      <td className="p-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <span className="text-xs text-muted-foreground">R$</span>
+          <input
+            type="number"
+            min={1}
+            step="0.01"
+            value={priceBrl}
+            onChange={(e) => setPriceBrl(e.target.value)}
+            className="w-24 bg-muted/30 border border-border rounded px-2 py-1 text-right text-xs font-mono"
+          />
+          <button
+            onClick={applyManual}
+            disabled={priceMut.isPending}
+            className="px-2 py-1 rounded bg-primary text-primary-foreground text-[10px] font-bold disabled:opacity-30"
+            title="Salvar preço manual"
+          >
+            <Save className="w-3 h-3" />
+          </button>
+        </div>
+      </td>
       <td className={`p-3 text-right font-bold ${marginColor}`}>
         {row.margin_pct == null ? "—" : `${row.margin_pct.toFixed(1)}%`}
-        {row.below_min_margin && (
-          <AlertTriangle className="inline-block w-3 h-3 ml-1" />
-        )}
+        {row.below_min_margin && <AlertTriangle className="inline-block w-3 h-3 ml-1" />}
         {!row.below_min_margin && row.margin_pct != null && row.margin_pct >= 50 && (
           <CheckCircle2 className="inline-block w-3 h-3 ml-1" />
         )}
       </td>
       <td className="p-3 text-right">
         <button
-          onClick={() =>
-            m.mutate({
-              data: {
-                product_id: row.product_id,
-                markup_pct: markup,
-                min_margin_pct: 30,
-              },
-            })
-          }
-          disabled={m.isPending || markup === row.markup_pct}
-          className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-bold disabled:opacity-30"
+          onClick={applySuggested}
+          disabled={priceMut.isPending || row.suggested_price_cents == null}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-500/15 text-green-500 text-[10px] font-bold disabled:opacity-30"
+          title="Aplicar preço sugerido (anual = mensal × 12 × 0,825)"
         >
-          Salvar
+          <Wand2 className="w-3 h-3" /> Aplicar sugerido
         </button>
       </td>
     </tr>
   );
 }
+

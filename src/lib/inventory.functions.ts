@@ -358,3 +358,34 @@ export const deleteStockItem = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---- Direct price editing ----
+const setProductPriceInput = z.object({
+  product_id: z.string().uuid(),
+  price_monthly_cents: z.number().int().min(100).max(10_000_000),
+  price_yearly_cents: z.number().int().min(100).max(100_000_000).nullable().optional(),
+  auto_yearly: z.boolean().optional(),
+});
+
+export const setProductPrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => setProductPriceInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    let yearly = data.price_yearly_cents ?? null;
+    if (yearly == null && data.auto_yearly) {
+      yearly = Math.round(data.price_monthly_cents * 12 * 0.825);
+    }
+    const payload: Record<string, unknown> = {
+      price_monthly_cents: data.price_monthly_cents,
+      updated_at: new Date().toISOString(),
+    };
+    if (yearly != null) payload.price_yearly_cents = yearly;
+    const { error } = await supabaseAdmin
+      .from("products")
+      .update(payload as never)
+      .eq("id", data.product_id);
+    if (error) throw new Error(error.message);
+    return { ok: true, price_monthly_cents: data.price_monthly_cents, price_yearly_cents: yearly };
+  });
+

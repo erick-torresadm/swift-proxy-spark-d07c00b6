@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useLocation, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail, DollarSign, Wrench, AlertCircle, MessageCircle, Megaphone, FileText, Users2, Cloud } from "lucide-react";
+import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail, DollarSign, Wrench, AlertCircle, MessageCircle, Megaphone, FileText, Users2, Cloud, Tag } from "lucide-react";
 import { supabase } from "@/lib/supabase-custom/client";
 import { countOpenIssues } from "@/lib/admin-ops.functions";
 
@@ -36,6 +36,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/broadcast", label: "Notificações", icon: Megaphone },
   { to: "/admin/inventory", label: "Estoque", icon: Package },
   { to: "/admin/pricing", label: "Preços", icon: DollarSign },
+  { to: "/admin/cupons", label: "Cupons", icon: Tag },
   { to: "/admin/orders", label: "Pedidos", icon: Receipt },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/equipe", label: "Equipe", icon: Users2 },

@@ -142,6 +142,96 @@ export type Database = {
           },
         ]
       }
+      coupon_redemptions: {
+        Row: {
+          amount_cents_before: number
+          coupon_id: string
+          created_at: string
+          customer_email: string | null
+          discount_cents: number
+          id: string
+          order_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents_before: number
+          coupon_id: string
+          created_at?: string
+          customer_email?: string | null
+          discount_cents: number
+          id?: string
+          order_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents_before?: number
+          coupon_id?: string
+          created_at?: string
+          customer_email?: string | null
+          discount_cents?: number
+          id?: string
+          order_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      coupons: {
+        Row: {
+          active: boolean
+          applies_to_billing: string
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          kind: Database["public"]["Enums"]["coupon_kind"]
+          max_uses: number | null
+          min_amount_cents: number
+          stripe_coupon_id: string | null
+          updated_at: string
+          uses_count: number
+          valid_from: string
+          valid_until: string | null
+          value_cents: number | null
+          value_pct: number | null
+        }
+        Insert: {
+          active?: boolean
+          applies_to_billing?: string
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["coupon_kind"]
+          max_uses?: number | null
+          min_amount_cents?: number
+          stripe_coupon_id?: string | null
+          updated_at?: string
+          uses_count?: number
+          valid_from?: string
+          valid_until?: string | null
+          value_cents?: number | null
+          value_pct?: number | null
+        }
+        Update: {
+          active?: boolean
+          applies_to_billing?: string
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["coupon_kind"]
+          max_uses?: number | null
+          min_amount_cents?: number
+          stripe_coupon_id?: string | null
+          updated_at?: string
+          uses_count?: number
+          valid_from?: string
+          valid_until?: string | null
+          value_cents?: number | null
+          value_pct?: number | null
+        }
+        Relationships: []
+      }
       customer_proxies: {
         Row: {
           allocated_at: string
@@ -1094,6 +1184,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_coupon_uses: {
+        Args: { _coupon_id: string }
+        Returns: undefined
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       prune_proxy_metrics: { Args: never; Returns: undefined }
       release_expired_grace_proxies: {
@@ -1112,6 +1206,10 @@ export type Database = {
         }
         Returns: Json
       }
+      validate_coupon: {
+        Args: { _amount_cents: number; _billing?: string; _code: string }
+        Returns: Json
+      }
     }
     Enums: {
       allocation_status: "active" | "grace" | "released" | "cancelled"
@@ -1119,6 +1217,7 @@ export type Database = {
       chat_sender: "client" | "admin" | "system"
       chat_status: "waiting" | "active" | "closed"
       comment_status: "visible" | "hidden" | "flagged"
+      coupon_kind: "percent" | "fixed"
       delivery_mode: "stock" | "direct"
       notification_kind:
         | "expiring_soon"
@@ -1273,6 +1372,7 @@ export const Constants = {
       chat_sender: ["client", "admin", "system"],
       chat_status: ["waiting", "active", "closed"],
       comment_status: ["visible", "hidden", "flagged"],
+      coupon_kind: ["percent", "fixed"],
       delivery_mode: ["stock", "direct"],
       notification_kind: [
         "expiring_soon",

@@ -340,7 +340,7 @@ export const moderateComment = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
+    await assertCommentMod(context.userId);
     if (data.action === "delete") {
       await supabaseAdmin.from("post_comments").delete().eq("id", data.id);
     } else {

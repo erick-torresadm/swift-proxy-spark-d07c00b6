@@ -204,9 +204,10 @@ async function autoPurchaseIpv6IntoStock(
     expires_at: psDateToIso(p.date_end),
   }));
 
-  if (stockRows.length === 0) return;
+  if (stockRows.length === 0) return 0;
   const { error: stockErr } = await supabaseAdmin
     .from("proxy_stock")
     .insert(stockRows);
   if (stockErr) throw new Error(`stock insert failed: ${stockErr.message}`);
+  return stockRows.length;
 }

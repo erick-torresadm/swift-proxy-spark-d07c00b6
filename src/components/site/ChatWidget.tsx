@@ -180,7 +180,7 @@ function ChatWidgetInner() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!body.trim() || !conversationId) return;
+    if (!body.trim()) return;
     setSending(true);
     const text = body.trim();
     setBody("");
@@ -189,9 +189,22 @@ function ChatWidgetInner() {
     setMessages((p) => [...p, tmp]);
     play("outgoing");
     try {
-      if (authUser) {
+      if (authUser && !conversationId) {
+        // primeira mensagem do cliente autenticado — cria a conversa
+        const r = await startFn({
+          data: {
+            name: authUser.email?.split("@")[0] || "Cliente",
+            email: authUser.email ?? "",
+            phone: "",
+            subject: "",
+            message: text,
+            userId: authUser.id,
+          },
+        });
+        setConversationId(r.conversationId);
+      } else if (authUser && conversationId) {
         await clientSendFn({ data: { conversationId, body: text } });
-      } else if (guestToken) {
+      } else if (guestToken && conversationId) {
         await guestSendFn({ data: { conversationId, guestToken, body: text } });
       }
     } catch (err) {

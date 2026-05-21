@@ -37,10 +37,12 @@ function SuccessPage() {
   const { order: orderId } = Route.useSearch();
   const { user, loading: authLoading } = useAuth();
   const fetchOrder = useServerFn(getOrderPublicStatus);
+  const syncAllocations = useServerFn(syncMyAllocations);
 
   const [order, setOrder] = useState<OrderStatus>(null);
   const [polling, setPolling] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
@@ -51,8 +53,9 @@ function SuccessPage() {
     }
 
     let cancelled = false;
-    const MAX = 20; // ~40s
+    const MAX = 30; // ~60s
     let i = 0;
+    let triedSync = false;
 
     async function tick() {
       i++;
@@ -61,7 +64,27 @@ function SuccessPage() {
         const data = await fetchOrder({ data: { orderId: orderId! } });
         if (cancelled) return;
         setOrder(data);
-        if (data?.status === "paid") {
+
+        // Pago mas sem proxies → dispara sync (1x) e continua polling
+        if (
+          data?.status === "paid" &&
+          (data.allocated_count ?? 0) === 0 &&
+          !triedSync &&
+          user
+        ) {
+          triedSync = true;
+          try {
+            const r = await syncAllocations();
+            if (!cancelled && r.error) setSyncError(r.error);
+          } catch (e) {
+            if (!cancelled) {
+              setSyncError(e instanceof Error ? e.message : String(e));
+            }
+          }
+        }
+
+        // Sucesso completo: pago E alocado
+        if (data?.status === "paid" && (data.allocated_count ?? 0) > 0) {
           setPolling(false);
           return;
         }
@@ -80,7 +103,7 @@ function SuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, fetchOrder]);
+  }, [orderId, fetchOrder, syncAllocations, user]);
 
   const isPaid = order?.status === "paid";
   const isLoggedIn = !!user && !authLoading;

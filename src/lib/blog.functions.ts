@@ -409,6 +409,7 @@ export const upsertPost = createServerFn({ method: "POST" })
       keywords_secondary: data.keywords_secondary,
       faq: data.faq,
       reading_time_minutes: estimateReadingMinutes(data.content_md),
+      display_author_name: data.display_author_name,
     };
     let postId = data.id;
     if (postId) {

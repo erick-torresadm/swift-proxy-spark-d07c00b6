@@ -11,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { z } from "zod";
-import { getOrderPublicStatus } from "@/lib/dashboard.functions";
+import { getOrderPublicStatus, syncMyAllocations } from "@/lib/dashboard.functions";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({

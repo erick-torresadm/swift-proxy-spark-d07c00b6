@@ -11,7 +11,7 @@
  * Auth: header `apikey` deve bater com SUPABASE_PUBLISHABLE_KEY
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getBalance, purchaseIpv6Block, psDateToIso, safe } from "@/lib/proxyseller.server";
 import { getUsdBrl } from "@/lib/fx.server";
 

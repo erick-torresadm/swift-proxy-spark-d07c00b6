@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
+import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 
 function clientIp(): string | null {
   return (

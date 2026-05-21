@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-custom/client";
 import { ChatWidget } from "@/components/site/ChatWidget";
 import { CookieBanner } from "@/components/site/CookieBanner";
 import { ThemeProvider, themeInitScript, useTheme } from "@/lib/theme";

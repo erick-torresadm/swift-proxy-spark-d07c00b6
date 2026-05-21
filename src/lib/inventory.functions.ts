@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getBalance, safe } from "./proxyseller.server";
 import { computePricingSnapshots } from "./pricing.server";
 import { getUsdBrl } from "./fx.server";

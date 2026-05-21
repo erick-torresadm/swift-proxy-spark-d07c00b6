@@ -3,7 +3,7 @@
  * - Custo USD vem de `calcOrder` da ProxySeller (ou cache do último restock)
  * - Multiplica por cotação USD→BRL + markup % → preço sugerido em BRL
  */
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { calcOrder, safe, type PsProxyKind } from "./proxyseller.server";
 import { getUsdBrl } from "./fx.server";
 

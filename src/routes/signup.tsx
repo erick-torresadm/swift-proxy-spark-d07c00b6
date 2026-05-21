@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-custom/client";
 import logo from "@/assets/logo-fastproxy.png";
 
 export const Route = createFileRoute("/signup")({

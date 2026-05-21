@@ -8,7 +8,7 @@ import {
   adminSendMessage,
   adminCloseConversation,
 } from "@/lib/chat.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-custom/client";
 import { useChatSound } from "@/hooks/useChatSound";
 import {
   MessageCircle, Send, Search, Mail, Phone, Globe, User, Hash, X, Loader2, CheckCircle2,

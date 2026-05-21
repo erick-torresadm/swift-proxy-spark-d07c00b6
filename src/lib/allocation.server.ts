@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { purchaseIpv6Block, psDateToIso } from "./proxyseller.server";
 
 /**

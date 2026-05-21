@@ -201,6 +201,7 @@ const providerSettingsInput = z.object({
   min_balance_usd: z.number().min(0).max(100000),
   alert_email: z.string().email().nullable().optional(),
   auto_purchase_enabled: z.boolean(),
+  dry_run: z.boolean().optional(),
 });
 
 export const updateProviderSettings = createServerFn({ method: "POST" })
@@ -214,6 +215,7 @@ export const updateProviderSettings = createServerFn({ method: "POST" })
         min_balance_usd: data.min_balance_usd,
         alert_email: data.alert_email ?? null,
         auto_purchase_enabled: data.auto_purchase_enabled,
+        dry_run: data.dry_run ?? false,
       } as never)
       .eq("provider", "proxyseller");
     if (error) throw new Error(error.message);

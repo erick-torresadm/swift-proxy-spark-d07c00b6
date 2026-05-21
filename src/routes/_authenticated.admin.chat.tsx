@@ -13,7 +13,7 @@ import { useChatSound } from "@/hooks/useChatSound";
 import { CANNED_MESSAGES } from "@/lib/chat-canned";
 import {
   MessageCircle, Send, Search, Mail, Phone, Globe, User, Hash, Loader2, CheckCircle2,
-  Volume2, VolumeX, Bell, BellOff, Copy, BookOpen, ChevronDown, Smile, Paperclip,
+  Volume2, VolumeX, Bell, BellOff, Copy, BookOpen, ChevronDown, Smile,
 } from "lucide-react";
 import { toast } from "sonner";
 

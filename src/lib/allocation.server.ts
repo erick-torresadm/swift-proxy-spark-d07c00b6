@@ -1,6 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { purchaseIpv6Block, psDateToIso } from "./proxyseller.server";
+import { purchaseIpv6Block, pollProxiesForOrder, psDateToIso } from "./proxyseller.server";
+import type { PsProxyItem } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
+
+const PURCHASE_LOCK_TTL_MS = 90_000;
+const PENDING_REUSE_MAX_AGE_MS = 5 * 60_000;
 
 /**
  * Allocates proxies from stock to a paid order.

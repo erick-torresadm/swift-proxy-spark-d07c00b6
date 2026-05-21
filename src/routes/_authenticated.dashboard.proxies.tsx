@@ -93,7 +93,7 @@ function ProxiesPage() {
       if (r.allocated > 0) {
         toast.success(`${r.allocated} proxies sincronizados!`);
       } else if (r.error) {
-        toast.error(`Falha ao sincronizar: ${r.error}`);
+        toast.error("Não conseguimos liberar seus proxies agora. Nossa equipe já foi avisada e em instantes eles aparecem aqui.");
       } else if (r.synced === 0) {
         toast.info("Nenhum pedido pago encontrado.");
       } else {

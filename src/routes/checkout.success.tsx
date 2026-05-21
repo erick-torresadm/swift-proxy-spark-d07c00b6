@@ -199,7 +199,7 @@ function SuccessPage() {
         {/* Body messages */}
         {polling && !isPaid && (
           <div className="mt-6 text-center text-xs text-muted-foreground">
-            Tentativa {attempts}/20…
+            Tentativa {attempts}/30…
           </div>
         )}
 

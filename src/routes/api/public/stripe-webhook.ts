@@ -222,7 +222,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                     body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}`,
                     link: `/admin/orders`,
                     metadata: { orderId, productSlug: prod?.slug },
-                    dedupeKey: `sale:${orderId}`,
+                    // sem dedupeKey: admin recebe alerta de TODA venda
                   });
                 } catch (e) {
                   console.error("admin sale notify failed", e);

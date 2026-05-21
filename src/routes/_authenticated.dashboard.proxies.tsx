@@ -292,6 +292,52 @@ function ProxiesPage() {
         </>
       )}
 
+      {reportTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          onClick={() => setReportTarget(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-black mb-1 flex items-center gap-2">
+              <Flag className="w-5 h-5 text-amber-400" /> Reportar erro
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Conte rapidamente o que está acontecendo. Vamos trocar o IP por outro do estoque.
+            </p>
+            <textarea
+              autoFocus
+              value={reportMsg}
+              onChange={(e) => setReportMsg(e.target.value)}
+              rows={3}
+              placeholder="Ex: IP bloqueado no Instagram, lentidão, sem conexão…"
+              className="w-full p-3 mb-4 rounded-lg border border-border bg-background text-sm"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setReportTarget(null)}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={reportMsg.trim().length < 2 || report.isPending}
+                onClick={() => {
+                  report.mutate(
+                    { allocationId: reportTarget, message: reportMsg.trim() },
+                    { onSuccess: () => setReportTarget(null) },
+                  );
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-amber-500 text-amber-950 disabled:opacity-50 hover:bg-amber-400 transition"
+              >
+                {report.isPending ? "Enviando…" : "Enviar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

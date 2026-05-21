@@ -209,10 +209,17 @@ export const adminListConversations = createServerFn({ method: "POST" })
       .limit(200);
     if (data.status !== "all") q = q.eq("status", data.status);
     if (data.search) {
-      const s = `%${data.search}%`;
-      q = q.or(
-        `guest_name.ilike.${s},guest_email.ilike.${s},guest_phone.ilike.${s},guest_ip.ilike.${s},id.eq.${data.search}`,
-      );
+      const raw = data.search.trim();
+      const s = `%${raw}%`;
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const filters = [
+        `guest_name.ilike.${s}`,
+        `guest_email.ilike.${s}`,
+        `guest_phone.ilike.${s}`,
+        `guest_ip.ilike.${s}`,
+      ];
+      if (uuidRe.test(raw)) filters.push(`id.eq.${raw}`);
+      q = q.or(filters.join(","));
     }
     const { data: convs, error } = await q;
     if (error) throw new Error(error.message);

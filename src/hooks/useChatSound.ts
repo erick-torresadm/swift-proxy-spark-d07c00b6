@@ -1,15 +1,26 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Som de dopamina sintetizado via Web Audio API.
- * - "incoming": dois bips ascendentes (nova mensagem recebida)
- * - "outgoing": bip curto e suave (mensagem enviada)
- * - "newChat": acorde tipo "level up" para fila admin
+ * Sons sintetizados via Web Audio API + toggle de mute persistente.
  */
 type SoundKind = "incoming" | "outgoing" | "newChat";
 
+const LS_KEY = "chat:sound:muted";
+
 export function useChatSound() {
   const ctxRef = useRef<AudioContext | null>(null);
+  const [muted, setMutedState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(LS_KEY) === "1";
+  });
+
+  const setMuted = useCallback((v: boolean) => {
+    setMutedState(v);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LS_KEY, v ? "1" : "0");
+    }
+  }, []);
+  const toggleMuted = useCallback(() => setMuted(!muted), [muted, setMuted]);
 
   const ensureCtx = useCallback(() => {
     if (typeof window === "undefined") return null;
@@ -50,6 +61,7 @@ export function useChatSound() {
 
   const play = useCallback(
     (kind: SoundKind) => {
+      if (muted) return;
       const ctx = ensureCtx();
       if (!ctx) return;
       if (kind === "incoming") {
@@ -63,10 +75,9 @@ export function useChatSound() {
         playTone(ctx, 783.99, 0.16, 0.28, 0.2, "triangle");
       }
     },
-    [ensureCtx, playTone],
+    [ensureCtx, playTone, muted],
   );
 
-  // desbloqueia áudio no primeiro gesto do usuário
   useEffect(() => {
     if (typeof window === "undefined") return;
     const unlock = () => ensureCtx();
@@ -78,5 +89,5 @@ export function useChatSound() {
     };
   }, [ensureCtx]);
 
-  return { play };
+  return { play, muted, toggleMuted, setMuted };
 }

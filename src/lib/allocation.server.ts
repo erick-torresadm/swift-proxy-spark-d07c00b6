@@ -19,6 +19,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   allocated: number;
   short: number;
   error?: string;
+  pending?: boolean;
 }> {
   const { data: order, error: orderErr } = await supabaseAdmin
     .from("orders")

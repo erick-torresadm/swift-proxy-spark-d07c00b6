@@ -54,10 +54,15 @@ function AuthenticatedLayout() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Mobile toggle */}
+      {/* Mobile toggle — bottom-left to avoid iOS status bar */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border"
+        className="lg:hidden fixed z-50 p-3 rounded-full bg-card border border-border shadow-lg"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom) + 1rem)",
+          left: "calc(env(safe-area-inset-left) + 1rem)",
+        }}
+        aria-label="Menu"
       >
         {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>

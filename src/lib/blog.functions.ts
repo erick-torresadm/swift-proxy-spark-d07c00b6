@@ -209,7 +209,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
 export const listCategories = createServerFn({ method: "GET" }).handler(async () => {
   const { data } = await supabaseAdmin
     .from("post_categories")
-    .select("slug, name, description")
+    .select("id, slug, name, description")
     .order("name");
   return data ?? [];
 });

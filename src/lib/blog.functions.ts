@@ -161,6 +161,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
         keywords_secondary: post.keywords_secondary ?? [],
         faq: (post.faq as Array<{ question: string; answer: string }>) ?? [],
         reading_time_minutes: post.reading_time_minutes,
+        author_name: post.display_author_name ?? "FastProxy",
         category: post.post_categories
           ? { slug: post.post_categories.slug, name: post.post_categories.name }
           : null,

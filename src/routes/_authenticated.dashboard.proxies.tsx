@@ -73,11 +73,12 @@ function ProxiesPage() {
   const rotateFn = useServerFn(rotateProxyIp);
   const reactivateFn = useServerFn(createReactivateCheckout);
   const reportFn = useServerFn(reportProxyIssue);
+  const syncFn = useServerFn(syncMyAllocations);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["my-proxies"],
     queryFn: () => fetchProxies(),
-    refetchInterval: 60000,
+    refetchInterval: (q) => ((q.state.data?.length ?? 0) === 0 ? 5000 : 60000),
   });
   const { data: health } = useQuery({
     queryKey: ["my-proxies-health"],
@@ -85,6 +86,34 @@ function ProxiesPage() {
     refetchInterval: 60000,
     enabled: (data?.length ?? 0) > 0,
   });
+
+  const sync = useMutation({
+    mutationFn: () => syncFn(),
+    onSuccess: (r) => {
+      if (r.allocated > 0) {
+        toast.success(`${r.allocated} proxies sincronizados!`);
+      } else if (r.error) {
+        toast.error(`Falha ao sincronizar: ${r.error}`);
+      } else if (r.synced === 0) {
+        toast.info("Nenhum pedido pago encontrado.");
+      } else {
+        toast.info("Estoque ainda não disponível. Tente novamente em alguns instantes.");
+      }
+      qc.invalidateQueries({ queryKey: ["my-proxies"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Auto-tenta sincronizar 1x ao carregar caso esteja sem proxies (corrige race do webhook).
+  const autoSyncedRef = useRef(false);
+  useEffect(() => {
+    if (isLoading) return;
+    if (autoSyncedRef.current) return;
+    if ((data?.length ?? 0) === 0) {
+      autoSyncedRef.current = true;
+      sync.mutate();
+    }
+  }, [isLoading, data, sync]);
 
   const rotate = useMutation({
     mutationFn: (proxyId: string) => rotateFn({ data: { proxyId } }),

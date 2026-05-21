@@ -338,11 +338,18 @@ async function tryFulfillFromPendingOrders(
 
   let total = 0;
   for (const po of pending) {
-    const baseOrderNumber = (po.raw_payload as { baseOrderNumber?: string } | null)
-      ?.baseOrderNumber;
+    const payload = (po.raw_payload as { baseOrderNumber?: string; dryRun?: boolean; simulateReadyAt?: string } | null);
+    const baseOrderNumber = payload?.baseOrderNumber;
     if (!baseOrderNumber) continue;
 
-    const proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500]);
+    let proxies: PsProxyItem[] = [];
+    if (payload?.dryRun) {
+      // Simulated order — only materialize once the fake provisioning window passes
+      if (!payload.simulateReadyAt || new Date(payload.simulateReadyAt) > new Date()) continue;
+      proxies = generateSimulatedProxies(baseOrderNumber, po.quantity || 1, product.country_code);
+    } else {
+      proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500]);
+    }
     if (proxies.length === 0) continue;
 
     const added = await insertProxiesToStock(product, po.id, proxies);

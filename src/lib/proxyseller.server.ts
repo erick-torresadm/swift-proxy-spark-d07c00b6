@@ -150,7 +150,7 @@ export async function purchaseIpv6Block(params: {
   costCents: number;
   proxies: PsProxyItem[];
 }> {
-  const order = await psPost<PsOrderMakeData>("/order/make/ipv6", {
+  const order = await psPost<PsOrderMakeData>("/order/make", {
     countryId: params.countryId,
     periodId: params.periodId,
     quantity: params.quantity,

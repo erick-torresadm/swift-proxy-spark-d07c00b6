@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Package, AlertTriangle, ChevronRight } from "lucide-react";
 import { getInventoryByProduct } from "@/lib/inventory.functions";
 
-export const Route = createFileRoute("/_authenticated/admin/inventory")({
+export const Route = createFileRoute("/_authenticated/admin/inventory/")({
   component: InventoryPage,
 });
 

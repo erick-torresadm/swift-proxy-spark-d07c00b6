@@ -51,13 +51,12 @@ function PricingPage() {
             <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="text-left p-3">Produto</th>
-                <th className="text-right p-3">Custo USD</th>
                 <th className="text-right p-3">Custo BRL</th>
                 <th className="text-right p-3">Markup %</th>
-                <th className="text-right p-3">Preço atual</th>
-                <th className="text-right p-3">Preço sugerido</th>
+                <th className="text-right p-3">Sugerido</th>
+                <th className="text-right p-3">Preço atual (BRL)</th>
                 <th className="text-right p-3">Margem</th>
-                <th className="text-right p-3">Ação</th>
+                <th className="text-right p-3">Ações</th>
               </tr>
             </thead>
             <tbody>

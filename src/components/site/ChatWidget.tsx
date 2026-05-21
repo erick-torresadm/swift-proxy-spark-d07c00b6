@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase-custom/client";
 import {
   startConversation,
+  startConversationAuth,
   guestSendMessage,
   guestGetMessages,
   clientSendMessage,
@@ -51,6 +52,7 @@ function ChatWidgetInner() {
   const { play } = useChatSound();
 
   const startFn = useServerFn(startConversation);
+  const startFnAuth = useServerFn(startConversationAuth);
   const guestSendFn = useServerFn(guestSendMessage);
   const guestPollFn = useServerFn(guestGetMessages);
   const clientSendFn = useServerFn(clientSendMessage);
@@ -191,14 +193,13 @@ function ChatWidgetInner() {
     try {
       if (authUser && !conversationId) {
         // primeira mensagem do cliente autenticado — cria a conversa
-        const r = await startFn({
+        const r = await startFnAuth({
           data: {
             name: authUser.email?.split("@")[0] || "Cliente",
             email: authUser.email ?? "",
             phone: "",
             subject: "",
             message: text,
-            userId: authUser.id,
           },
         });
         setConversationId(r.conversationId);

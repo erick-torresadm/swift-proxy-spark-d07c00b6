@@ -20,7 +20,7 @@ export const getOrderPublicStatus = createServerFn({ method: "POST" })
     const { data: order } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, status, quantity, billing_cycle, amount_cents, customer_email, user_id, current_period_end, created_at, products(name, slug, block_size)",
+        "id, status, quantity, billing_cycle, amount_cents, user_id, current_period_end, created_at, products(name, slug, block_size)",
       )
       .eq("id", data.orderId)
       .maybeSingle();
@@ -31,13 +31,6 @@ export const getOrderPublicStatus = createServerFn({ method: "POST" })
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
       .neq("status", "released");
-
-    // mask email lightly
-    const email = order.customer_email ?? "";
-    const maskedEmail = email.replace(
-      /^([^@]{1,2})[^@]*(@.*)$/,
-      (_, a, b) => `${a}***${b}`,
-    );
 
     return {
       id: order.id,
@@ -50,7 +43,6 @@ export const getOrderPublicStatus = createServerFn({ method: "POST" })
       block_size: order.products?.block_size ?? 1,
       allocated_count: allocated ?? 0,
       has_user: !!order.user_id,
-      masked_email: maskedEmail,
       current_period_end: order.current_period_end,
       created_at: order.created_at,
     };

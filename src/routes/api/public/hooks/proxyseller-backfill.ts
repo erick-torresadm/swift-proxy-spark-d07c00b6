@@ -15,15 +15,14 @@ import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { pollProxiesForOrder, psDateToIso, generateSimulatedProxies } from "@/lib/proxyseller.server";
 import { allocateProxiesForOrder } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 export const Route = createFileRoute("/api/public/hooks/proxyseller-backfill")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
 
         const nowMs = Date.now();
         const minAge = new Date(nowMs - 20_000).toISOString(); // ≥20s old

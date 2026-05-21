@@ -20,72 +20,84 @@ const StartSchema = z.object({
   subject: z.string().trim().max(160).optional().or(z.literal("")),
   message: z.string().trim().min(1).max(2000),
   guestToken: z.string().uuid().optional(),
-  userId: z.string().uuid().optional(),
 });
 
+async function _startConversationImpl(
+  data: z.infer<typeof StartSchema>,
+  userId: string | null,
+) {
+  const ip = clientIp();
+  let convId: string | null = null;
+
+  if (userId) {
+    const { data: existing } = await supabaseAdmin
+      .from("chat_conversations")
+      .select("id")
+      .eq("user_id", userId)
+      .in("status", ["waiting", "active"])
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing) convId = existing.id;
+  } else if (data.guestToken) {
+    const { data: existing } = await supabaseAdmin
+      .from("chat_conversations")
+      .select("id")
+      .eq("guest_token", data.guestToken)
+      .in("status", ["waiting", "active"])
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing) convId = existing.id;
+  }
+
+  if (!convId) {
+    const { data: created, error } = await supabaseAdmin
+      .from("chat_conversations")
+      .insert({
+        user_id: userId ?? null,
+        guest_token: userId ? null : (data.guestToken ?? crypto.randomUUID()),
+        guest_name: data.name,
+        guest_email: data.email || null,
+        guest_phone: data.phone || null,
+        guest_ip: ip,
+        subject: data.subject || null,
+      })
+      .select("id, guest_token")
+      .single();
+    if (error) throw new Error(error.message);
+    convId = created.id;
+  }
+
+  const { error: msgErr } = await supabaseAdmin.from("chat_messages").insert({
+    conversation_id: convId,
+    sender: "client",
+    sender_user_id: userId ?? null,
+    body: data.message,
+  });
+  if (msgErr) throw new Error(msgErr.message);
+
+  const { data: conv } = await supabaseAdmin
+    .from("chat_conversations")
+    .select("id, guest_token")
+    .eq("id", convId)
+    .single();
+
+  return { conversationId: convId, guestToken: conv?.guest_token ?? null };
+}
+
+// Guest / unauthenticated entry point — never trusts a body-provided userId.
 export const startConversation = createServerFn({ method: "POST" })
   .inputValidator((input) => StartSchema.parse(input))
-  .handler(async ({ data }) => {
-    const ip = clientIp();
-    let convId: string | null = null;
+  .handler(async ({ data }) => _startConversationImpl(data, null));
 
-    // Tenta achar conversa em aberto para esse user/guest
-    if (data.userId) {
-      const { data: existing } = await supabaseAdmin
-        .from("chat_conversations")
-        .select("id")
-        .eq("user_id", data.userId)
-        .in("status", ["waiting", "active"])
-        .order("last_message_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existing) convId = existing.id;
-    } else if (data.guestToken) {
-      const { data: existing } = await supabaseAdmin
-        .from("chat_conversations")
-        .select("id")
-        .eq("guest_token", data.guestToken)
-        .in("status", ["waiting", "active"])
-        .order("last_message_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existing) convId = existing.id;
-    }
-
-    if (!convId) {
-      const { data: created, error } = await supabaseAdmin
-        .from("chat_conversations")
-        .insert({
-          user_id: data.userId ?? null,
-          guest_token: data.userId ? null : (data.guestToken ?? crypto.randomUUID()),
-          guest_name: data.name,
-          guest_email: data.email || null,
-          guest_phone: data.phone || null,
-          guest_ip: ip,
-          subject: data.subject || null,
-        })
-        .select("id, guest_token")
-        .single();
-      if (error) throw new Error(error.message);
-      convId = created.id;
-    }
-
-    const { error: msgErr } = await supabaseAdmin.from("chat_messages").insert({
-      conversation_id: convId,
-      sender: "client",
-      sender_user_id: data.userId ?? null,
-      body: data.message,
-    });
-    if (msgErr) throw new Error(msgErr.message);
-
-    const { data: conv } = await supabaseAdmin
-      .from("chat_conversations")
-      .select("id, guest_token")
-      .eq("id", convId)
-      .single();
-
-    return { conversationId: convId, guestToken: conv?.guest_token ?? null };
-  });
+// Authenticated entry point — derives userId from the verified JWT.
+export const startConversationAuth = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => StartSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    _startConversationImpl(data, context.userId),
+  );
 
 const GuestSendSchema = z.object({
   conversationId: z.string().uuid(),

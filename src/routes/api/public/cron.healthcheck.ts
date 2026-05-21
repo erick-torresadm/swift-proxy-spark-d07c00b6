@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { listProxies, type PsProxyKind } from "@/lib/proxyseller.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 /**
  * Healthcheck periódico chamado por pg_cron a cada 5 minutos.
@@ -13,21 +14,20 @@ import { listProxies, type PsProxyKind } from "@/lib/proxyseller.server";
 export const Route = createFileRoute("/api/public/cron/healthcheck")({
   server: {
     handlers: {
-      POST: async () => {
-        const expectedKey =
-          process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "";
-        // (apikey já validada implicitamente pela borda; manter checagem leve aqui)
+      POST: async ({ request }) => {
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
         const started = Date.now();
         const inserted: number = await runHealthcheck();
         return Response.json({
           ok: true,
           inserted,
           took_ms: Date.now() - started,
-          authHint: expectedKey ? "ok" : "no-anon-key",
         });
       },
-      GET: async () => {
-        // Permite teste manual via navegador/curl
+      GET: async ({ request }) => {
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
         const started = Date.now();
         const inserted = await runHealthcheck();
         return Response.json({ ok: true, inserted, took_ms: Date.now() - started });

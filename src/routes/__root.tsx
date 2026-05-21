@@ -190,6 +190,7 @@ function RootComponent() {
           <AuthSync />
           <Outlet />
           <ChatWidget />
+          <CookieBanner />
           <ThemedToaster />
         </CurrencyProvider>
       </ThemeProvider>

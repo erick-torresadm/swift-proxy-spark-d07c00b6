@@ -3,7 +3,10 @@ import { motion } from "framer-motion";
 import { Check, Globe, Monitor, Target, Building2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useCurrency } from "@/lib/currency";
+import { getPublicCatalog } from "@/lib/catalog.functions";
 
 type PlanKey = "ipv6" | "ipv4" | "fbads" | "isp";
 type Billing = "monthly" | "yearly";

@@ -138,7 +138,7 @@ function AuthenticatedLayout() {
       </aside>
 
       <main className="flex-1 min-w-0">
-        <div className="p-6 sm:p-8 lg:p-10 pt-16 lg:pt-10">
+        <div className="p-6 sm:p-8 lg:p-10" style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top))" }}>
           <InstallBanner />
           <Outlet />
         </div>

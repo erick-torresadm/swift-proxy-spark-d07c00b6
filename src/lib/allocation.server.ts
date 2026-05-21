@@ -181,6 +181,7 @@ async function autoPurchaseIpv6IntoStock(
     country_code: string | null;
   },
   needed: number,
+  triggeredByOrderId: string,
 ): Promise<number> {
   if (!product.provider_tariff_id) {
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
@@ -211,24 +212,36 @@ async function autoPurchaseIpv6IntoStock(
     targetId: cfg.targetId,
   });
 
-  // Record the provider order
+  const isReady = result.proxies.length > 0;
+
   const { data: provOrder } = await supabaseAdmin
     .from("provider_orders")
     .insert({
       product_id: product.id,
       external_order_id: result.externalOrderId,
-      status: "active",
+      status: isReady ? "active" : "pending",
       quantity: result.proxies.length,
       cost_cents: result.costCents,
       country_code: product.country_code,
+      triggered_by_order_id: triggeredByOrderId,
       raw_payload: { baseOrderNumber: result.baseOrderNumber } as never,
     })
     .select("id")
     .maybeSingle();
 
-  const stockRows = result.proxies.map((p) => ({
+  if (!isReady) return 0;
+
+  return await insertProxiesToStock(product, provOrder?.id ?? null, result.proxies);
+}
+
+async function insertProxiesToStock(
+  product: { id: string; country_code: string | null },
+  providerOrderId: string | null,
+  proxies: PsProxyItem[],
+): Promise<number> {
+  const stockRows = proxies.map((p) => ({
     product_id: product.id,
-    provider_order_id: provOrder?.id ?? null,
+    provider_order_id: providerOrderId,
     external_proxy_id: p.id,
     host: p.ip_only || p.ip,
     port: p.port_http,
@@ -245,3 +258,83 @@ async function autoPurchaseIpv6IntoStock(
   if (stockErr) throw new Error(`stock insert failed: ${stockErr.message}`);
   return stockRows.length;
 }
+
+/**
+ * Try to recover IPs from a previously-placed provider order that returned no
+ * proxies yet (race between /order/make and ProxySeller provisioning).
+ * Returns number of IPs newly added to stock.
+ */
+async function tryFulfillFromPendingOrders(
+  product: { id: string; country_code: string | null },
+  triggeredByOrderId: string,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - PENDING_REUSE_MAX_AGE_MS).toISOString();
+  const { data: pending } = await supabaseAdmin
+    .from("provider_orders")
+    .select("id, raw_payload, quantity")
+    .eq("product_id", product.id)
+    .eq("status", "pending")
+    .gte("created_at", cutoff)
+    .order("created_at", { ascending: true });
+
+  if (!pending?.length) return 0;
+
+  let total = 0;
+  for (const po of pending) {
+    const baseOrderNumber = (po.raw_payload as { baseOrderNumber?: string } | null)
+      ?.baseOrderNumber;
+    if (!baseOrderNumber) continue;
+
+    const proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500]);
+    if (proxies.length === 0) continue;
+
+    const added = await insertProxiesToStock(product, po.id, proxies);
+    if (added > 0) {
+      await supabaseAdmin
+        .from("provider_orders")
+        .update({
+          status: "active",
+          quantity: added,
+          triggered_by_order_id: triggeredByOrderId,
+        })
+        .eq("id", po.id);
+      total += added;
+    }
+  }
+  return total;
+}
+
+async function tryAcquirePurchaseLock(productId: string, lockedBy: string): Promise<boolean> {
+  const now = new Date();
+  const until = new Date(now.getTime() + PURCHASE_LOCK_TTL_MS);
+
+  // Try insert first (fast path)
+  const ins = await supabaseAdmin.from("purchase_locks").insert({
+    product_id: productId,
+    locked_until: until.toISOString(),
+    locked_by: lockedBy,
+  });
+  if (!ins.error) return true;
+
+  // Existing lock — check if expired
+  const { data: existing } = await supabaseAdmin
+    .from("purchase_locks")
+    .select("locked_until")
+    .eq("product_id", productId)
+    .maybeSingle();
+  if (existing && new Date(existing.locked_until) > now) {
+    return false; // still locked
+  }
+  // Expired — steal it
+  const upd = await supabaseAdmin
+    .from("purchase_locks")
+    .update({ locked_until: until.toISOString(), locked_by: lockedBy })
+    .eq("product_id", productId)
+    .lt("locked_until", now.toISOString());
+  return !upd.error;
+}
+
+async function releasePurchaseLock(productId: string): Promise<void> {
+  await supabaseAdmin.from("purchase_locks").delete().eq("product_id", productId);
+}
+

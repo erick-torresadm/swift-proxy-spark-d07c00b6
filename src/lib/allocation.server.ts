@@ -143,7 +143,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 /**
  * Buys an IPv6 block from ProxySeller and inserts the proxies into stock.
  * Reads ProxySeller config from product.provider_tariff_id as JSON:
- *   { "countryId": 7, "periodId": "30" }
+ *   { "countryId": 20554, "periodId": "1m" }
  */
 async function autoPurchaseIpv6IntoStock(
   product: {
@@ -159,7 +159,13 @@ async function autoPurchaseIpv6IntoStock(
     );
   }
 
-  let cfg: { countryId?: number; periodId?: string };
+  let cfg: {
+    countryId?: number;
+    periodId?: string;
+    protocol?: "HTTPS" | "SOCKS5";
+    targetSectionId?: number;
+    targetId?: number;
+  };
   try {
     cfg = JSON.parse(product.provider_tariff_id);
   } catch {
@@ -173,6 +179,9 @@ async function autoPurchaseIpv6IntoStock(
     countryId: cfg.countryId,
     periodId: cfg.periodId,
     quantity: needed,
+    protocol: cfg.protocol,
+    targetSectionId: cfg.targetSectionId,
+    targetId: cfg.targetId,
   });
 
   // Record the provider order

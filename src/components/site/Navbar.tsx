@@ -30,25 +30,12 @@ export function Navbar() {
 
   return (
     <>
-      <div
-        className="fixed inset-x-0 top-0 z-[60] flex items-center justify-end gap-1 bg-background/80 backdrop-blur-md border-b border-border/40"
-        style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
-          paddingRight: "max(0.75rem, env(safe-area-inset-right))",
-          minHeight: "calc(2rem + env(safe-area-inset-top))",
-        }}
-      >
-        <ThemeToggle className="scale-90" />
-        <LangCurrencyMenu className="scale-90" />
-      </div>
-
       <motion.header
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="fixed inset-x-0 z-50 px-3 sm:px-6 pointer-events-none"
-        style={{ top: "calc(env(safe-area-inset-top) + 2rem)" }}
+        style={{ top: "calc(env(safe-area-inset-top) + 0.5rem)" }}
       >
         <motion.div
           animate={{
@@ -80,6 +67,8 @@ export function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center gap-1 shrink-0">
+            <ThemeToggle className="scale-90" />
+            <LangCurrencyMenu className="scale-90" />
             {loading ? (
               <div className="w-24 h-9 rounded-full bg-card animate-pulse ml-2" />
             ) : user ? (
@@ -109,6 +98,8 @@ export function Navbar() {
           </div>
 
           <div className="md:hidden flex items-center gap-1">
+            <ThemeToggle className="scale-90" />
+            <LangCurrencyMenu className="scale-90" />
             <button
               onClick={() => setOpen(!open)}
               className="p-2 rounded-full hover:bg-foreground/5 transition"

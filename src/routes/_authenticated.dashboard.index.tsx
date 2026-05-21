@@ -156,12 +156,12 @@ function DashboardHome() {
             Assim que você contratar um plano, seus proxies aparecem aqui com
             host, porta, usuário, senha.
           </p>
-          <a
-            href="/#planos"
-            className="inline-flex px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition"
-          >
-            Ver planos
-          </a>
+          <BuyMoreDialog>
+            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition">
+              <ShoppingCart className="w-4 h-4" />
+              Comprar proxies agora
+            </button>
+          </BuyMoreDialog>
         </div>
       )}
     </div>

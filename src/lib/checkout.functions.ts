@@ -45,9 +45,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     if (!product) throw new Error("Produto não encontrado");
 
     const unitAmount =
-      data.billing === "yearly"
-        ? product.price_yearly_cents
-        : product.price_monthly_cents;
+      data.billing === "yearly" ? product.price_yearly_cents : product.price_monthly_cents;
     if (!unitAmount || unitAmount <= 0)
       throw new Error("Plano sem preço configurado para este ciclo");
 
@@ -60,8 +58,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         page: 1,
         perPage: 200,
       });
-      existingUserId =
-        list.users.find((u) => u.email?.toLowerCase() === data.email)?.id ?? null;
+      existingUserId = list.users.find((u) => u.email?.toLowerCase() === data.email)?.id ?? null;
     } catch {
       /* ignore */
     }
@@ -89,11 +86,14 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       stripe_coupon_id?: string;
     } | null = null;
     if (data.couponCode) {
-      const { data: vc, error: vcErr } = await supabaseAdmin.rpc("validate_coupon" as never, {
-        _code: data.couponCode,
-        _amount_cents: totalAmount,
-        _billing: data.billing,
-      } as never);
+      const { data: vc, error: vcErr } = await supabaseAdmin.rpc(
+        "validate_coupon" as never,
+        {
+          _code: data.couponCode,
+          _amount_cents: totalAmount,
+          _billing: data.billing,
+        } as never,
+      );
       if (vcErr) throw new Error(vcErr.message);
       const v = vc as {
         valid: boolean;
@@ -138,9 +138,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (orderErr || !order)
-      throw new Error(orderErr?.message || "Falha ao criar pedido");
-
+    if (orderErr || !order) throw new Error(orderErr?.message || "Falha ao criar pedido");
 
     const origin = originFromRequest();
 
@@ -203,21 +201,21 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     // Best-effort: log redemption + increment uses_count (kept simple; webhook
     // may also record on paid status. We dedupe by order_id.)
     if (appliedCoupon) {
-      await supabaseAdmin
-        .from("coupon_redemptions" as never)
-        .insert({
-          coupon_id: appliedCoupon.coupon_id,
-          order_id: order.id,
-          user_id: existingUserId,
-          customer_email: data.email,
-          amount_cents_before: totalAmount,
-          discount_cents: appliedCoupon.discount_cents,
-        } as never);
-      await supabaseAdmin.rpc("increment_coupon_uses" as never, {
-        _coupon_id: appliedCoupon.coupon_id,
+      await supabaseAdmin.from("coupon_redemptions" as never).insert({
+        coupon_id: appliedCoupon.coupon_id,
+        order_id: order.id,
+        user_id: existingUserId,
+        customer_email: data.email,
+        amount_cents_before: totalAmount,
+        discount_cents: appliedCoupon.discount_cents,
       } as never);
+      await supabaseAdmin.rpc(
+        "increment_coupon_uses" as never,
+        {
+          _coupon_id: appliedCoupon.coupon_id,
+        } as never,
+      );
     }
 
     return { url: session.url, sessionId: session.id, orderId: order.id };
   });
-

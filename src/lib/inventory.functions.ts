@@ -253,3 +253,108 @@ export const listAllOrders = createServerFn({ method: "GET" })
       .limit(100);
     return data ?? [];
   });
+
+// ============== Proxy stock management (per product) ==============
+
+const productIdInput = z.object({ product_id: z.string().uuid() });
+
+export const listProductStock = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => productIdInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+
+    const { data: product } = await supabaseAdmin
+      .from("products")
+      .select("id, name, slug, category, country_code, delivery_mode")
+      .eq("id", data.product_id)
+      .maybeSingle();
+
+    const { data: stock, error } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, host, port, username, password, protocol, country_code, external_proxy_id, status, expires_at, purchased_at, created_at")
+      .eq("product_id", data.product_id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const stockIds = (stock ?? []).map((s) => s.id);
+    const allocMap = new Map<string, { user_id: string; order_id: string; allocated_at: string; status: string; full_name: string | null }>();
+    if (stockIds.length) {
+      const { data: allocs } = await supabaseAdmin
+        .from("customer_proxies")
+        .select("stock_id, user_id, order_id, allocated_at, status")
+        .in("stock_id", stockIds)
+        .in("status", ["active", "grace"]);
+      const userIds = Array.from(new Set((allocs ?? []).map((a) => a.user_id)));
+      const profMap = new Map<string, string | null>();
+      if (userIds.length) {
+        const { data: profs } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", userIds);
+        for (const p of profs ?? []) profMap.set(p.user_id, p.full_name);
+      }
+      for (const a of allocs ?? []) {
+        if (!a.stock_id) continue;
+        allocMap.set(a.stock_id, {
+          user_id: a.user_id,
+          order_id: a.order_id,
+          allocated_at: a.allocated_at,
+          status: a.status,
+          full_name: profMap.get(a.user_id) ?? null,
+        });
+      }
+    }
+
+    return {
+      product,
+      stock: (stock ?? []).map((s) => ({ ...s, allocation: allocMap.get(s.id) ?? null })),
+    };
+  });
+
+const updateStockInput = z.object({
+  id: z.string().uuid(),
+  host: z.string().min(1).max(255).optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+  username: z.string().max(255).nullable().optional(),
+  password: z.string().max(255).nullable().optional(),
+  protocol: z.string().max(20).nullable().optional(),
+  country_code: z.string().max(8).nullable().optional(),
+  external_proxy_id: z.string().max(255).nullable().optional(),
+  expires_at: z.string().datetime().nullable().optional(),
+  status: z.enum(["available", "allocated", "reserved", "expired", "disabled"]).optional(),
+});
+
+export const updateStockItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => updateStockInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { id, ...patch } = data;
+    const { error } = await supabaseAdmin
+      .from("proxy_stock")
+      .update(patch as never)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const deleteStockInput = z.object({ id: z.string().uuid() });
+
+export const deleteStockItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => deleteStockInput.parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    // Bloqueia exclusão se houver alocação ativa
+    const { data: alloc } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("id")
+      .eq("stock_id", data.id)
+      .in("status", ["active", "grace"])
+      .maybeSingle();
+    if (alloc) throw new Error("Proxy alocado a um cliente. Libere antes de excluir.");
+    const { error } = await supabaseAdmin.from("proxy_stock").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

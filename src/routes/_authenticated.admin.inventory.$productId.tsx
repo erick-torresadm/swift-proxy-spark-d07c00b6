@@ -98,15 +98,17 @@ function ProductStockPage() {
 
   function saveEdit(id: string) {
     updateMut.mutate({
-      id,
-      host: draft.host,
-      port: draft.port ? Number(draft.port) : undefined,
-      username: draft.username ?? null,
-      password: draft.password ?? null,
-      protocol: draft.protocol ?? null,
-      country_code: draft.country_code ?? null,
-      external_proxy_id: draft.external_proxy_id ?? null,
-      status: draft.status as never,
+      data: {
+        id,
+        host: draft.host,
+        port: draft.port ? Number(draft.port) : undefined,
+        username: draft.username ?? null,
+        password: draft.password ?? null,
+        protocol: draft.protocol ?? null,
+        country_code: draft.country_code ?? null,
+        external_proxy_id: draft.external_proxy_id ?? null,
+        status: draft.status as never,
+      },
     });
   }
 

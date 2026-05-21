@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "@/lib/stripe.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 /**
  * Cron-triggered job. For every order with a Stripe subscription, syncs the
@@ -14,11 +15,8 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // Authenticate via Supabase anon key in apikey header
-        const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
-          return new Response("Unauthorized", { status: 401 });
-        }
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
 
         const stripe = getStripe();
         const summary = {

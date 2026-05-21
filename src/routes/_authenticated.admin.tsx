@@ -21,16 +21,24 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminLayout,
 });
 
-const adminNav = [
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof Activity;
+  exact?: boolean;
+  badge?: "issues";
+};
+
+const adminNav: NavItem[] = [
   { to: "/admin", label: "Visão geral", icon: Activity, exact: true },
-  { to: "/admin/allocations", label: "Operação", icon: Wrench, badge: "issues" as const },
+  { to: "/admin/allocations", label: "Operação", icon: Wrench, badge: "issues" },
   { to: "/admin/inventory", label: "Estoque", icon: Package },
   { to: "/admin/pricing", label: "Preços", icon: DollarSign },
   { to: "/admin/orders", label: "Pedidos", icon: Receipt },
   { to: "/admin/customers", label: "Clientes", icon: Users },
   { to: "/admin/provider", label: "Provedor", icon: ServerCog },
   { to: "/admin/emails", label: "Emails", icon: Mail },
-] as const;
+];
 
 function AdminLayout() {
   const location = useLocation();

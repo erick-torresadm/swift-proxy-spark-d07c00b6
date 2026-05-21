@@ -193,14 +193,13 @@ function ChatWidgetInner() {
     try {
       if (authUser && !conversationId) {
         // primeira mensagem do cliente autenticado — cria a conversa
-        const r = await startFn({
+        const r = await startFnAuth({
           data: {
             name: authUser.email?.split("@")[0] || "Cliente",
             email: authUser.email ?? "",
             phone: "",
             subject: "",
             message: text,
-            userId: authUser.id,
           },
         });
         setConversationId(r.conversationId);

@@ -125,7 +125,11 @@ export function Plans() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
           {planDefs.map((plan, i) => {
-            const priceBrl = billing === "yearly" ? plan.price * (1 - YEARLY_DISCOUNT) : plan.price;
+            const live = priceBySlug.get(SLUG_MAP[plan.key]);
+            const monthly = live?.monthly ?? plan.price;
+            const yearlyMonthly =
+              live?.yearly != null ? live.yearly / 12 : monthly * (1 - YEARLY_DISCOUNT);
+            const priceBrl = billing === "yearly" ? yearlyMonthly : monthly;
             const { symbol, int, dec } = parts(priceBrl);
             const accent = accentMap[plan.accent];
             const isFeatured = plan.badge?.variant === "recommended";

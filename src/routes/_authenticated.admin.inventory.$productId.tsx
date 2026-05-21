@@ -327,7 +327,7 @@ function ProductStockPage() {
                                   "Excluir este proxy do estoque? Esta ação não pode ser desfeita.",
                                 )
                               ) {
-                                deleteMut.mutate(s.id);
+                                deleteMut.mutate({ data: { id: s.id } });
                               }
                             }}
                             disabled={deleteMut.isPending}

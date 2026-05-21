@@ -1184,6 +1184,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_coupon_uses: {
+        Args: { _coupon_id: string }
+        Returns: undefined
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       prune_proxy_metrics: { Args: never; Returns: undefined }
       release_expired_grace_proxies: {

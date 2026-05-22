@@ -35,7 +35,10 @@ function AuthenticatedLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { isAdmin } = useRole(user?.id);
+  const { isAdmin, roles } = useRole(user?.id);
+  const isEditor = roles.includes("editor");
+  const isModerator = roles.includes("moderator");
+  const isStaff = isAdmin || isEditor || isModerator;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const fetchExpiring = useServerFn(getExpiringCount);

@@ -105,10 +105,10 @@ function AuthenticatedLayout() {
             );
           })}
 
-          {isAdmin && (
+          {isStaff && (
             <>
               <div className="pt-4 pb-1 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-                Administração
+                {isAdmin ? "Administração" : "Equipe"}
               </div>
               <Link
                 to="/admin"
@@ -120,7 +120,7 @@ function AuthenticatedLayout() {
                 }`}
               >
                 <Shield className="w-4 h-4" />
-                Painel admin
+                {isAdmin ? "Painel admin" : "Painel do blog"}
               </Link>
             </>
           )}

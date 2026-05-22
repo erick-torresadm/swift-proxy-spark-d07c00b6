@@ -14,6 +14,7 @@ import {
 } from "@/lib/chat.functions";
 import { useChatSound } from "@/hooks/useChatSound";
 import { toast } from "sonner";
+import { trackConversion, setUserData } from "@/lib/gtag";
 
 type Msg = { id: string; sender: "client" | "admin" | "system"; body: string; created_at: string };
 
@@ -170,6 +171,11 @@ function ChatWidgetInner() {
         setGuestToken(r.guestToken);
         saveGuest({ token: r.guestToken, conversationId: r.conversationId });
       }
+      // Google Ads — lead capturado via chat (formulário do guest)
+      try {
+        await setUserData({ email: form.email, phone: form.phone });
+      } catch {}
+      trackConversion("lead_chat", {}, r.conversationId);
       setBody("");
       play("outgoing");
       toast.success("Mensagem enviada! Aguardando atendente...");

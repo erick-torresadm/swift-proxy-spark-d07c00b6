@@ -203,6 +203,8 @@ function RootComponent() {
       <ThemeProvider>
         <CurrencyProvider>
           <AuthSync />
+          <GtagPageTracker />
+
           <Outlet />
           <ChatWidget />
           <CookieBanner />

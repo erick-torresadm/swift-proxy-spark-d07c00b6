@@ -58,6 +58,17 @@ export function trackConversion(
   });
 }
 
+/**
+ * Dispara um evento genérico (NÃO é conversão).
+ * Útil pra sinais que alimentam Optimized Targeting e audiências de
+ * remarketing no Google Ads (begin_checkout, view_item, etc.).
+ */
+export function trackEvent(name: string, params: Record<string, unknown> = {}) {
+  const gtag = getGtag();
+  if (!gtag) return;
+  gtag("event", name, params);
+}
+
 // ---------- Enhanced conversions ----------
 // Hash em SHA-256 client-side; nada em texto puro é enviado.
 

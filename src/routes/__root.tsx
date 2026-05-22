@@ -161,17 +161,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           ],
         }),
       },
-      {
-        async: true,
-        src: "https://www.googletagmanager.com/gtag/js?id=AW-18182315422",
-      },
-      {
-        children: `window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-window.gtag = gtag;
-gtag('js', new Date());
-gtag('config', 'AW-18182315422', { send_page_view: false });`,
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -203,8 +192,6 @@ function RootComponent() {
       <ThemeProvider>
         <CurrencyProvider>
           <AuthSync />
-          <GtagPageTracker />
-
           <Outlet />
           <ChatWidget />
           <CookieBanner />
@@ -230,27 +217,5 @@ function AuthSync() {
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
-  return null;
-}
-
-function GtagPageTracker() {
-  const router = useRouter();
-  useEffect(() => {
-    const send = (path: string) => {
-      const w = window as unknown as { gtag?: (...args: unknown[]) => void };
-      if (typeof w.gtag === "function") {
-        w.gtag("event", "page_view", {
-          page_path: path,
-          page_location: window.location.href,
-          page_title: document.title,
-        });
-      }
-    };
-    send(window.location.pathname + window.location.search);
-    const unsub = router.subscribe("onResolved", (e) => {
-      send(e.toLocation.pathname + (e.toLocation.searchStr ?? ""));
-    });
-    return () => unsub();
-  }, [router]);
   return null;
 }

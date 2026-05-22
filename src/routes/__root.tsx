@@ -161,6 +161,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           ],
         }),
       },
+      {
+        async: true,
+        src: "https://www.googletagmanager.com/gtag/js?id=AW-18182315422",
+      },
+      {
+        children: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+window.gtag = gtag;
+gtag('js', new Date());
+gtag('config', 'AW-18182315422', { send_page_view: false });`,
+      },
     ],
   }),
   shellComponent: RootShell,

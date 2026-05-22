@@ -232,3 +232,25 @@ function AuthSync() {
   }, [router, queryClient]);
   return null;
 }
+
+function GtagPageTracker() {
+  const router = useRouter();
+  useEffect(() => {
+    const send = (path: string) => {
+      const w = window as unknown as { gtag?: (...args: unknown[]) => void };
+      if (typeof w.gtag === "function") {
+        w.gtag("event", "page_view", {
+          page_path: path,
+          page_location: window.location.href,
+          page_title: document.title,
+        });
+      }
+    };
+    send(window.location.pathname + window.location.search);
+    const unsub = router.subscribe("onResolved", (e) => {
+      send(e.toLocation.pathname + (e.toLocation.searchStr ?? ""));
+    });
+    return () => unsub();
+  }, [router]);
+  return null;
+}

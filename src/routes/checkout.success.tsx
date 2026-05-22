@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import { getOrderPublicStatus, syncMyAllocations } from "@/lib/dashboard.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { trackConversion, setUserData } from "@/lib/gtag";
 
 const searchSchema = z.object({
   order: z.string().uuid().optional(),
@@ -85,6 +86,19 @@ function SuccessPage() {
 
         // Sucesso completo: pago E alocado
         if (data?.status === "paid" && (data.allocated_count ?? 0) > 0) {
+          // Google Ads — conversão de compra (dedupe por orderId)
+          try {
+            if (user?.email) await setUserData({ email: user.email });
+          } catch {}
+          trackConversion(
+            "purchase",
+            {
+              value: data.amount_cents / 100,
+              currency: "BRL",
+              transaction_id: orderId!,
+            },
+            orderId!,
+          );
           setPolling(false);
           return;
         }

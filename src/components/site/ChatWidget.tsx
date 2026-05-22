@@ -169,11 +169,6 @@ function ChatWidgetInner() {
         setGuestToken(r.guestToken);
         saveGuest({ token: r.guestToken, conversationId: r.conversationId });
       }
-      // Google Ads — lead capturado via chat (formulário do guest)
-      try {
-        await setUserData({ email: form.email, phone: form.phone });
-      } catch {}
-      trackConversion("lead_chat", {}, r.conversationId);
       setBody("");
       play("outgoing");
       toast.success("Mensagem enviada! Aguardando atendente...");

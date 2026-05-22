@@ -28,32 +28,45 @@ type NavItem = {
   icon: typeof Activity;
   exact?: boolean;
   badge?: "issues";
+  roles?: Array<"admin" | "editor" | "moderator">;
 };
 
 const adminNav: NavItem[] = [
   { to: "/admin", label: "Visão geral", icon: Activity, exact: true },
-  { to: "/admin/allocations", label: "Operação", icon: Wrench, badge: "issues" },
-  { to: "/admin/chat", label: "Chat ao vivo", icon: MessageCircle },
-  { to: "/admin/broadcast", label: "Notificações", icon: Megaphone },
-  { to: "/admin/inventory", label: "Estoque", icon: Package },
-  { to: "/admin/pricing", label: "Preços", icon: DollarSign },
-  { to: "/admin/cupons", label: "Cupons", icon: Tag },
-  { to: "/admin/orders", label: "Pedidos", icon: Receipt },
-  { to: "/admin/customers", label: "Clientes", icon: Users },
-  { to: "/admin/equipe", label: "Equipe", icon: Users2 },
-  { to: "/admin/blog", label: "Blog & SEO", icon: FileText },
-  { to: "/admin/provider", label: "Provedor", icon: ServerCog },
-  { to: "/admin/emails", label: "Emails", icon: Mail },
-  { to: "/admin/cloud", label: "Saúde do Cloud", icon: Cloud },
+  { to: "/admin/allocations", label: "Operação", icon: Wrench, badge: "issues", roles: ["admin"] },
+  { to: "/admin/chat", label: "Chat ao vivo", icon: MessageCircle, roles: ["admin"] },
+  { to: "/admin/broadcast", label: "Notificações", icon: Megaphone, roles: ["admin"] },
+  { to: "/admin/inventory", label: "Estoque", icon: Package, roles: ["admin"] },
+  { to: "/admin/pricing", label: "Preços", icon: DollarSign, roles: ["admin"] },
+  { to: "/admin/cupons", label: "Cupons", icon: Tag, roles: ["admin"] },
+  { to: "/admin/orders", label: "Pedidos", icon: Receipt, roles: ["admin"] },
+  { to: "/admin/customers", label: "Clientes", icon: Users, roles: ["admin"] },
+  { to: "/admin/equipe", label: "Equipe", icon: Users2, roles: ["admin"] },
+  { to: "/admin/blog", label: "Blog & SEO", icon: FileText, roles: ["admin", "editor", "moderator"] },
+  { to: "/admin/provider", label: "Provedor", icon: ServerCog, roles: ["admin"] },
+  { to: "/admin/emails", label: "Emails", icon: Mail, roles: ["admin"] },
+  { to: "/admin/cloud", label: "Saúde do Cloud", icon: Cloud, roles: ["admin"] },
 ];
 
 function AdminLayout() {
   const location = useLocation();
+  const { user } = useAuth();
+  const { isAdmin, roles } = useRole(user?.id);
+  const isEditor = roles.includes("editor");
+  const isModerator = roles.includes("moderator");
   const fetchIssues = useServerFn(countOpenIssues);
   const { data: issues } = useQuery({
     queryKey: ["admin-open-issues"],
     queryFn: () => fetchIssues(),
     refetchInterval: 30_000,
+    enabled: isAdmin,
+  });
+
+  const visibleNav = adminNav.filter((item) => {
+    if (!item.roles) return true;
+    return item.roles.some(
+      (r) => (r === "admin" && isAdmin) || (r === "editor" && isEditor) || (r === "moderator" && isModerator),
+    );
   });
 
   return (

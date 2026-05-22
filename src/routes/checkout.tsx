@@ -16,7 +16,6 @@ import {
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { validateCouponPublic } from "@/lib/coupons.functions";
-import { trackEvent } from "@/lib/gtag";
 
 type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us";
 type Country = "BR" | "US";
@@ -153,24 +152,6 @@ function CheckoutPage() {
   const discount = appliedCoupon?.discount_cents ?? 0;
   const total = Math.max(0, subtotal - discount);
   const ipsTotal = qty * item.blockSize;
-
-  // Google Ads — sinal de "iniciou checkout" (não é conversão; alimenta
-  // Optimized Targeting + audiências de remarketing "iniciou e não comprou").
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    trackEvent("begin_checkout", {
-      currency: "BRL",
-      value: total / 100,
-      items: [{
-        item_id: slug,
-        item_name: item.name,
-        item_category: country,
-        price: unitCents / 100,
-        quantity: qty,
-      }],
-    });
-    // dispara quando muda plano/qty/billing — bom pro algoritmo entender intenção
-  }, [slug, billing, qty, total, country, item.name, unitCents]);
 
 
   // Re-validate coupon whenever the total changes

@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-custom/client";
 import { lovable } from "@/integrations/lovable";
-import { trackConversion, setUserData } from "@/lib/gtag";
 import logo from "@/assets/logo-fastproxy.png";
 
 async function handleGoogleSignIn(setGoogleLoading: (v: boolean) => void) {
@@ -69,11 +68,6 @@ function SignupPage() {
       );
       return;
     }
-    // Google Ads — conversão de cadastro
-    try {
-      await setUserData({ email });
-    } catch {}
-    trackConversion("sign_up", {}, email);
     toast.success("Conta criada! Verifique seu email para confirmar.");
     navigate({ to: "/login" });
   }

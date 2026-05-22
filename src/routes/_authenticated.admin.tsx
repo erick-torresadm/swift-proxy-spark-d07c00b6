@@ -87,7 +87,7 @@ function AdminLayout() {
           </div>
 
           <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
-            {adminNav.map((item) => {
+            {visibleNav.map((item) => {
               const active = item.exact
                 ? location.pathname === item.to
                 : location.pathname.startsWith(item.to);

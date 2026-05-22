@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail, DollarSign, Wrench, AlertCircle, MessageCircle, Megaphone, FileText, Users2, Cloud, Tag } from "lucide-react";
 import { supabase } from "@/lib/supabase-custom/client";
 import { countOpenIssues } from "@/lib/admin-ops.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { useRole } from "@/hooks/use-role";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   beforeLoad: async () => {

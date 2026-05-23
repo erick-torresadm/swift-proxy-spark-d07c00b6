@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { Users, ChevronRight } from "lucide-react";
 import { listCustomers } from "@/lib/inventory.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/customers")({
   component: CustomersPage,

@@ -269,3 +269,231 @@ export const countOpenIssues = createServerFn({ method: "GET" })
       .is("resolved_at", null);
     return { count: count ?? 0 };
   });
+
+/* -------------------------- CUSTOMER DETAIL (entitlements) -------------------------- */
+export const getCustomerDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const [{ data: profile }, { data: authUser }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("user_id, full_name, phone, created_at").eq("user_id", data.userId).maybeSingle(),
+      supabaseAdmin.auth.admin.getUserById(data.userId),
+    ]);
+    const email = authUser?.user?.email ?? null;
+
+    const { data: orders } = await supabaseAdmin
+      .from("orders")
+      .select("id, status, quantity, billing_cycle, amount_cents, customer_email, stripe_subscription_id, stripe_customer_id, current_period_end, grace_until, created_at, product_id, products(id, name, slug, category, country_code, block_size)")
+      .eq("user_id", data.userId)
+      .order("created_at", { ascending: false });
+
+    let stripe: ReturnType<typeof getStripe> | null = null;
+    try { stripe = getStripe(); } catch { /* no key */ }
+
+    const enriched = await Promise.all((orders ?? []).map(async (o) => {
+      const product = o.products as { id: string; name: string; slug: string; category: string; country_code: string | null; block_size: number } | null;
+      const blockSize = product?.block_size ?? 1;
+      const needed = (o.quantity ?? 1) * blockSize;
+
+      const { count: allocatedCount } = await supabaseAdmin
+        .from("customer_proxies")
+        .select("*", { count: "exact", head: true })
+        .eq("order_id", o.id)
+        .neq("status", "released");
+
+      const availableStock = product
+        ? (await supabaseAdmin
+            .from("proxy_stock")
+            .select("*", { count: "exact", head: true })
+            .eq("product_id", product.id)
+            .eq("status", "available")).count ?? 0
+        : 0;
+
+      let stripeStatus: string | null = null;
+      let stripePeriodEnd: string | null = null;
+      if (stripe && o.stripe_subscription_id) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(o.stripe_subscription_id);
+          stripeStatus = sub.status;
+          const ts = (sub as unknown as { current_period_end?: number }).current_period_end;
+          if (ts) stripePeriodEnd = new Date(ts * 1000).toISOString();
+        } catch (e) {
+          stripeStatus = `error: ${e instanceof Error ? e.message : "unknown"}`;
+        }
+      }
+
+      return {
+        id: o.id,
+        status: o.status as string,
+        quantity: o.quantity,
+        billing_cycle: o.billing_cycle,
+        amount_cents: o.amount_cents,
+        customer_email: o.customer_email,
+        stripe_subscription_id: o.stripe_subscription_id,
+        current_period_end: o.current_period_end,
+        grace_until: o.grace_until,
+        created_at: o.created_at,
+        product,
+        needed,
+        allocated: allocatedCount ?? 0,
+        shortage: Math.max(0, needed - (allocatedCount ?? 0)),
+        available_stock: availableStock,
+        stripe_status: stripeStatus,
+        stripe_period_end: stripePeriodEnd,
+      };
+    }));
+
+    return {
+      profile: profile ?? { user_id: data.userId, full_name: null, phone: null, created_at: null },
+      email,
+      orders: enriched,
+    };
+  });
+
+/* -------------------------- MANUAL ALLOCATE (admin) -------------------------- */
+export const adminManualAllocate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      orderId: z.string().uuid(),
+      stockId: z.string().uuid().optional(),
+      syncStripe: z.boolean().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const { data: order } = await supabaseAdmin
+      .from("orders")
+      .select("id, user_id, product_id, quantity, status, customer_email, stripe_subscription_id")
+      .eq("id", data.orderId)
+      .maybeSingle();
+    if (!order) throw new Error("Pedido não encontrado");
+    if (!order.user_id) throw new Error("Pedido sem user_id");
+
+    if (!order.customer_email) {
+      const { data: au } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
+      const email = au?.user?.email ?? null;
+      if (email) {
+        await supabaseAdmin.from("orders").update({ customer_email: email } as never).eq("id", order.id);
+        order.customer_email = email;
+      }
+    }
+
+    if (data.syncStripe && order.stripe_subscription_id) {
+      try {
+        const stripe = getStripe();
+        const sub = await stripe.subscriptions.retrieve(order.stripe_subscription_id);
+        const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end;
+        const patch: Record<string, unknown> = { last_payment_check_at: new Date().toISOString() };
+        if (periodEnd) patch.current_period_end = new Date(periodEnd * 1000).toISOString();
+        if (sub.status === "active" || sub.status === "trialing") {
+          patch.status = "paid"; patch.grace_until = null;
+          order.status = "paid";
+        } else if (sub.status === "past_due" || sub.status === "unpaid") {
+          patch.status = "past_due";
+          order.status = "past_due";
+        } else if (sub.status === "canceled") {
+          patch.status = "cancelled";
+          order.status = "cancelled";
+        }
+        await supabaseAdmin.from("orders").update(patch as never).eq("id", order.id);
+      } catch (e) {
+        throw new Error(`Stripe: ${e instanceof Error ? e.message : "erro"}`);
+      }
+    }
+
+    const allowedStatuses = ["paid", "past_due", "grace"];
+    if (!allowedStatuses.includes(order.status as string)) {
+      throw new Error(`Pedido com status "${order.status}" não tem direito a proxy. Sincronize com Stripe primeiro.`);
+    }
+
+    const { data: product } = await supabaseAdmin
+      .from("products")
+      .select("id, block_size, name")
+      .eq("id", order.product_id)
+      .maybeSingle();
+    if (!product) throw new Error("Produto não encontrado");
+
+    const needed = (order.quantity ?? 1) * (product.block_size ?? 1);
+    const { count: allocated } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("*", { count: "exact", head: true })
+      .eq("order_id", order.id)
+      .neq("status", "released");
+
+    if ((allocated ?? 0) >= needed) {
+      throw new Error(`Pedido já tem ${allocated} de ${needed} proxies alocados.`);
+    }
+
+    let stockId = data.stockId;
+    if (stockId) {
+      const { data: chk } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("id, status, product_id")
+        .eq("id", stockId)
+        .maybeSingle();
+      if (!chk) throw new Error("Proxy de estoque não encontrado");
+      if (chk.product_id !== product.id) throw new Error("Proxy não pertence ao produto deste pedido");
+      if (chk.status !== "available") throw new Error(`Proxy não está disponível (${chk.status})`);
+    } else {
+      const { data: pick } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("id")
+        .eq("product_id", product.id)
+        .eq("status", "available")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (!pick) throw new Error("Sem proxies disponíveis no estoque deste produto");
+      stockId = pick.id;
+    }
+
+    const { data: claim, error: claimErr } = await supabaseAdmin
+      .from("proxy_stock")
+      .update({ status: "allocated" } as never)
+      .eq("id", stockId)
+      .eq("status", "available")
+      .select("id, host, port")
+      .maybeSingle();
+    if (claimErr || !claim) throw new Error("Não foi possível reservar o proxy (concorrência).");
+
+    const { error: insErr } = await supabaseAdmin
+      .from("customer_proxies")
+      .insert({
+        user_id: order.user_id,
+        order_id: order.id,
+        stock_id: stockId,
+        status: "active",
+      } as never);
+    if (insErr) {
+      await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+      throw new Error(insErr.message);
+    }
+
+    await supabaseAdmin.from("audit_log").insert({
+      source: "admin",
+      action: "manual_allocate",
+      status: "ok",
+      user_id: context.userId,
+      request: {
+        order_id: order.id,
+        target_user_id: order.user_id,
+        stock_id: stockId,
+        product: product.name,
+      },
+    } as never);
+
+    await supabaseAdmin.from("notifications").insert({
+      user_id: order.user_id,
+      kind: "system",
+      title: "Novo proxy disponível",
+      body: `Um proxy foi atribuído à sua conta (${product.name}).`,
+      link: "/dashboard/proxies",
+    } as never);
+
+    return { ok: true, host: claim.host, port: claim.port };
+  });
+

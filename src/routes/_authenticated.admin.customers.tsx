@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { Users, ChevronRight } from "lucide-react";
 import { listCustomers } from "@/lib/inventory.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/customers")({
   component: CustomersPage,
@@ -38,17 +39,35 @@ function CustomersPage() {
                 <th className="px-4 py-3 font-bold">Telefone</th>
                 <th className="px-4 py-3 font-bold">Cadastro</th>
                 <th className="px-4 py-3 font-bold text-right">Proxies ativos</th>
+                <th className="px-4 py-3 w-10" />
               </tr>
             </thead>
             <tbody>
               {(data ?? []).map((c) => (
-                <tr key={c.user_id} className="border-t border-border">
-                  <td className="px-4 py-3">{c.full_name ?? "—"}</td>
+                <tr key={c.user_id} className="border-t border-border hover:bg-muted/30 transition">
+                  <td className="px-4 py-3">
+                    <Link
+                      to="/admin/customers/$userId"
+                      params={{ userId: c.user_id }}
+                      className="font-semibold hover:text-primary"
+                    >
+                      {c.full_name ?? "—"}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{c.phone ?? "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(c.created_at).toLocaleDateString("pt-BR")}
                   </td>
                   <td className="px-4 py-3 text-right font-bold">{c.active_proxies}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      to="/admin/customers/$userId"
+                      params={{ userId: c.user_id }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

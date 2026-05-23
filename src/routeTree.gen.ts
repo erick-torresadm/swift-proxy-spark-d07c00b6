@@ -56,6 +56,7 @@ import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './route
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
 import { Route as AuthenticatedAdminInventoryProductIdRouteImport } from './routes/_authenticated.admin.inventory.$productId'
+import { Route as AuthenticatedAdminCustomersUserIdRouteImport } from './routes/_authenticated.admin.customers.$userId'
 import { Route as AuthenticatedAdminBlogTagsRouteImport } from './routes/_authenticated.admin.blog.tags'
 import { Route as AuthenticatedAdminBlogProgramaticasRouteImport } from './routes/_authenticated.admin.blog.programaticas'
 import { Route as AuthenticatedAdminBlogNewRouteImport } from './routes/_authenticated.admin.blog.new'
@@ -321,6 +322,12 @@ const AuthenticatedAdminInventoryProductIdRoute =
     path: '/inventory/$productId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCustomersUserIdRoute =
+  AuthenticatedAdminCustomersUserIdRouteImport.update({
+    id: '/$userId',
+    path: '/$userId',
+    getParentRoute: () => AuthenticatedAdminCustomersRoute,
+  } as any)
 const AuthenticatedAdminBlogTagsRoute =
   AuthenticatedAdminBlogTagsRouteImport.update({
     id: '/tags',
@@ -387,7 +394,7 @@ export interface FileRoutesByFullPath {
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
-  '/admin/customers': typeof AuthenticatedAdminCustomersRoute
+  '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByFullPath {
   '/admin/blog/new': typeof AuthenticatedAdminBlogNewRoute
   '/admin/blog/programaticas': typeof AuthenticatedAdminBlogProgramaticasRoute
   '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
+  '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
@@ -439,7 +447,7 @@ export interface FileRoutesByTo {
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
-  '/admin/customers': typeof AuthenticatedAdminCustomersRoute
+  '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -460,6 +468,7 @@ export interface FileRoutesByTo {
   '/admin/blog/new': typeof AuthenticatedAdminBlogNewRoute
   '/admin/blog/programaticas': typeof AuthenticatedAdminBlogProgramaticasRoute
   '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
+  '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
@@ -496,7 +505,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/_authenticated/admin/cupons': typeof AuthenticatedAdminCuponsRoute
-  '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRoute
+  '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -517,6 +526,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/blog/new': typeof AuthenticatedAdminBlogNewRoute
   '/_authenticated/admin/blog/programaticas': typeof AuthenticatedAdminBlogProgramaticasRoute
   '/_authenticated/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
+  '/_authenticated/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/_authenticated/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
@@ -574,6 +584,7 @@ export interface FileRouteTypes {
     | '/admin/blog/new'
     | '/admin/blog/programaticas'
     | '/admin/blog/tags'
+    | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
@@ -626,6 +637,7 @@ export interface FileRouteTypes {
     | '/admin/blog/new'
     | '/admin/blog/programaticas'
     | '/admin/blog/tags'
+    | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
@@ -682,6 +694,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/blog/new'
     | '/_authenticated/admin/blog/programaticas'
     | '/_authenticated/admin/blog/tags'
+    | '/_authenticated/admin/customers/$userId'
     | '/_authenticated/admin/inventory/$productId'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
@@ -1048,6 +1061,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInventoryProductIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/customers/$userId': {
+      id: '/_authenticated/admin/customers/$userId'
+      path: '/$userId'
+      fullPath: '/admin/customers/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminCustomersUserIdRouteImport
+      parentRoute: typeof AuthenticatedAdminCustomersRoute
+    }
     '/_authenticated/admin/blog/tags': {
       id: '/_authenticated/admin/blog/tags'
       path: '/tags'
@@ -1129,6 +1149,21 @@ const AuthenticatedAdminBlogRouteWithChildren =
     AuthenticatedAdminBlogRouteChildren,
   )
 
+interface AuthenticatedAdminCustomersRouteChildren {
+  AuthenticatedAdminCustomersUserIdRoute: typeof AuthenticatedAdminCustomersUserIdRoute
+}
+
+const AuthenticatedAdminCustomersRouteChildren: AuthenticatedAdminCustomersRouteChildren =
+  {
+    AuthenticatedAdminCustomersUserIdRoute:
+      AuthenticatedAdminCustomersUserIdRoute,
+  }
+
+const AuthenticatedAdminCustomersRouteWithChildren =
+  AuthenticatedAdminCustomersRoute._addFileChildren(
+    AuthenticatedAdminCustomersRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
   AuthenticatedAdminBlogRoute: typeof AuthenticatedAdminBlogRouteWithChildren
@@ -1136,7 +1171,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCloudRoute: typeof AuthenticatedAdminCloudRoute
   AuthenticatedAdminCuponsRoute: typeof AuthenticatedAdminCuponsRoute
-  AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRoute
+  AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRouteWithChildren
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
   AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
@@ -1154,7 +1189,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCloudRoute: AuthenticatedAdminCloudRoute,
   AuthenticatedAdminCuponsRoute: AuthenticatedAdminCuponsRoute,
-  AuthenticatedAdminCustomersRoute: AuthenticatedAdminCustomersRoute,
+  AuthenticatedAdminCustomersRoute:
+    AuthenticatedAdminCustomersRouteWithChildren,
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,
   AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,

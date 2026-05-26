@@ -317,11 +317,11 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
           .eq("order_id", o.id)
           .neq("status", "released");
 
-      const blockSize = o.billing_cycle === "manual" ? 1 : (product?.block_size ?? 1);
-      const needed =
-        o.billing_cycle === "manual"
-          ? Math.max(allocatedCount ?? 0, o.quantity ?? 1)
-          : (o.quantity ?? 1) * blockSize;
+        const blockSize = o.billing_cycle === "manual" ? 1 : (product?.block_size ?? 1);
+        const needed =
+          o.billing_cycle === "manual"
+            ? Math.max(allocatedCount ?? 0, o.quantity ?? 1)
+            : (o.quantity ?? 1) * blockSize;
 
         const availableStock = product
           ? ((

@@ -5,8 +5,10 @@ import {
   psDateToIso,
   calcOrder,
   generateSimulatedProxies,
+  prolongMake,
+  prolongCalc,
 } from "./proxyseller.server";
-import type { PsProxyItem } from "./proxyseller.server";
+import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
 
 const PURCHASE_LOCK_TTL_MS = 90_000;

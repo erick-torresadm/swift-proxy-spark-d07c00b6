@@ -39,6 +39,9 @@ function CustomerDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [pickerOrderId, setPickerOrderId] = useState<string | null>(null);
+
+
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
   }

@@ -553,6 +553,44 @@ export const listAvailableStockForOrder = createServerFn({ method: "GET" })
     };
   });
 
+/* -------------------------- LIST AVAILABLE STOCK FOR CUSTOMER -------------------------- */
+export const listAvailableStockForCustomer = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const [{ data: profile }, { data: authUser }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("user_id, full_name").eq("user_id", data.userId).maybeSingle(),
+      supabaseAdmin.auth.admin.getUserById(data.userId),
+    ]);
+    if (!profile && !authUser?.user) throw new Error("Cliente não encontrado");
+
+    const { data: stock, error } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, host, port, username, protocol, country_code, expires_at, created_at, product_id, products(name, block_size)")
+      .eq("status", "available")
+      .order("created_at", { ascending: true })
+      .limit(1000);
+    if (error) throw new Error(error.message);
+
+    return {
+      customer_name: profile?.full_name ?? authUser?.user?.email ?? "Cliente",
+      stock: (stock ?? []).map((s) => ({
+        id: s.id,
+        host: s.host,
+        port: s.port,
+        username: s.username,
+        protocol: s.protocol,
+        country_code: s.country_code,
+        expires_at: s.expires_at,
+        product_id: s.product_id,
+        product_name: (s.products as { name?: string } | null)?.name ?? null,
+        block_size: (s.products as { block_size?: number } | null)?.block_size ?? 1,
+      })),
+    };
+  });
+
 /* -------------------------- BULK MANUAL ALLOCATE (admin) -------------------------- */
 export const adminManualAllocateBulk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

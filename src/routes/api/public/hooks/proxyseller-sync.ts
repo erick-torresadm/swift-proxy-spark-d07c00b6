@@ -97,6 +97,23 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
 
             if ((avail ?? 0) >= rule.min_stock) continue;
 
+            // Antes de comprar, há pedido pendente recente no provedor? Se sim,
+            // pula — o backfill vai materializar e completar o estoque.
+            const recentCutoff = new Date(Date.now() - 20 * 60_000).toISOString();
+            const { count: openPending } = await supabaseAdmin
+              .from("provider_orders")
+              .select("*", { count: "exact", head: true })
+              .eq("product_id", product.id)
+              .eq("status", "pending")
+              .gte("created_at", recentCutoff);
+            if ((openPending ?? 0) > 0) continue;
+
+            // Compra só a diferença necessária para voltar ao mínimo,
+            // limitada ao batch_quantity. Nunca mais do que faltar.
+            const deficit = rule.min_stock - (avail ?? 0);
+            const toBuy = Math.min(deficit, rule.batch_quantity);
+            if (toBuy <= 0) continue;
+
             // 🔔 Alerta admin: estoque abaixo do mínimo
             void notifyAllAdmins({
               title: "⚠️ Estoque abaixo do mínimo",

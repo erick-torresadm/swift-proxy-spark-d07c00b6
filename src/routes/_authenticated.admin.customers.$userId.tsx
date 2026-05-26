@@ -141,6 +141,17 @@ function CustomerDetailPage() {
                   <Plus className="w-4 h-4" />
                   Alocar 1 proxy
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={o.available_stock === 0}
+                  onClick={() => setPickerOrderId(o.id)}
+                  title="Escolher proxies específicos do estoque"
+                >
+                  <ListChecks className="w-4 h-4" />
+                  Escolher do estoque
+                </Button>
+
                 {o.stripe_subscription_id && (
                   <Button
                     size="sm"

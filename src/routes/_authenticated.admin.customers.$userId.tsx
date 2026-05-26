@@ -174,9 +174,186 @@ function CustomerDetailPage() {
           );
         })}
       </div>
+
+      {pickerOrderId && (
+        <StockPickerDialog
+          orderId={pickerOrderId}
+          onClose={() => setPickerOrderId(null)}
+          onAllocated={() => {
+            qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
+            qc.invalidateQueries({ queryKey: ["admin-allocations"] });
+          }}
+        />
+      )}
     </div>
   );
 }
+
+function StockPickerDialog({
+  orderId,
+  onClose,
+  onAllocated,
+}: {
+  orderId: string;
+  onClose: () => void;
+  onAllocated: () => void;
+}) {
+  const listFn = useServerFn(listAvailableStockForOrder);
+  const bulkFn = useServerFn(adminManualAllocateBulk);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-stock-picker", orderId],
+    queryFn: () => listFn({ data: { orderId } }),
+  });
+
+  const allocate = useMutation({
+    mutationFn: () =>
+      bulkFn({ data: { orderId, stockIds: Array.from(selected) } }),
+    onSuccess: (r) => {
+      if (r.failed.length === 0) {
+        toast.success(`${r.allocated_count} proxy(s) alocado(s).`);
+      } else {
+        toast.warning(`${r.allocated_count} ok, ${r.failed.length} falharam.`);
+      }
+      onAllocated();
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const stock = (data?.stock ?? []).filter((s) => {
+    if (!filter.trim()) return true;
+    const q = filter.toLowerCase();
+    return (
+      s.host?.toLowerCase().includes(q) ||
+      s.username?.toLowerCase().includes(q) ||
+      s.country_code?.toLowerCase().includes(q)
+    );
+  });
+
+  const shortage = data?.shortage ?? 0;
+  const overSelect = selected.size > shortage;
+
+  function toggle(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  }
+
+  function selectFirstN(n: number) {
+    const ids = stock.slice(0, n).map((s) => s.id);
+    setSelected(new Set(ids));
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 border-b border-border flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black">Alocar proxies manualmente</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data?.product_name} · faltam <strong>{shortage}</strong> · estoque{" "}
+              <strong>{data?.stock.length ?? 0}</strong>
+            </p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 border-b border-border flex flex-wrap gap-2 items-center">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filtrar por host, user, país…"
+            className="flex-1 min-w-[180px] h-9 px-3 rounded-lg border border-border bg-background text-sm"
+          />
+          {shortage > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => selectFirstN(Math.min(shortage, stock.length))}
+            >
+              Selecionar {Math.min(shortage, stock.length)} primeiros
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>
+            Limpar
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {isLoading ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">Carregando…</p>
+          ) : stock.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">Sem proxies disponíveis.</p>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {stock.map((s) => {
+                const checked = selected.has(s.id);
+                return (
+                  <li key={s.id}>
+                    <label
+                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-background/50 ${
+                        checked ? "bg-primary/5" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(s.id)}
+                        className="w-4 h-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-xs truncate">
+                          {s.host}:{s.port}{" "}
+                          {s.username && <span className="text-muted-foreground">· {s.username}</span>}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}
+                          {s.expires_at && ` · expira ${new Date(s.expires_at).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-border flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            Selecionados: <strong className={overSelect ? "text-destructive" : "text-foreground"}>{selected.size}</strong>
+            {overSelect && ` (máx ${shortage})`}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={selected.size === 0 || overSelect || allocate.isPending}
+              onClick={() => allocate.mutate()}
+            >
+              {allocate.isPending ? "Alocando…" : `Alocar ${selected.size}`}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: "ok" | "warn" }) {
   const c = accent === "ok" ? "text-emerald-500" : accent === "warn" ? "text-amber-500" : "text-foreground";

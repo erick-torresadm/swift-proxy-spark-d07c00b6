@@ -311,14 +311,17 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
           country_code: string | null;
           block_size: number;
         } | null;
-        const blockSize = product?.block_size ?? 1;
-        const needed = (o.quantity ?? 1) * blockSize;
-
         const { count: allocatedCount } = await supabaseAdmin
           .from("customer_proxies")
           .select("*", { count: "exact", head: true })
           .eq("order_id", o.id)
           .neq("status", "released");
+
+      const blockSize = o.billing_cycle === "manual" ? 1 : (product?.block_size ?? 1);
+      const needed =
+        o.billing_cycle === "manual"
+          ? Math.max(allocatedCount ?? 0, o.quantity ?? 1)
+          : (o.quantity ?? 1) * blockSize;
 
         const availableStock = product
           ? ((
@@ -729,6 +732,7 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
           .from("proxy_stock")
           .update({ status: "available" } as never)
           .eq("id", stockId);
+        await supabaseAdmin.from("orders").delete().eq("id", order.id);
         failed.push({ stock_id: stockId, reason: insErr.message });
         continue;
       }

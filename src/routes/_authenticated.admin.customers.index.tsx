@@ -5,7 +5,7 @@ import { Users, ChevronRight } from "lucide-react";
 import { listCustomers } from "@/lib/inventory.functions";
 
 
-export const Route = createFileRoute("/_authenticated/admin/customers")({
+export const Route = createFileRoute("/_authenticated/admin/customers/")({
   component: CustomersPage,
 });
 

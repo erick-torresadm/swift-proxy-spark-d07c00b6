@@ -728,6 +728,15 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
       if (stock.status !== "available") { failed.push({ stock_id: stockId, reason: stock.status }); continue; }
 
       const product = stock.products as { name?: string; block_size?: number } | null;
+      const { data: claim, error: claimErr } = await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "allocated" } as never)
+        .eq("id", stockId)
+        .eq("status", "available")
+        .select("id, host, port")
+        .maybeSingle();
+      if (claimErr || !claim) { failed.push({ stock_id: stockId, reason: "concorrência" }); continue; }
+
       const { data: order, error: orderErr } = await supabaseAdmin
         .from("orders")
         .insert({
@@ -741,16 +750,11 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
         } as never)
         .select("id")
         .single();
-      if (orderErr || !order) { failed.push({ stock_id: stockId, reason: orderErr?.message ?? "pedido não criado" }); continue; }
-
-      const { data: claim, error: claimErr } = await supabaseAdmin
-        .from("proxy_stock")
-        .update({ status: "allocated" } as never)
-        .eq("id", stockId)
-        .eq("status", "available")
-        .select("id, host, port")
-        .maybeSingle();
-      if (claimErr || !claim) { failed.push({ stock_id: stockId, reason: "concorrência" }); continue; }
+      if (orderErr || !order) {
+        await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+        failed.push({ stock_id: stockId, reason: orderErr?.message ?? "pedido não criado" });
+        continue;
+      }
 
       const { error: insErr } = await supabaseAdmin
         .from("customer_proxies")

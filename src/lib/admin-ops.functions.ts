@@ -835,14 +835,12 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
         continue;
       }
 
-      const { error: insErr } = await supabaseAdmin
-        .from("customer_proxies")
-        .insert({
-          user_id: data.userId,
-          order_id: order.id,
-          stock_id: stockId,
-          status: "active",
-        } as never);
+      const { error: insErr } = await supabaseAdmin.from("customer_proxies").insert({
+        user_id: data.userId,
+        order_id: order.id,
+        stock_id: stockId,
+        status: "active",
+      } as never);
       if (insErr) {
         await supabaseAdmin
           .from("proxy_stock")

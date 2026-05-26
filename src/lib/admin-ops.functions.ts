@@ -609,7 +609,7 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
         .eq("id", stockId)
         .maybeSingle();
       if (!chk) { failed.push({ stock_id: stockId, reason: "não encontrado" }); continue; }
-      if (chk.product_id !== product.id) { failed.push({ stock_id: stockId, reason: "produto diferente" }); continue; }
+      if (chk.product_id !== product.id && !data.allowDifferentProduct) { failed.push({ stock_id: stockId, reason: "produto diferente" }); continue; }
       if (chk.status !== "available") { failed.push({ stock_id: stockId, reason: chk.status }); continue; }
 
       const { data: claim, error: cErr } = await supabaseAdmin

@@ -10,6 +10,8 @@ import type { PsProxyItem } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
+// ProxySeller IPv6 minimum purchase block size
+const PROXYSELLER_IPV6_MIN_BLOCK = 10;
 // ProxySeller leva ~5 min (às vezes mais) entre /order/make e o pedido
 // aparecer no painel / /proxy/list. Mantemos uma janela ampla para reusar
 // pedidos pendentes antes de gastar de novo.

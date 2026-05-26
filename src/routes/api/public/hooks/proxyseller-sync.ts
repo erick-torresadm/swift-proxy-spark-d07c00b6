@@ -117,9 +117,9 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
             // 🔔 Alerta admin: estoque abaixo do mínimo
             void notifyAllAdmins({
               title: "⚠️ Estoque abaixo do mínimo",
-              body: `${product.name}: ${avail ?? 0} disponíveis (mín. ${rule.min_stock}). Comprando ${rule.batch_quantity} IPs…`,
+              body: `${product.name}: ${avail ?? 0} disponíveis (mín. ${rule.min_stock}). Comprando ${toBuy} IPs…`,
               link: "/admin/inventory",
-              metadata: { productId: product.id, available: avail ?? 0, min: rule.min_stock },
+              metadata: { productId: product.id, available: avail ?? 0, min: rule.min_stock, to_buy: toBuy },
               dedupeKey: `stock-low:${product.id}:${new Date().toISOString().slice(0, 10)}`,
             });
 
@@ -128,7 +128,7 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
               const result = await purchaseIpv6Block({
                 countryId: cfg.countryId,
                 periodId: cfg.periodId,
-                quantity: rule.batch_quantity,
+                quantity: toBuy,
               });
 
               const { data: provOrder } = await supabaseAdmin

@@ -10,7 +10,11 @@ import type { PsProxyItem } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
-const PENDING_REUSE_MAX_AGE_MS = 5 * 60_000;
+// ProxySeller leva ~5 min (às vezes mais) entre /order/make e o pedido
+// aparecer no painel / /proxy/list. Mantemos uma janela ampla para reusar
+// pedidos pendentes antes de gastar de novo.
+const PENDING_REUSE_MAX_AGE_MS = 20 * 60_000;
+const PENDING_BLOCK_NEW_BUY_MS = 20 * 60_000;
 // Simulated provisioning delay range (mimics real ProxySeller 3-5min)
 const DRY_RUN_DELAY_MIN_MS = 3 * 60_000;
 const DRY_RUN_DELAY_MAX_MS = 5 * 60_000;
@@ -98,7 +102,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     if (stillShortAfterReuse > 0) {
       // 2b) Já existe pedido pendente recente do provedor? Se sim, NÃO compra
       //     de novo — o backfill ou a próxima alocação resolve.
-      const cutoff = new Date(Date.now() - 15 * 60_000).toISOString();
+      const cutoff = new Date(Date.now() - PENDING_BLOCK_NEW_BUY_MS).toISOString();
       const { count: openPending } = await supabaseAdmin
         .from("provider_orders")
         .select("*", { count: "exact", head: true })

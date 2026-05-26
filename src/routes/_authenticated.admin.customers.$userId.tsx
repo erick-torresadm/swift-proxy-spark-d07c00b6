@@ -354,8 +354,6 @@ function StockPickerDialog({
                           {s.expires_at && <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>}
                         </div>
                       </div>
-                        </div>
-                      </div>
                     </label>
                   </li>
                 );

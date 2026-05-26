@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "@/lib/stripe.server";
 
-
 async function assertAdmin(userId: string) {
   const { data } = await supabaseAdmin
     .from("user_roles")
@@ -37,10 +36,7 @@ export const listAllocations = createServerFn({ method: "GET" })
 
     const [{ data: profiles }, { data: issues }] = await Promise.all([
       userIds.length
-        ? supabaseAdmin
-            .from("profiles")
-            .select("user_id, full_name")
-            .in("user_id", userIds)
+        ? supabaseAdmin.from("profiles").select("user_id, full_name").in("user_id", userIds)
         : Promise.resolve({ data: [] as { user_id: string; full_name: string | null }[] }),
       stockIds.length
         ? supabaseAdmin
@@ -48,12 +44,12 @@ export const listAllocations = createServerFn({ method: "GET" })
             .select("stock_id, event, detected_at")
             .is("resolved_at", null)
             .in("stock_id", stockIds)
-        : Promise.resolve({ data: [] as { stock_id: string | null; event: string; detected_at: string }[] }),
+        : Promise.resolve({
+            data: [] as { stock_id: string | null; event: string; detected_at: string }[],
+          }),
     ]);
 
-    const profileMap = new Map(
-      (profiles ?? []).map((p) => [p.user_id, p.full_name]),
-    );
+    const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
     const issueMap = new Map<string, { event: string; detected_at: string }>();
     for (const i of issues ?? []) {
       if (i.stock_id && !issueMap.has(i.stock_id)) {
@@ -77,7 +73,7 @@ export const listAllocations = createServerFn({ method: "GET" })
       country_code: a.proxy_stock?.country_code ?? null,
       protocol: a.proxy_stock?.protocol ?? "http",
       grace_until: a.orders?.grace_until ?? null,
-      issue: a.stock_id ? issueMap.get(a.stock_id) ?? null : null,
+      issue: a.stock_id ? (issueMap.get(a.stock_id) ?? null) : null,
     }));
   });
 
@@ -85,10 +81,12 @@ export const listAllocations = createServerFn({ method: "GET" })
 export const adminSwapProxy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      allocationId: z.string().uuid(),
-      reason: z.string().min(2).max(500),
-    }).parse(d),
+    z
+      .object({
+        allocationId: z.string().uuid(),
+        reason: z.string().min(2).max(500),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -131,10 +129,7 @@ export const adminSwapProxy = createServerFn({ method: "POST" })
       .eq("status", "available");
     if (e1) throw new Error(e1.message);
 
-    await supabaseAdmin
-      .from("proxy_stock")
-      .update({ status: "removed" })
-      .eq("id", currentStock.id);
+    await supabaseAdmin.from("proxy_stock").update({ status: "removed" }).eq("id", currentStock.id);
 
     const { error: e2 } = await supabaseAdmin
       .from("customer_proxies")
@@ -178,10 +173,12 @@ export const adminSwapProxy = createServerFn({ method: "POST" })
 export const adminReleaseProxy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      allocationId: z.string().uuid(),
-      reason: z.string().min(2).max(500),
-    }).parse(d),
+    z
+      .object({
+        allocationId: z.string().uuid(),
+        reason: z.string().min(2).max(500),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -220,10 +217,12 @@ export const adminReleaseProxy = createServerFn({ method: "POST" })
 export const reportProxyIssue = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      allocationId: z.string().uuid(),
-      message: z.string().min(2).max(500),
-    }).parse(d),
+    z
+      .object({
+        allocationId: z.string().uuid(),
+        message: z.string().min(2).max(500),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { data: row } = await supabaseAdmin
@@ -278,72 +277,93 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
 
     const [{ data: profile }, { data: authUser }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("user_id, full_name, phone, created_at").eq("user_id", data.userId).maybeSingle(),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id, full_name, phone, created_at")
+        .eq("user_id", data.userId)
+        .maybeSingle(),
       supabaseAdmin.auth.admin.getUserById(data.userId),
     ]);
     const email = authUser?.user?.email ?? null;
 
     const { data: orders } = await supabaseAdmin
       .from("orders")
-      .select("id, status, quantity, billing_cycle, amount_cents, customer_email, stripe_subscription_id, stripe_customer_id, current_period_end, grace_until, created_at, product_id, products(id, name, slug, category, country_code, block_size)")
+      .select(
+        "id, status, quantity, billing_cycle, amount_cents, customer_email, stripe_subscription_id, stripe_customer_id, current_period_end, grace_until, created_at, product_id, products(id, name, slug, category, country_code, block_size)",
+      )
       .eq("user_id", data.userId)
       .order("created_at", { ascending: false });
 
     let stripe: ReturnType<typeof getStripe> | null = null;
-    try { stripe = getStripe(); } catch { /* no key */ }
+    try {
+      stripe = getStripe();
+    } catch {
+      /* no key */
+    }
 
-    const enriched = await Promise.all((orders ?? []).map(async (o) => {
-      const product = o.products as { id: string; name: string; slug: string; category: string; country_code: string | null; block_size: number } | null;
-      const blockSize = product?.block_size ?? 1;
-      const needed = (o.quantity ?? 1) * blockSize;
+    const enriched = await Promise.all(
+      (orders ?? []).map(async (o) => {
+        const product = o.products as {
+          id: string;
+          name: string;
+          slug: string;
+          category: string;
+          country_code: string | null;
+          block_size: number;
+        } | null;
+        const blockSize = product?.block_size ?? 1;
+        const needed = (o.quantity ?? 1) * blockSize;
 
-      const { count: allocatedCount } = await supabaseAdmin
-        .from("customer_proxies")
-        .select("*", { count: "exact", head: true })
-        .eq("order_id", o.id)
-        .neq("status", "released");
+        const { count: allocatedCount } = await supabaseAdmin
+          .from("customer_proxies")
+          .select("*", { count: "exact", head: true })
+          .eq("order_id", o.id)
+          .neq("status", "released");
 
-      const availableStock = product
-        ? (await supabaseAdmin
-            .from("proxy_stock")
-            .select("*", { count: "exact", head: true })
-            .eq("product_id", product.id)
-            .eq("status", "available")).count ?? 0
-        : 0;
+        const availableStock = product
+          ? ((
+              await supabaseAdmin
+                .from("proxy_stock")
+                .select("*", { count: "exact", head: true })
+                .eq("product_id", product.id)
+                .eq("status", "available")
+            ).count ?? 0)
+          : 0;
 
-      let stripeStatus: string | null = null;
-      let stripePeriodEnd: string | null = null;
-      if (stripe && o.stripe_subscription_id) {
-        try {
-          const sub = await stripe.subscriptions.retrieve(o.stripe_subscription_id);
-          stripeStatus = sub.status;
-          const ts = (sub as unknown as { current_period_end?: number }).current_period_end;
-          if (ts) stripePeriodEnd = new Date(ts * 1000).toISOString();
-        } catch (e) {
-          stripeStatus = `error: ${e instanceof Error ? e.message : "unknown"}`;
+        let stripeStatus: string | null = null;
+        let stripePeriodEnd: string | null = null;
+        if (stripe && o.stripe_subscription_id) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(o.stripe_subscription_id);
+            stripeStatus = sub.status;
+            const ts = (sub as unknown as { current_period_end?: number }).current_period_end;
+            if (ts) stripePeriodEnd = new Date(ts * 1000).toISOString();
+          } catch (e) {
+            stripeStatus = `error: ${e instanceof Error ? e.message : "unknown"}`;
+          }
         }
-      }
 
-      return {
-        id: o.id,
-        status: o.status as string,
-        quantity: o.quantity,
-        billing_cycle: o.billing_cycle,
-        amount_cents: o.amount_cents,
-        customer_email: o.customer_email,
-        stripe_subscription_id: o.stripe_subscription_id,
-        current_period_end: o.current_period_end,
-        grace_until: o.grace_until,
-        created_at: o.created_at,
-        product,
-        needed,
-        allocated: allocatedCount ?? 0,
-        shortage: Math.max(0, needed - (allocatedCount ?? 0)),
-        available_stock: availableStock,
-        stripe_status: stripeStatus,
-        stripe_period_end: stripePeriodEnd,
-      };
-    }));
+        return {
+          id: o.id,
+          status: o.status as string,
+          quantity: o.quantity,
+          billing_cycle: o.billing_cycle,
+          amount_cents: o.amount_cents,
+          customer_email: o.customer_email,
+          stripe_subscription_id: o.stripe_subscription_id,
+          current_period_end: o.current_period_end,
+          grace_until: o.grace_until,
+          created_at: o.created_at,
+          product,
+          needed,
+          allocated: allocatedCount ?? 0,
+          shortage: Math.max(0, needed - (allocatedCount ?? 0)),
+          available_stock: availableStock,
+          stripe_status: stripeStatus,
+          stripe_period_end: stripePeriodEnd,
+        };
+      }),
+    );
 
     return {
       profile: profile ?? { user_id: data.userId, full_name: null, phone: null, created_at: null },
@@ -356,11 +376,13 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
 export const adminManualAllocate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      orderId: z.string().uuid(),
-      stockId: z.string().uuid().optional(),
-      syncStripe: z.boolean().optional(),
-    }).parse(d),
+    z
+      .object({
+        orderId: z.string().uuid(),
+        stockId: z.string().uuid().optional(),
+        syncStripe: z.boolean().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -377,7 +399,10 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
       const { data: au } = await supabaseAdmin.auth.admin.getUserById(order.user_id);
       const email = au?.user?.email ?? null;
       if (email) {
-        await supabaseAdmin.from("orders").update({ customer_email: email } as never).eq("id", order.id);
+        await supabaseAdmin
+          .from("orders")
+          .update({ customer_email: email } as never)
+          .eq("id", order.id);
         order.customer_email = email;
       }
     }
@@ -390,7 +415,8 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
         const patch: Record<string, unknown> = { last_payment_check_at: new Date().toISOString() };
         if (periodEnd) patch.current_period_end = new Date(periodEnd * 1000).toISOString();
         if (sub.status === "active" || sub.status === "trialing") {
-          patch.status = "paid"; patch.grace_until = null;
+          patch.status = "paid";
+          patch.grace_until = null;
           order.status = "paid";
         } else if (sub.status === "past_due" || sub.status === "unpaid") {
           patch.status = "past_due";
@@ -399,7 +425,10 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
           patch.status = "cancelled";
           order.status = "cancelled";
         }
-        await supabaseAdmin.from("orders").update(patch as never).eq("id", order.id);
+        await supabaseAdmin
+          .from("orders")
+          .update(patch as never)
+          .eq("id", order.id);
       } catch (e) {
         throw new Error(`Stripe: ${e instanceof Error ? e.message : "erro"}`);
       }
@@ -407,7 +436,9 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
 
     const allowedStatuses = ["paid", "past_due", "grace"];
     if (!allowedStatuses.includes(order.status as string)) {
-      throw new Error(`Pedido com status "${order.status}" não tem direito a proxy. Sincronize com Stripe primeiro.`);
+      throw new Error(
+        `Pedido com status "${order.status}" não tem direito a proxy. Sincronize com Stripe primeiro.`,
+      );
     }
 
     const { data: product } = await supabaseAdmin
@@ -436,7 +467,8 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
         .eq("id", stockId)
         .maybeSingle();
       if (!chk) throw new Error("Proxy de estoque não encontrado");
-      if (chk.product_id !== product.id) throw new Error("Proxy não pertence ao produto deste pedido");
+      if (chk.product_id !== product.id)
+        throw new Error("Proxy não pertence ao produto deste pedido");
       if (chk.status !== "available") throw new Error(`Proxy não está disponível (${chk.status})`);
     } else {
       const { data: pick } = await supabaseAdmin
@@ -460,16 +492,17 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
       .maybeSingle();
     if (claimErr || !claim) throw new Error("Não foi possível reservar o proxy (concorrência).");
 
-    const { error: insErr } = await supabaseAdmin
-      .from("customer_proxies")
-      .insert({
-        user_id: order.user_id,
-        order_id: order.id,
-        stock_id: stockId,
-        status: "active",
-      } as never);
+    const { error: insErr } = await supabaseAdmin.from("customer_proxies").insert({
+      user_id: order.user_id,
+      order_id: order.id,
+      stock_id: stockId,
+      status: "active",
+    } as never);
     if (insErr) {
-      await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "available" } as never)
+        .eq("id", stockId);
       throw new Error(insErr.message);
     }
 
@@ -501,10 +534,12 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
 export const listAvailableStockForOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      orderId: z.string().uuid(),
-      showAllProducts: z.boolean().optional(),
-    }).parse(d),
+    z
+      .object({
+        orderId: z.string().uuid(),
+        showAllProducts: z.boolean().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -525,7 +560,9 @@ export const listAvailableStockForOrder = createServerFn({ method: "GET" })
 
     let q = supabaseAdmin
       .from("proxy_stock")
-      .select("id, host, port, username, protocol, country_code, expires_at, created_at, product_id, products(name)")
+      .select(
+        "id, host, port, username, protocol, country_code, expires_at, created_at, product_id, products(name)",
+      )
       .eq("status", "available")
       .order("created_at", { ascending: true })
       .limit(1000);
@@ -561,14 +598,20 @@ export const listAvailableStockForCustomer = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
 
     const [{ data: profile }, { data: authUser }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("user_id, full_name").eq("user_id", data.userId).maybeSingle(),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id, full_name")
+        .eq("user_id", data.userId)
+        .maybeSingle(),
       supabaseAdmin.auth.admin.getUserById(data.userId),
     ]);
     if (!profile && !authUser?.user) throw new Error("Cliente não encontrado");
 
     const { data: stock, error } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, host, port, username, protocol, country_code, expires_at, created_at, product_id, products(name, block_size)")
+      .select(
+        "id, host, port, username, protocol, country_code, expires_at, created_at, product_id, products(name, block_size)",
+      )
       .eq("status", "available")
       .order("created_at", { ascending: true })
       .limit(1000);
@@ -595,12 +638,14 @@ export const listAvailableStockForCustomer = createServerFn({ method: "GET" })
 export const adminManualAllocateBulk = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      orderId: z.string().uuid(),
-      stockIds: z.array(z.string().uuid()).min(1).max(200),
-      ignoreShortageLimit: z.boolean().optional(),
-      allowDifferentProduct: z.boolean().optional(),
-    }).parse(d),
+    z
+      .object({
+        orderId: z.string().uuid(),
+        stockIds: z.array(z.string().uuid()).min(1).max(200),
+        ignoreShortageLimit: z.boolean().optional(),
+        allowDifferentProduct: z.boolean().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -634,7 +679,9 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
 
     const remaining = Math.max(0, needed - (allocated ?? 0));
     if (!data.ignoreShortageLimit && data.stockIds.length > remaining) {
-      throw new Error(`Pedido aceita só mais ${remaining} proxies (você selecionou ${data.stockIds.length}).`);
+      throw new Error(
+        `Pedido aceita só mais ${remaining} proxies (você selecionou ${data.stockIds.length}).`,
+      );
     }
 
     const succeeded: { stock_id: string; host: string; port: number }[] = [];
@@ -646,9 +693,18 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
         .select("id, status, product_id")
         .eq("id", stockId)
         .maybeSingle();
-      if (!chk) { failed.push({ stock_id: stockId, reason: "não encontrado" }); continue; }
-      if (chk.product_id !== product.id && !data.allowDifferentProduct) { failed.push({ stock_id: stockId, reason: "produto diferente" }); continue; }
-      if (chk.status !== "available") { failed.push({ stock_id: stockId, reason: chk.status }); continue; }
+      if (!chk) {
+        failed.push({ stock_id: stockId, reason: "não encontrado" });
+        continue;
+      }
+      if (chk.product_id !== product.id && !data.allowDifferentProduct) {
+        failed.push({ stock_id: stockId, reason: "produto diferente" });
+        continue;
+      }
+      if (chk.status !== "available") {
+        failed.push({ stock_id: stockId, reason: chk.status });
+        continue;
+      }
 
       const { data: claim, error: cErr } = await supabaseAdmin
         .from("proxy_stock")
@@ -657,18 +713,22 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
         .eq("status", "available")
         .select("id, host, port")
         .maybeSingle();
-      if (cErr || !claim) { failed.push({ stock_id: stockId, reason: "concorrência" }); continue; }
+      if (cErr || !claim) {
+        failed.push({ stock_id: stockId, reason: "concorrência" });
+        continue;
+      }
 
-      const { error: insErr } = await supabaseAdmin
-        .from("customer_proxies")
-        .insert({
-          user_id: order.user_id,
-          order_id: order.id,
-          stock_id: stockId,
-          status: "active",
-        } as never);
+      const { error: insErr } = await supabaseAdmin.from("customer_proxies").insert({
+        user_id: order.user_id,
+        order_id: order.id,
+        stock_id: stockId,
+        status: "active",
+      } as never);
       if (insErr) {
-        await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+        await supabaseAdmin
+          .from("proxy_stock")
+          .update({ status: "available" } as never)
+          .eq("id", stockId);
         failed.push({ stock_id: stockId, reason: insErr.message });
         continue;
       }
@@ -680,7 +740,11 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
       action: "manual_allocate_bulk",
       status: failed.length === 0 ? "ok" : "partial",
       user_id: context.userId,
-      request: { order_id: order.id, target_user_id: order.user_id, requested: data.stockIds.length },
+      request: {
+        order_id: order.id,
+        target_user_id: order.user_id,
+        requested: data.stockIds.length,
+      },
       response: { succeeded_count: succeeded.length, failed_count: failed.length, failed },
     } as never);
 
@@ -688,7 +752,8 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
       await supabaseAdmin.from("notifications").insert({
         user_id: order.user_id,
         kind: "system",
-        title: succeeded.length === 1 ? "Novo proxy disponível" : `${succeeded.length} novos proxies`,
+        title:
+          succeeded.length === 1 ? "Novo proxy disponível" : `${succeeded.length} novos proxies`,
         body: `Proxies atribuídos manualmente (${product.name}).`,
         link: "/dashboard/proxies",
       } as never);
@@ -701,10 +766,12 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
 export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      userId: z.string().uuid(),
-      stockIds: z.array(z.string().uuid()).min(1).max(200),
-    }).parse(d),
+    z
+      .object({
+        userId: z.string().uuid(),
+        stockIds: z.array(z.string().uuid()).min(1).max(200),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -724,8 +791,14 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
         .select("id, status, product_id, host, port, products(name, block_size)")
         .eq("id", stockId)
         .maybeSingle();
-      if (!stock) { failed.push({ stock_id: stockId, reason: "não encontrado" }); continue; }
-      if (stock.status !== "available") { failed.push({ stock_id: stockId, reason: stock.status }); continue; }
+      if (!stock) {
+        failed.push({ stock_id: stockId, reason: "não encontrado" });
+        continue;
+      }
+      if (stock.status !== "available") {
+        failed.push({ stock_id: stockId, reason: stock.status });
+        continue;
+      }
 
       const product = stock.products as { name?: string; block_size?: number } | null;
       const { data: claim, error: claimErr } = await supabaseAdmin
@@ -735,7 +808,10 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
         .eq("status", "available")
         .select("id, host, port")
         .maybeSingle();
-      if (claimErr || !claim) { failed.push({ stock_id: stockId, reason: "concorrência" }); continue; }
+      if (claimErr || !claim) {
+        failed.push({ stock_id: stockId, reason: "concorrência" });
+        continue;
+      }
 
       const { data: order, error: orderErr } = await supabaseAdmin
         .from("orders")
@@ -751,16 +827,27 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
         .select("id")
         .single();
       if (orderErr || !order) {
-        await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+        await supabaseAdmin
+          .from("proxy_stock")
+          .update({ status: "available" } as never)
+          .eq("id", stockId);
         failed.push({ stock_id: stockId, reason: orderErr?.message ?? "pedido não criado" });
         continue;
       }
 
       const { error: insErr } = await supabaseAdmin
         .from("customer_proxies")
-        .insert({ user_id: data.userId, order_id: order.id, stock_id: stockId, status: "active" } as never);
+        .insert({
+          user_id: data.userId,
+          order_id: order.id,
+          stock_id: stockId,
+          status: "active",
+        } as never);
       if (insErr) {
-        await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+        await supabaseAdmin
+          .from("proxy_stock")
+          .update({ status: "available" } as never)
+          .eq("id", stockId);
         failed.push({ stock_id: stockId, reason: insErr.message });
         continue;
       }
@@ -771,7 +858,12 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
         action: "manual_allocate_customer",
         status: "ok",
         user_id: context.userId,
-        request: { target_user_id: data.userId, order_id: order.id, stock_id: stockId, product: product?.name ?? null },
+        request: {
+          target_user_id: data.userId,
+          order_id: order.id,
+          stock_id: stockId,
+          product: product?.name ?? null,
+        },
       } as never);
     }
 
@@ -779,7 +871,8 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
       await supabaseAdmin.from("notifications").insert({
         user_id: data.userId,
         kind: "system",
-        title: succeeded.length === 1 ? "Novo proxy disponível" : `${succeeded.length} novos proxies`,
+        title:
+          succeeded.length === 1 ? "Novo proxy disponível" : `${succeeded.length} novos proxies`,
         body: "Proxy atribuído manualmente à sua conta.",
         link: "/dashboard/proxies",
       } as never);
@@ -787,5 +880,3 @@ export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
 
     return { succeeded, failed, allocated_count: succeeded.length };
   });
-
-

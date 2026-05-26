@@ -18,7 +18,6 @@ export const Route = createFileRoute("/_authenticated/admin/customers/$userId")(
   component: CustomerDetailPage,
 });
 
-
 function CustomerDetailPage() {
   const { userId } = Route.useParams();
   const qc = useQueryClient();
@@ -31,8 +30,7 @@ function CustomerDetailPage() {
   });
 
   const allocate = useMutation({
-    mutationFn: (vars: { orderId: string; syncStripe?: boolean }) =>
-      allocFn({ data: vars }),
+    mutationFn: (vars: { orderId: string; syncStripe?: boolean }) => allocFn({ data: vars }),
     onSuccess: (r) => {
       toast.success(`Proxy alocado: ${r.host}:${r.port}`);
       qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
@@ -43,7 +41,6 @@ function CustomerDetailPage() {
 
   const [pickerOrderId, setPickerOrderId] = useState<string | null>(null);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
-
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -66,8 +63,16 @@ function CustomerDetailPage() {
       <div className="bg-card border border-border rounded-2xl p-6">
         <h2 className="text-xl font-bold">{profile.full_name ?? "Sem nome"}</h2>
         <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{email ?? "—"}</span>
-          {profile.phone && <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{profile.phone}</span>}
+          <span className="inline-flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            {email ?? "—"}
+          </span>
+          {profile.phone && (
+            <span className="inline-flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5" />
+              {profile.phone}
+            </span>
+          )}
           <span className="font-mono text-xs">{userId.slice(0, 8)}…</span>
         </div>
       </div>
@@ -97,15 +102,21 @@ function CustomerDetailPage() {
         {orders.map((o) => {
           const canAllocate = o.shortage > 0 && o.available_stock > 0;
           const statusColor =
-            o.status === "paid" ? "bg-emerald-500/15 text-emerald-500"
-            : o.status === "past_due" || o.status === "grace" ? "bg-amber-500/15 text-amber-500"
-            : o.status === "cancelled" ? "bg-destructive/15 text-destructive"
-            : "bg-muted text-muted-foreground";
+            o.status === "paid"
+              ? "bg-emerald-500/15 text-emerald-500"
+              : o.status === "past_due" || o.status === "grace"
+                ? "bg-amber-500/15 text-amber-500"
+                : o.status === "cancelled"
+                  ? "bg-destructive/15 text-destructive"
+                  : "bg-muted text-muted-foreground";
           const stripeColor =
             o.stripe_status === "active" || o.stripe_status === "trialing"
               ? "text-emerald-500"
-              : o.stripe_status?.startsWith("error") ? "text-destructive"
-              : o.stripe_status ? "text-amber-500" : "text-muted-foreground";
+              : o.stripe_status?.startsWith("error")
+                ? "text-destructive"
+                : o.stripe_status
+                  ? "text-amber-500"
+                  : "text-muted-foreground";
 
           return (
             <div key={o.id} className="bg-card border border-border rounded-2xl p-5">
@@ -113,16 +124,23 @@ function CustomerDetailPage() {
                 <div>
                   <div className="font-bold">{o.product?.name ?? "Produto removido"}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {o.product?.category} · {o.product?.country_code ?? "—"} · qty {o.quantity} · {o.billing_cycle}
+                    {o.product?.category} · {o.product?.country_code ?? "—"} · qty {o.quantity} ·{" "}
+                    {o.billing_cycle}
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-1 font-mono">{o.id.slice(0, 8)}…</div>
+                  <div className="text-[11px] text-muted-foreground mt-1 font-mono">
+                    {o.id.slice(0, 8)}…
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor}`}>
+                  <span
+                    className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusColor}`}
+                  >
                     {o.status}
                   </span>
                   {o.stripe_subscription_id && (
-                    <span className={`text-[11px] font-semibold inline-flex items-center gap-1 ${stripeColor}`}>
+                    <span
+                      className={`text-[11px] font-semibold inline-flex items-center gap-1 ${stripeColor}`}
+                    >
                       <CreditCard className="w-3 h-3" />
                       Stripe: {o.stripe_status ?? "—"}
                     </span>
@@ -132,9 +150,21 @@ function CustomerDetailPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-3">
                 <Stat label="Direito a" value={`${o.needed} IP${o.needed > 1 ? "s" : ""}`} />
-                <Stat label="Alocados" value={String(o.allocated)} accent={o.allocated >= o.needed ? "ok" : "warn"} />
-                <Stat label="Falta" value={String(o.shortage)} accent={o.shortage > 0 ? "warn" : "ok"} />
-                <Stat label="Estoque livre" value={String(o.available_stock)} accent={o.available_stock > 0 ? "ok" : "warn"} />
+                <Stat
+                  label="Alocados"
+                  value={String(o.allocated)}
+                  accent={o.allocated >= o.needed ? "ok" : "warn"}
+                />
+                <Stat
+                  label="Falta"
+                  value={String(o.shortage)}
+                  accent={o.shortage > 0 ? "warn" : "ok"}
+                />
+                <Stat
+                  label="Estoque livre"
+                  value={String(o.available_stock)}
+                  accent={o.available_stock > 0 ? "ok" : "warn"}
+                />
               </div>
 
               {o.customer_email && o.customer_email !== email && (
@@ -174,10 +204,14 @@ function CustomerDetailPage() {
                   </Button>
                 )}
                 {o.shortage === 0 && (
-                  <span className="text-xs text-muted-foreground self-center">Pedido completo.</span>
+                  <span className="text-xs text-muted-foreground self-center">
+                    Pedido completo.
+                  </span>
                 )}
                 {o.shortage > 0 && o.available_stock === 0 && (
-                  <span className="text-xs text-destructive self-center">Sem estoque disponível.</span>
+                  <span className="text-xs text-destructive self-center">
+                    Sem estoque disponível.
+                  </span>
                 )}
               </div>
             </div>
@@ -313,7 +347,10 @@ function StockPickerDialog({
             <input
               type="checkbox"
               checked={showAll}
-              onChange={(e) => { setShowAll(e.target.checked); setSelected(new Set()); }}
+              onChange={(e) => {
+                setShowAll(e.target.checked);
+                setSelected(new Set());
+              }}
               className="w-3.5 h-3.5"
             />
             Mostrar todo o estoque
@@ -334,7 +371,8 @@ function StockPickerDialog({
 
         {hasDifferentProduct && (
           <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[11px] text-amber-600">
-            ⚠ Você selecionou proxies de produto diferente do pedido. A alocação seguirá assim mesmo.
+            ⚠ Você selecionou proxies de produto diferente do pedido. A alocação seguirá assim
+            mesmo.
           </div>
         )}
 
@@ -342,7 +380,9 @@ function StockPickerDialog({
           {isLoading ? (
             <p className="p-6 text-center text-sm text-muted-foreground">Carregando…</p>
           ) : stock.length === 0 ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">Sem proxies disponíveis.</p>
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              Sem proxies disponíveis.
+            </p>
           ) : (
             <ul className="divide-y divide-border/60">
               {stock.map((s) => {
@@ -363,16 +403,24 @@ function StockPickerDialog({
                       <div className="flex-1 min-w-0">
                         <div className="font-mono text-xs truncate">
                           {s.host}:{s.port}{" "}
-                          {s.username && <span className="text-muted-foreground">· {s.username}</span>}
+                          {s.username && (
+                            <span className="text-muted-foreground">· {s.username}</span>
+                          )}
                         </div>
                         <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
-                          <span>{(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}</span>
+                          <span>
+                            {(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}
+                          </span>
                           {s.product_name && (
-                            <span className={`px-1.5 py-0.5 rounded ${s.same_product ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
+                            <span
+                              className={`px-1.5 py-0.5 rounded ${s.same_product ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}
+                            >
                               {s.product_name}
                             </span>
                           )}
-                          {s.expires_at && <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>}
+                          {s.expires_at && (
+                            <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>
+                          )}
                         </div>
                       </div>
                     </label>
@@ -385,7 +433,10 @@ function StockPickerDialog({
 
         <div className="p-4 border-t border-border flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">
-            Selecionados: <strong className={overSelect ? "text-destructive" : "text-foreground"}>{selected.size}</strong>
+            Selecionados:{" "}
+            <strong className={overSelect ? "text-destructive" : "text-foreground"}>
+              {selected.size}
+            </strong>
             {overSelect && ` (máx ${shortage})`}
           </div>
           <div className="flex gap-2">
@@ -455,13 +506,20 @@ function CustomerStockPickerDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 border-b border-border flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-black">Alocar proxy na conta do cliente</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              {data?.customer_name ?? "Cliente"} · estoque livre <strong>{data?.stock.length ?? 0}</strong>
+              {data?.customer_name ?? "Cliente"} · estoque livre{" "}
+              <strong>{data?.stock.length ?? 0}</strong>
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -476,7 +534,11 @@ function CustomerStockPickerDialog({
             placeholder="Filtrar por host, user, país, produto…"
             className="flex-1 min-w-[180px] h-9 px-3 rounded-lg border border-border bg-background text-sm"
           />
-          <Button size="sm" variant="outline" onClick={() => setSelected(new Set(stock.slice(0, 10).map((s) => s.id)))}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSelected(new Set(stock.slice(0, 10).map((s) => s.id)))}
+          >
             Selecionar 10 primeiros
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>
@@ -488,23 +550,43 @@ function CustomerStockPickerDialog({
           {isLoading ? (
             <p className="p-6 text-center text-sm text-muted-foreground">Carregando…</p>
           ) : stock.length === 0 ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">Sem proxies disponíveis no estoque.</p>
+            <p className="p-6 text-center text-sm text-muted-foreground">
+              Sem proxies disponíveis no estoque.
+            </p>
           ) : (
             <ul className="divide-y divide-border/60">
               {stock.map((s) => {
                 const checked = selected.has(s.id);
                 return (
                   <li key={s.id}>
-                    <label className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-background/50 ${checked ? "bg-primary/5" : ""}`}>
-                      <input type="checkbox" checked={checked} onChange={() => toggle(s.id)} className="w-4 h-4" />
+                    <label
+                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-background/50 ${checked ? "bg-primary/5" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(s.id)}
+                        className="w-4 h-4"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="font-mono text-xs truncate">
-                          {s.host}:{s.port} {s.username && <span className="text-muted-foreground">· {s.username}</span>}
+                          {s.host}:{s.port}{" "}
+                          {s.username && (
+                            <span className="text-muted-foreground">· {s.username}</span>
+                          )}
                         </div>
                         <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
-                          <span>{(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}</span>
-                          {s.product_name && <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s.product_name}</span>}
-                          {s.expires_at && <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>}
+                          <span>
+                            {(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}
+                          </span>
+                          {s.product_name && (
+                            <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {s.product_name}
+                            </span>
+                          )}
+                          {s.expires_at && (
+                            <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>
+                          )}
                         </div>
                       </div>
                     </label>
@@ -516,10 +598,18 @@ function CustomerStockPickerDialog({
         </div>
 
         <div className="p-4 border-t border-border flex items-center justify-between gap-3">
-          <div className="text-xs text-muted-foreground">Selecionados: <strong className="text-foreground">{selected.size}</strong></div>
+          <div className="text-xs text-muted-foreground">
+            Selecionados: <strong className="text-foreground">{selected.size}</strong>
+          </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
-            <Button size="sm" disabled={selected.size === 0 || allocate.isPending} onClick={() => allocate.mutate()}>
+            <Button variant="outline" size="sm" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={selected.size === 0 || allocate.isPending}
+              onClick={() => allocate.mutate()}
+            >
               {allocate.isPending ? "Alocando…" : `Alocar ${selected.size}`}
             </Button>
           </div>
@@ -529,12 +619,14 @@ function CustomerStockPickerDialog({
   );
 }
 
-
 function Stat({ label, value, accent }: { label: string; value: string; accent?: "ok" | "warn" }) {
-  const c = accent === "ok" ? "text-emerald-500" : accent === "warn" ? "text-amber-500" : "text-foreground";
+  const c =
+    accent === "ok" ? "text-emerald-500" : accent === "warn" ? "text-amber-500" : "text-foreground";
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+        {label}
+      </div>
       <div className={`text-lg font-black ${c}`}>{value}</div>
     </div>
   );

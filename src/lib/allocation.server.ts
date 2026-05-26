@@ -102,7 +102,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
     if (stillShortAfterReuse > 0) {
       // 2b) Já existe pedido pendente recente do provedor? Se sim, NÃO compra
       //     de novo — o backfill ou a próxima alocação resolve.
-      const cutoff = new Date(Date.now() - 15 * 60_000).toISOString();
+      const cutoff = new Date(Date.now() - PENDING_BLOCK_NEW_BUY_MS).toISOString();
       const { count: openPending } = await supabaseAdmin
         .from("provider_orders")
         .select("*", { count: "exact", head: true })

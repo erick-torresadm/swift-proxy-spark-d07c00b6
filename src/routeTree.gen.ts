@@ -54,6 +54,7 @@ import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
+import { Route as ApiPublicHooksE2eRunnerRouteImport } from './routes/api/public/hooks/e2e-runner'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
 import { Route as AuthenticatedAdminInventoryProductIdRouteImport } from './routes/_authenticated.admin.inventory.$productId'
 import { Route as AuthenticatedAdminCustomersUserIdRouteImport } from './routes/_authenticated.admin.customers.$userId'
@@ -310,6 +311,11 @@ const ApiPublicHooksEngagementNudgesRoute =
     path: '/api/public/hooks/engagement-nudges',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksE2eRunnerRoute = ApiPublicHooksE2eRunnerRouteImport.update({
+  id: '/api/public/hooks/e2e-runner',
+  path: '/api/public/hooks/e2e-runner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronHealthcheckRoute =
   ApiPublicCronHealthcheckRouteImport.update({
     id: '/api/public/cron/healthcheck',
@@ -418,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
+  '/api/public/hooks/e2e-runner': typeof ApiPublicHooksE2eRunnerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
+  '/api/public/hooks/e2e-runner': typeof ApiPublicHooksE2eRunnerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
@@ -529,6 +537,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/_authenticated/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
+  '/api/public/hooks/e2e-runner': typeof ApiPublicHooksE2eRunnerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
     | '/api/public/cron/healthcheck'
+    | '/api/public/hooks/e2e-runner'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
@@ -640,6 +650,7 @@ export interface FileRouteTypes {
     | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
     | '/api/public/cron/healthcheck'
+    | '/api/public/hooks/e2e-runner'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
@@ -697,6 +708,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/customers/$userId'
     | '/_authenticated/admin/inventory/$productId'
     | '/api/public/cron/healthcheck'
+    | '/api/public/hooks/e2e-runner'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
@@ -723,6 +735,7 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
+  ApiPublicHooksE2eRunnerRoute: typeof ApiPublicHooksE2eRunnerRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
@@ -1047,6 +1060,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksEngagementNudgesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/e2e-runner': {
+      id: '/api/public/hooks/e2e-runner'
+      path: '/api/public/hooks/e2e-runner'
+      fullPath: '/api/public/hooks/e2e-runner'
+      preLoaderRoute: typeof ApiPublicHooksE2eRunnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/healthcheck': {
       id: '/api/public/cron/healthcheck'
       path: '/api/public/cron/healthcheck'
@@ -1275,6 +1295,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
+  ApiPublicHooksE2eRunnerRoute: ApiPublicHooksE2eRunnerRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
   ApiPublicHooksNotificationsDispatchRoute:
     ApiPublicHooksNotificationsDispatchRoute,

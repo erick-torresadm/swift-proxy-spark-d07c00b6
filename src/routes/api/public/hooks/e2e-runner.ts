@@ -123,8 +123,13 @@ export const Route = createFileRoute("/api/public/hooks/e2e-runner")({
             const qty = (rp.quantityRequested as number) ?? 1;
             const base = rp.baseOrderNumber as string;
             const proxies = generateSimulatedProxies(base, qty, po.country_code ?? null);
+            if (!po.product_id) {
+              log.push({ id: po.id, skipped: "no product_id" });
+              continue;
+            }
+            const productId = po.product_id;
             const stockRows = proxies.map((p) => ({
-              product_id: po.product_id,
+              product_id: productId,
               provider_order_id: po.id,
               external_proxy_id: p.id,
               host: p.ip_only || p.ip,

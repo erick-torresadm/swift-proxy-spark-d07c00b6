@@ -697,4 +697,91 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
     return { succeeded, failed, allocated_count: succeeded.length };
   });
 
+/* -------------------------- DIRECT CUSTOMER ALLOCATE (admin, without order) -------------------------- */
+export const adminManualAllocateToCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      userId: z.string().uuid(),
+      stockIds: z.array(z.string().uuid()).min(1).max(200),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const [{ data: profile }, { data: authUser }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("user_id").eq("user_id", data.userId).maybeSingle(),
+      supabaseAdmin.auth.admin.getUserById(data.userId),
+    ]);
+    if (!profile && !authUser?.user) throw new Error("Cliente não encontrado");
+
+    const succeeded: { stock_id: string; host: string; port: number }[] = [];
+    const failed: { stock_id: string; reason: string }[] = [];
+
+    for (const stockId of data.stockIds) {
+      const { data: stock } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("id, status, product_id, host, port, products(name, block_size)")
+        .eq("id", stockId)
+        .maybeSingle();
+      if (!stock) { failed.push({ stock_id: stockId, reason: "não encontrado" }); continue; }
+      if (stock.status !== "available") { failed.push({ stock_id: stockId, reason: stock.status }); continue; }
+
+      const product = stock.products as { name?: string; block_size?: number } | null;
+      const { data: order, error: orderErr } = await supabaseAdmin
+        .from("orders")
+        .insert({
+          user_id: data.userId,
+          product_id: stock.product_id,
+          quantity: 1,
+          billing_cycle: "manual",
+          amount_cents: 0,
+          status: "paid",
+          customer_email: authUser?.user?.email ?? null,
+        } as never)
+        .select("id")
+        .single();
+      if (orderErr || !order) { failed.push({ stock_id: stockId, reason: orderErr?.message ?? "pedido não criado" }); continue; }
+
+      const { data: claim, error: claimErr } = await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "allocated" } as never)
+        .eq("id", stockId)
+        .eq("status", "available")
+        .select("id, host, port")
+        .maybeSingle();
+      if (claimErr || !claim) { failed.push({ stock_id: stockId, reason: "concorrência" }); continue; }
+
+      const { error: insErr } = await supabaseAdmin
+        .from("customer_proxies")
+        .insert({ user_id: data.userId, order_id: order.id, stock_id: stockId, status: "active" } as never);
+      if (insErr) {
+        await supabaseAdmin.from("proxy_stock").update({ status: "available" } as never).eq("id", stockId);
+        failed.push({ stock_id: stockId, reason: insErr.message });
+        continue;
+      }
+      succeeded.push({ stock_id: stockId, host: claim.host, port: claim.port });
+
+      await supabaseAdmin.from("audit_log").insert({
+        source: "admin",
+        action: "manual_allocate_customer",
+        status: "ok",
+        user_id: context.userId,
+        request: { target_user_id: data.userId, order_id: order.id, stock_id: stockId, product: product?.name ?? null },
+      } as never);
+    }
+
+    if (succeeded.length > 0) {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: data.userId,
+        kind: "system",
+        title: succeeded.length === 1 ? "Novo proxy disponível" : `${succeeded.length} novos proxies`,
+        body: "Proxy atribuído manualmente à sua conta.",
+        link: "/dashboard/proxies",
+      } as never);
+    }
+
+    return { succeeded, failed, allocated_count: succeeded.length };
+  });
+
 

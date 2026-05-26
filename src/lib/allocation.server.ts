@@ -5,8 +5,10 @@ import {
   psDateToIso,
   calcOrder,
   generateSimulatedProxies,
+  prolongMake,
+  prolongCalc,
 } from "./proxyseller.server";
-import type { PsProxyItem } from "./proxyseller.server";
+import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
@@ -425,3 +427,123 @@ async function releasePurchaseLock(productId: string): Promise<void> {
   await supabaseAdmin.from("purchase_locks").delete().eq("product_id", productId);
 }
 
+
+/**
+ * Renova (prolong) os blocos do provedor que contêm os proxies ativos do pedido.
+ *
+ * Regra de blocos (ProxySeller IPv6 mínimo = 10):
+ *  - cada `provider_orders` representa 1 bloco (≥10 IPs)
+ *  - renovamos TODOS os IPs do(s) bloco(s) que contêm allocations ativas do cliente
+ *  - se o cliente tem 10 ativos em 1 bloco → renova 10
+ *  - se tem 11 ativos espalhados em 2 blocos → renova 20 (os 9 extras ficam como estoque livre renovado)
+ *
+ * Idempotente o suficiente: chamado a cada `invoice.payment_succeeded` de renovação.
+ * Em `dry_run`, apenas calcula custo e atualiza expires_at localmente.
+ */
+export async function renewProxyBlocksForOrder(orderId: string): Promise<{
+  renewed_proxies: number;
+  renewed_blocks: number;
+  cost_usd: number;
+  dry_run: boolean;
+  skipped_reason?: string;
+}> {
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select("id, product_id, current_period_end")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "order not found" };
+
+  const { data: product } = await supabaseAdmin
+    .from("products")
+    .select("id, category, provider_tariff_id")
+    .eq("id", order.product_id)
+    .maybeSingle();
+  if (!product) return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "product not found" };
+
+  const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
+  if (!isIpv6) {
+    return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: `category ${product.category} not auto-renewable yet` };
+  }
+  if (!product.provider_tariff_id) {
+    return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "product missing provider_tariff_id" };
+  }
+  let cfg: { periodId?: string };
+  try { cfg = JSON.parse(product.provider_tariff_id); } catch { cfg = {}; }
+  if (!cfg.periodId) {
+    return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "provider_tariff_id missing periodId" };
+  }
+
+  // Blocos (provider_orders) que contêm os proxies ATIVOS deste pedido
+  const { data: activeAllocs } = await supabaseAdmin
+    .from("customer_proxies")
+    .select("stock_id")
+    .eq("order_id", orderId)
+    .in("status", ["active", "grace"]);
+
+  const stockIds = (activeAllocs ?? []).map((r) => r.stock_id).filter((x): x is string => !!x);
+  if (stockIds.length === 0) {
+    return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "no active proxies" };
+  }
+
+  const { data: stockRows } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("provider_order_id")
+    .in("id", stockIds);
+  const blockIds = Array.from(new Set((stockRows ?? []).map((r) => r.provider_order_id).filter((x): x is string => !!x)));
+  if (blockIds.length === 0) {
+    return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "active proxies have no provider_order_id (legacy import)" };
+  }
+
+  // Todos os IPs (alocados + livres) que pertencem a esses blocos
+  const { data: blockStock } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("id, external_proxy_id")
+    .in("provider_order_id", blockIds);
+  const externalIds = (blockStock ?? [])
+    .map((r) => r.external_proxy_id)
+    .filter((x): x is string => !!x);
+  if (externalIds.length === 0) {
+    return { renewed_proxies: 0, renewed_blocks: blockIds.length, cost_usd: 0, dry_run: false, skipped_reason: "no external_proxy_id (dry-run/sim block)" };
+  }
+
+  const kind: PsProxyKind = "ipv6";
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "proxyseller")
+    .maybeSingle();
+  const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
+
+  let costUsd = 0;
+  if (dryRun) {
+    const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
+    costUsd = Number(calc.total) || 0;
+  } else {
+    const result = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
+    costUsd = Number(result.total) || 0;
+  }
+
+  // Estende expires_at local em 30 dias (período mensal padrão) — o sync do provedor reconcilia depois
+  const newExpiry = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+  const stockIdAll = (blockStock ?? []).map((r) => r.id);
+  if (stockIdAll.length > 0) {
+    await supabaseAdmin
+      .from("proxy_stock")
+      .update({ expires_at: newExpiry })
+      .in("id", stockIdAll);
+  }
+
+  // Marca pedidos do provedor como renovados (para auditoria)
+  await supabaseAdmin
+    .from("provider_orders")
+    .update({ purchased_at: new Date().toISOString(), expires_at: newExpiry })
+    .in("id", blockIds);
+
+  return {
+    renewed_proxies: externalIds.length,
+    renewed_blocks: blockIds.length,
+    cost_usd: costUsd,
+    dry_run: dryRun,
+  };
+}

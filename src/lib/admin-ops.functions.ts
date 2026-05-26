@@ -561,6 +561,7 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
       orderId: z.string().uuid(),
       stockIds: z.array(z.string().uuid()).min(1).max(200),
       ignoreShortageLimit: z.boolean().optional(),
+      allowDifferentProduct: z.boolean().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {

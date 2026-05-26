@@ -500,7 +500,12 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
 /* -------------------------- LIST AVAILABLE STOCK (admin picker) -------------------------- */
 export const listAvailableStockForOrder = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ orderId: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({
+      orderId: z.string().uuid(),
+      showAllProducts: z.boolean().optional(),
+    }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { data: order } = await supabaseAdmin
@@ -518,20 +523,33 @@ export const listAvailableStockForOrder = createServerFn({ method: "GET" })
       .eq("order_id", order.id)
       .neq("status", "released");
 
-    const { data: stock } = await supabaseAdmin
+    let q = supabaseAdmin
       .from("proxy_stock")
-      .select("id, host, port, username, protocol, country_code, expires_at, created_at")
-      .eq("product_id", order.product_id)
+      .select("id, host, port, username, protocol, country_code, expires_at, created_at, product_id, products(name)")
       .eq("status", "available")
       .order("created_at", { ascending: true })
-      .limit(500);
+      .limit(1000);
+    if (!data.showAllProducts) q = q.eq("product_id", order.product_id);
+    const { data: stock } = await q;
 
     return {
       product_name: product?.name ?? "—",
+      order_product_id: order.product_id as string,
       needed,
       allocated: allocated ?? 0,
       shortage: Math.max(0, needed - (allocated ?? 0)),
-      stock: stock ?? [],
+      stock: (stock ?? []).map((s) => ({
+        id: s.id,
+        host: s.host,
+        port: s.port,
+        username: s.username,
+        protocol: s.protocol,
+        country_code: s.country_code,
+        expires_at: s.expires_at,
+        product_id: s.product_id,
+        product_name: (s.products as { name?: string } | null)?.name ?? null,
+        same_product: s.product_id === order.product_id,
+      })),
     };
   });
 

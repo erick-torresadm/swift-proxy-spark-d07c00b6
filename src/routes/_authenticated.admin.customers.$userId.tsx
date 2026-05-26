@@ -406,6 +406,129 @@ function StockPickerDialog({
   );
 }
 
+function CustomerStockPickerDialog({
+  userId,
+  onClose,
+  onAllocated,
+}: {
+  userId: string;
+  onClose: () => void;
+  onAllocated: () => void;
+}) {
+  const listFn = useServerFn(listAvailableStockForCustomer);
+  const allocateFn = useServerFn(adminManualAllocateToCustomer);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState("");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-customer-stock-picker", userId],
+    queryFn: () => listFn({ data: { userId } }),
+  });
+
+  const stock = (data?.stock ?? []).filter((s) => {
+    if (!filter.trim()) return true;
+    const q = filter.toLowerCase();
+    return (
+      s.host?.toLowerCase().includes(q) ||
+      s.username?.toLowerCase().includes(q) ||
+      s.country_code?.toLowerCase().includes(q) ||
+      s.product_name?.toLowerCase().includes(q)
+    );
+  });
+
+  const allocate = useMutation({
+    mutationFn: () => allocateFn({ data: { userId, stockIds: Array.from(selected) } }),
+    onSuccess: (r) => {
+      if (r.failed.length === 0) toast.success(`${r.allocated_count} proxy(s) alocado(s).`);
+      else toast.warning(`${r.allocated_count} ok, ${r.failed.length} falharam.`);
+      onAllocated();
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function toggle(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelected(next);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5 border-b border-border flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black">Alocar proxy na conta do cliente</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data?.customer_name ?? "Cliente"} · estoque livre <strong>{data?.stock.length ?? 0}</strong>
+            </p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 border-b border-border flex flex-wrap gap-2 items-center">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filtrar por host, user, país, produto…"
+            className="flex-1 min-w-[180px] h-9 px-3 rounded-lg border border-border bg-background text-sm"
+          />
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set(stock.slice(0, 10).map((s) => s.id)))}>
+            Selecionar 10 primeiros
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>
+            Limpar
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {isLoading ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">Carregando…</p>
+          ) : stock.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">Sem proxies disponíveis no estoque.</p>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {stock.map((s) => {
+                const checked = selected.has(s.id);
+                return (
+                  <li key={s.id}>
+                    <label className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-background/50 ${checked ? "bg-primary/5" : ""}`}>
+                      <input type="checkbox" checked={checked} onChange={() => toggle(s.id)} className="w-4 h-4" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-xs truncate">
+                          {s.host}:{s.port} {s.username && <span className="text-muted-foreground">· {s.username}</span>}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
+                          <span>{(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}</span>
+                          {s.product_name && <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s.product_name}</span>}
+                          {s.expires_at && <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>}
+                        </div>
+                      </div>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-border flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">Selecionados: <strong className="text-foreground">{selected.size}</strong></div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
+            <Button size="sm" disabled={selected.size === 0 || allocate.isPending} onClick={() => allocate.mutate()}>
+              {allocate.isPending ? "Alocando…" : `Alocar ${selected.size}`}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: "ok" | "warn" }) {
   const c = accent === "ok" ? "text-emerald-500" : accent === "warn" ? "text-amber-500" : "text-foreground";

@@ -272,6 +272,34 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                     metadata: { invoiceId: inv.id, subscriptionId, orderId: ord?.id, productSlug: prod?.slug },
                     dedupeKey: `renewal:${inv.id}`,
                   });
+
+                  // 🔁 Renovação de blocos no provedor (ProxySeller prolong)
+                  if (ord?.id) {
+                    try {
+                      const r = await renewProxyBlocksForOrder(ord.id);
+                      if (r.renewed_proxies > 0) {
+                        await notifyAllAdmins({
+                          title: r.dry_run ? "🧪 Renovação simulada (dry-run)" : "🔁 Blocos renovados no provedor",
+                          body: `Pedido ${ord.id.slice(0,8)} — ${r.renewed_blocks} bloco(s) / ${r.renewed_proxies} IP(s) renovados · custo ≈ $${r.cost_usd.toFixed(2)}`,
+                          link: "/admin/inventory",
+                          metadata: { orderId: ord.id, ...r },
+                          dedupeKey: `prolong:${inv.id}`,
+                        });
+                      } else if (r.skipped_reason) {
+                        console.warn("[renew] skipped", ord.id, r.skipped_reason);
+                      }
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      console.error("[renew] prolong failed", ord.id, msg);
+                      await notifyAllAdmins({
+                        title: "🛑 Falha ao renovar blocos no provedor",
+                        body: `Pedido ${ord.id.slice(0,8)}: ${msg}`,
+                        link: "/admin/inventory",
+                        metadata: { orderId: ord.id, error: msg },
+                        dedupeKey: `prolong-fail:${inv.id}`,
+                      });
+                    }
+                  }
                 } catch (e) {
                   console.error("admin renewal notify failed", e);
                 }

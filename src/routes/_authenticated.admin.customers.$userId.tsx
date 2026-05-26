@@ -201,15 +201,26 @@ function StockPickerDialog({
   const bulkFn = useServerFn(adminManualAllocateBulk);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-stock-picker", orderId],
-    queryFn: () => listFn({ data: { orderId } }),
+    queryKey: ["admin-stock-picker", orderId, showAll],
+    queryFn: () => listFn({ data: { orderId, showAllProducts: showAll } }),
   });
+
+  const hasDifferentProduct = (data?.stock ?? []).some(
+    (s) => Array.from(selected).includes(s.id) && !s.same_product,
+  );
 
   const allocate = useMutation({
     mutationFn: () =>
-      bulkFn({ data: { orderId, stockIds: Array.from(selected) } }),
+      bulkFn({
+        data: {
+          orderId,
+          stockIds: Array.from(selected),
+          allowDifferentProduct: hasDifferentProduct,
+        },
+      }),
     onSuccess: (r) => {
       if (r.failed.length === 0) {
         toast.success(`${r.allocated_count} proxy(s) alocado(s).`);
@@ -228,7 +239,8 @@ function StockPickerDialog({
     return (
       s.host?.toLowerCase().includes(q) ||
       s.username?.toLowerCase().includes(q) ||
-      s.country_code?.toLowerCase().includes(q)
+      s.country_code?.toLowerCase().includes(q) ||
+      s.product_name?.toLowerCase().includes(q)
     );
   });
 

@@ -10,6 +10,8 @@ import type { PsProxyItem } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
+// ProxySeller IPv6 minimum purchase block size
+const PROXYSELLER_IPV6_MIN_BLOCK = 10;
 // ProxySeller leva ~5 min (às vezes mais) entre /order/make e o pedido
 // aparecer no painel / /proxy/list. Mantemos uma janela ampla para reusar
 // pedidos pendentes antes de gastar de novo.
@@ -214,6 +216,9 @@ async function autoPurchaseIpv6IntoStock(
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }
 
+  // ProxySeller requires minimum block of 10 for IPv6
+  const quantityToBuy = Math.max(needed, PROXYSELLER_IPV6_MIN_BLOCK);
+
   let cfg: {
     countryId?: number;
     periodId?: string;
@@ -243,7 +248,7 @@ async function autoPurchaseIpv6IntoStock(
     const calc = await calcOrder("ipv6", {
       countryId: cfg.countryId,
       periodId: cfg.periodId,
-      quantity: needed,
+      quantity: quantityToBuy,
       protocol: cfg.protocol,
       targetSectionId: cfg.targetSectionId,
       targetId: cfg.targetId,
@@ -267,7 +272,7 @@ async function autoPurchaseIpv6IntoStock(
         baseOrderNumber: fakeBase,
         dryRun: true,
         simulateReadyAt,
-        quantityRequested: needed,
+        quantityRequested: quantityToBuy,
         periodId: cfg.periodId,
         countryId: cfg.countryId,
       } as never,
@@ -281,7 +286,7 @@ async function autoPurchaseIpv6IntoStock(
   const result = await purchaseIpv6Block({
     countryId: cfg.countryId,
     periodId: cfg.periodId,
-    quantity: needed,
+    quantity: quantityToBuy,
     protocol: cfg.protocol,
     targetSectionId: cfg.targetSectionId,
     targetId: cfg.targetId,

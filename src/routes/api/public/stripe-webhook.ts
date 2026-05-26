@@ -248,6 +248,34 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                 currentPeriodEnd: periodEnd,
                 discountCents: inv.total_discount_amounts?.reduce((s, d) => s + (d.amount ?? 0), 0) ?? 0,
               });
+
+              // 🔔 Alerta admin: renovação de plano (somente ciclos subsequentes — primeira cobrança já é coberta por checkout.session.completed)
+              const billingReason = (inv as unknown as { billing_reason?: string }).billing_reason;
+              if (subscriptionId && (billingReason === "subscription_cycle" || billingReason === "subscription_update")) {
+                try {
+                  const { data: ord } = await supabaseAdmin
+                    .from("orders")
+                    .select("id, amount_cents, quantity, customer_email, billing_cycle, products(name, slug)")
+                    .eq("stripe_subscription_id", subscriptionId)
+                    .maybeSingle();
+                  const prod = (ord as any)?.products as { name?: string; slug?: string } | null;
+                  const amountCents = inv.amount_paid ?? ord?.amount_cents ?? 0;
+                  const currency = (inv.currency ?? "brl").toUpperCase();
+                  const amount = (amountCents / 100).toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency,
+                  });
+                  await notifyAllAdmins({
+                    title: "🔁 Renovação de plano",
+                    body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}`,
+                    link: `/admin/orders`,
+                    metadata: { invoiceId: inv.id, subscriptionId, orderId: ord?.id, productSlug: prod?.slug },
+                    dedupeKey: `renewal:${inv.id}`,
+                  });
+                } catch (e) {
+                  console.error("admin renewal notify failed", e);
+                }
+              }
               break;
             }
             case "invoice.payment_failed": {

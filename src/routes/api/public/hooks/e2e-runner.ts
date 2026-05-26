@@ -179,8 +179,6 @@ export const Route = createFileRoute("/api/public/hooks/e2e-runner")({
           // Apaga orders sintéticos
           await supabaseAdmin.from("orders").delete().in("id", TEST_ORDER_IDS);
           // Reverte estoque IPv6 que estava em hold
-          await supabaseAdmin.rpc("e2e_unhold");
-          // Plan B: update direto se RPC não existir
           const { data: held } = await supabaseAdmin
             .from("proxy_stock")
             .select("id, username")

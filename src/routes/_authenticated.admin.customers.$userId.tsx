@@ -344,9 +344,16 @@ function StockPickerDialog({
                           {s.host}:{s.port}{" "}
                           {s.username && <span className="text-muted-foreground">· {s.username}</span>}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}
-                          {s.expires_at && ` · expira ${new Date(s.expires_at).toLocaleDateString()}`}
+                        <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
+                          <span>{(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}</span>
+                          {s.product_name && (
+                            <span className={`px-1.5 py-0.5 rounded ${s.same_product ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
+                              {s.product_name}
+                            </span>
+                          )}
+                          {s.expires_at && <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>}
+                        </div>
+                      </div>
                         </div>
                       </div>
                     </label>

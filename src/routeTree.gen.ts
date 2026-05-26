@@ -40,7 +40,6 @@ import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated.admin.orders'
 import { Route as AuthenticatedAdminEquipeRouteImport } from './routes/_authenticated.admin.equipe'
 import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenticated.admin.emails'
-import { Route as AuthenticatedAdminCustomersRouteImport } from './routes/_authenticated.admin.customers'
 import { Route as AuthenticatedAdminCuponsRouteImport } from './routes/_authenticated.admin.cupons'
 import { Route as AuthenticatedAdminCloudRouteImport } from './routes/_authenticated.admin.cloud'
 import { Route as AuthenticatedAdminChatRouteImport } from './routes/_authenticated.admin.chat'
@@ -48,6 +47,7 @@ import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authenticated.admin.blog'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated.admin.allocations'
 import { Route as AuthenticatedAdminInventoryIndexRouteImport } from './routes/_authenticated.admin.inventory.index'
+import { Route as AuthenticatedAdminCustomersIndexRouteImport } from './routes/_authenticated.admin.customers.index'
 import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
@@ -229,12 +229,6 @@ const AuthenticatedAdminEmailsRoute =
     path: '/emails',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminCustomersRoute =
-  AuthenticatedAdminCustomersRouteImport.update({
-    id: '/customers',
-    path: '/customers',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminCuponsRoute =
   AuthenticatedAdminCuponsRouteImport.update({
     id: '/cupons',
@@ -272,6 +266,12 @@ const AuthenticatedAdminInventoryIndexRoute =
   AuthenticatedAdminInventoryIndexRouteImport.update({
     id: '/inventory/',
     path: '/inventory/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCustomersIndexRoute =
+  AuthenticatedAdminCustomersIndexRouteImport.update({
+    id: '/customers/',
+    path: '/customers/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminBlogIndexRoute =
@@ -324,9 +324,9 @@ const AuthenticatedAdminInventoryProductIdRoute =
   } as any)
 const AuthenticatedAdminCustomersUserIdRoute =
   AuthenticatedAdminCustomersUserIdRouteImport.update({
-    id: '/$userId',
-    path: '/$userId',
-    getParentRoute: () => AuthenticatedAdminCustomersRoute,
+    id: '/customers/$userId',
+    path: '/customers/$userId',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminBlogTagsRoute =
   AuthenticatedAdminBlogTagsRouteImport.update({
@@ -394,7 +394,6 @@ export interface FileRoutesByFullPath {
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
-  '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -424,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
+  '/admin/customers/': typeof AuthenticatedAdminCustomersIndexRoute
   '/admin/inventory/': typeof AuthenticatedAdminInventoryIndexRoute
   '/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
@@ -447,7 +447,6 @@ export interface FileRoutesByTo {
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
-  '/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -477,6 +476,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog': typeof AuthenticatedAdminBlogIndexRoute
+  '/admin/customers': typeof AuthenticatedAdminCustomersIndexRoute
   '/admin/inventory': typeof AuthenticatedAdminInventoryIndexRoute
   '/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
@@ -505,7 +505,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/_authenticated/admin/cupons': typeof AuthenticatedAdminCuponsRoute
-  '/_authenticated/admin/customers': typeof AuthenticatedAdminCustomersRouteWithChildren
   '/_authenticated/admin/emails': typeof AuthenticatedAdminEmailsRoute
   '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -535,6 +534,7 @@ export interface FileRoutesById {
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/_authenticated/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
+  '/_authenticated/admin/customers/': typeof AuthenticatedAdminCustomersIndexRoute
   '/_authenticated/admin/inventory/': typeof AuthenticatedAdminInventoryIndexRoute
   '/_authenticated/dashboard/proxy/$id/quick': typeof AuthenticatedDashboardProxyIdQuickRoute
 }
@@ -563,7 +563,6 @@ export interface FileRouteTypes {
     | '/admin/chat'
     | '/admin/cloud'
     | '/admin/cupons'
-    | '/admin/customers'
     | '/admin/emails'
     | '/admin/equipe'
     | '/admin/orders'
@@ -593,6 +592,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog/'
+    | '/admin/customers/'
     | '/admin/inventory/'
     | '/dashboard/proxy/$id/quick'
   fileRoutesByTo: FileRoutesByTo
@@ -616,7 +616,6 @@ export interface FileRouteTypes {
     | '/admin/chat'
     | '/admin/cloud'
     | '/admin/cupons'
-    | '/admin/customers'
     | '/admin/emails'
     | '/admin/equipe'
     | '/admin/orders'
@@ -646,6 +645,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog'
+    | '/admin/customers'
     | '/admin/inventory'
     | '/dashboard/proxy/$id/quick'
   id:
@@ -673,7 +673,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/chat'
     | '/_authenticated/admin/cloud'
     | '/_authenticated/admin/cupons'
-    | '/_authenticated/admin/customers'
     | '/_authenticated/admin/emails'
     | '/_authenticated/admin/equipe'
     | '/_authenticated/admin/orders'
@@ -703,6 +702,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/stripe-sync'
     | '/_authenticated/admin/blog/'
+    | '/_authenticated/admin/customers/'
     | '/_authenticated/admin/inventory/'
     | '/_authenticated/dashboard/proxy/$id/quick'
   fileRoutesById: FileRoutesById
@@ -949,13 +949,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminEmailsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/customers': {
-      id: '/_authenticated/admin/customers'
-      path: '/customers'
-      fullPath: '/admin/customers'
-      preLoaderRoute: typeof AuthenticatedAdminCustomersRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/cupons': {
       id: '/_authenticated/admin/cupons'
       path: '/cupons'
@@ -1003,6 +996,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/admin/inventory/'
       preLoaderRoute: typeof AuthenticatedAdminInventoryIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/customers/': {
+      id: '/_authenticated/admin/customers/'
+      path: '/customers'
+      fullPath: '/admin/customers/'
+      preLoaderRoute: typeof AuthenticatedAdminCustomersIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/blog/': {
@@ -1063,10 +1063,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/customers/$userId': {
       id: '/_authenticated/admin/customers/$userId'
-      path: '/$userId'
+      path: '/customers/$userId'
       fullPath: '/admin/customers/$userId'
       preLoaderRoute: typeof AuthenticatedAdminCustomersUserIdRouteImport
-      parentRoute: typeof AuthenticatedAdminCustomersRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/blog/tags': {
       id: '/_authenticated/admin/blog/tags'
@@ -1149,21 +1149,6 @@ const AuthenticatedAdminBlogRouteWithChildren =
     AuthenticatedAdminBlogRouteChildren,
   )
 
-interface AuthenticatedAdminCustomersRouteChildren {
-  AuthenticatedAdminCustomersUserIdRoute: typeof AuthenticatedAdminCustomersUserIdRoute
-}
-
-const AuthenticatedAdminCustomersRouteChildren: AuthenticatedAdminCustomersRouteChildren =
-  {
-    AuthenticatedAdminCustomersUserIdRoute:
-      AuthenticatedAdminCustomersUserIdRoute,
-  }
-
-const AuthenticatedAdminCustomersRouteWithChildren =
-  AuthenticatedAdminCustomersRoute._addFileChildren(
-    AuthenticatedAdminCustomersRouteChildren,
-  )
-
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
   AuthenticatedAdminBlogRoute: typeof AuthenticatedAdminBlogRouteWithChildren
@@ -1171,14 +1156,15 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCloudRoute: typeof AuthenticatedAdminCloudRoute
   AuthenticatedAdminCuponsRoute: typeof AuthenticatedAdminCuponsRoute
-  AuthenticatedAdminCustomersRoute: typeof AuthenticatedAdminCustomersRouteWithChildren
   AuthenticatedAdminEmailsRoute: typeof AuthenticatedAdminEmailsRoute
   AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
   AuthenticatedAdminProviderRoute: typeof AuthenticatedAdminProviderRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminCustomersUserIdRoute: typeof AuthenticatedAdminCustomersUserIdRoute
   AuthenticatedAdminInventoryProductIdRoute: typeof AuthenticatedAdminInventoryProductIdRoute
+  AuthenticatedAdminCustomersIndexRoute: typeof AuthenticatedAdminCustomersIndexRoute
   AuthenticatedAdminInventoryIndexRoute: typeof AuthenticatedAdminInventoryIndexRoute
 }
 
@@ -1189,16 +1175,17 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCloudRoute: AuthenticatedAdminCloudRoute,
   AuthenticatedAdminCuponsRoute: AuthenticatedAdminCuponsRoute,
-  AuthenticatedAdminCustomersRoute:
-    AuthenticatedAdminCustomersRouteWithChildren,
   AuthenticatedAdminEmailsRoute: AuthenticatedAdminEmailsRoute,
   AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
   AuthenticatedAdminProviderRoute: AuthenticatedAdminProviderRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminCustomersUserIdRoute:
+    AuthenticatedAdminCustomersUserIdRoute,
   AuthenticatedAdminInventoryProductIdRoute:
     AuthenticatedAdminInventoryProductIdRoute,
+  AuthenticatedAdminCustomersIndexRoute: AuthenticatedAdminCustomersIndexRoute,
   AuthenticatedAdminInventoryIndexRoute: AuthenticatedAdminInventoryIndexRoute,
 }
 
@@ -1286,3 +1273,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

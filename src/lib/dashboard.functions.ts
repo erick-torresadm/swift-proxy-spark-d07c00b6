@@ -4,6 +4,25 @@ import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
 import { allocateProxiesForOrder } from "./allocation.server";
+import { reconcileOrderWithStripe } from "./reconcile.server";
+
+/**
+ * Endpoint público que força a sincronização de um pedido com o Stripe.
+ * Idempotente. Usado pela página /checkout/success quando o webhook atrasa.
+ */
+export const reconcileOrderPublic = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({ orderId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const r = await reconcileOrderWithStripe(data.orderId);
+    return {
+      status: r.status,
+      allocated: r.allocated,
+      short: r.short,
+      changed: r.changed,
+    };
+  });
 
 
 

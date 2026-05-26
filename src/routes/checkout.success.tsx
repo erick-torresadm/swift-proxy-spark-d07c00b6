@@ -11,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { z } from "zod";
-import { getOrderPublicStatus, syncMyAllocations } from "@/lib/dashboard.functions";
+import { getOrderPublicStatus, syncMyAllocations, reconcileOrderPublic } from "@/lib/dashboard.functions";
 import { useAuth } from "@/hooks/use-auth";
 
 const searchSchema = z.object({
@@ -38,6 +38,7 @@ function SuccessPage() {
   const { user, loading: authLoading } = useAuth();
   const fetchOrder = useServerFn(getOrderPublicStatus);
   const syncAllocations = useServerFn(syncMyAllocations);
+  const reconcile = useServerFn(reconcileOrderPublic);
 
   const [order, setOrder] = useState<OrderStatus>(null);
   const [polling, setPolling] = useState(true);
@@ -56,6 +57,7 @@ function SuccessPage() {
     const MAX = 30; // ~60s
     let i = 0;
     let triedSync = false;
+    let triedReconcile = false;
 
     async function tick() {
       i++;
@@ -64,6 +66,16 @@ function SuccessPage() {
         const data = await fetchOrder({ data: { orderId: orderId! } });
         if (cancelled) return;
         setOrder(data);
+
+        // Pago no Stripe mas ainda pending no nosso DB → força reconcile (1x)
+        if (data?.status === "pending" && !triedReconcile && i >= 2) {
+          triedReconcile = true;
+          try {
+            await reconcile({ data: { orderId: orderId! } });
+          } catch {
+            /* tentamos de novo no próximo tick via polling normal */
+          }
+        }
 
         // Pago mas sem proxies → dispara sync (1x) e continua polling
         if (
@@ -103,7 +115,7 @@ function SuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, fetchOrder, syncAllocations, user]);
+  }, [orderId, fetchOrder, syncAllocations, reconcile, user]);
 
   const isPaid = order?.status === "paid";
   const isLoggedIn = !!user && !authLoading;

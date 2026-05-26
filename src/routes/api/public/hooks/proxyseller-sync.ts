@@ -131,16 +131,24 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
                 quantity: toBuy,
               });
 
+              // Se o /proxy/list ainda não devolveu IPs (ProxySeller leva
+              // ~5 min para provisionar), gravamos como `pending` com o
+              // baseOrderNumber — o cron de backfill completa depois.
+              const isReady = result.proxies.length > 0;
               const { data: provOrder } = await supabaseAdmin
                 .from("provider_orders")
                 .insert({
                   product_id: product.id,
                   external_order_id: result.externalOrderId,
-                  status: "active",
-                  quantity: result.proxies.length,
+                  status: isReady ? "active" : "pending",
+                  quantity: isReady ? result.proxies.length : toBuy,
                   cost_cents: result.costCents,
                   country_code: product.country_code,
-                  raw_payload: { baseOrderNumber: result.baseOrderNumber, source: "restock_cron" } as never,
+                  raw_payload: {
+                    baseOrderNumber: result.baseOrderNumber,
+                    source: "restock_cron",
+                    quantityRequested: toBuy,
+                  } as never,
                 })
                 .select("id")
                 .maybeSingle();

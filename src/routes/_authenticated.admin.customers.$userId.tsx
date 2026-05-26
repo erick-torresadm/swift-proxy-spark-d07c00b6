@@ -285,9 +285,18 @@ function StockPickerDialog({
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filtrar por host, user, país…"
+            placeholder="Filtrar por host, user, país, produto…"
             className="flex-1 min-w-[180px] h-9 px-3 rounded-lg border border-border bg-background text-sm"
           />
+          <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={(e) => { setShowAll(e.target.checked); setSelected(new Set()); }}
+              className="w-3.5 h-3.5"
+            />
+            Mostrar todo o estoque
+          </label>
           {shortage > 0 && (
             <Button
               size="sm"
@@ -301,6 +310,12 @@ function StockPickerDialog({
             Limpar
           </Button>
         </div>
+
+        {hasDifferentProduct && (
+          <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[11px] text-amber-600">
+            ⚠ Você selecionou proxies de produto diferente do pedido. A alocação seguirá assim mesmo.
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-2">
           {isLoading ? (

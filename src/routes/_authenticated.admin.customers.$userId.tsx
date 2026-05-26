@@ -144,7 +144,6 @@ function CustomerDetailPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={o.available_stock === 0}
                   onClick={() => setPickerOrderId(o.id)}
                   title="Escolher proxies específicos do estoque"
                 >
@@ -202,15 +201,26 @@ function StockPickerDialog({
   const bulkFn = useServerFn(adminManualAllocateBulk);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-stock-picker", orderId],
-    queryFn: () => listFn({ data: { orderId } }),
+    queryKey: ["admin-stock-picker", orderId, showAll],
+    queryFn: () => listFn({ data: { orderId, showAllProducts: showAll } }),
   });
+
+  const hasDifferentProduct = (data?.stock ?? []).some(
+    (s) => Array.from(selected).includes(s.id) && !s.same_product,
+  );
 
   const allocate = useMutation({
     mutationFn: () =>
-      bulkFn({ data: { orderId, stockIds: Array.from(selected) } }),
+      bulkFn({
+        data: {
+          orderId,
+          stockIds: Array.from(selected),
+          allowDifferentProduct: hasDifferentProduct,
+        },
+      }),
     onSuccess: (r) => {
       if (r.failed.length === 0) {
         toast.success(`${r.allocated_count} proxy(s) alocado(s).`);
@@ -229,7 +239,8 @@ function StockPickerDialog({
     return (
       s.host?.toLowerCase().includes(q) ||
       s.username?.toLowerCase().includes(q) ||
-      s.country_code?.toLowerCase().includes(q)
+      s.country_code?.toLowerCase().includes(q) ||
+      s.product_name?.toLowerCase().includes(q)
     );
   });
 
@@ -274,9 +285,18 @@ function StockPickerDialog({
           <input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filtrar por host, user, país…"
+            placeholder="Filtrar por host, user, país, produto…"
             className="flex-1 min-w-[180px] h-9 px-3 rounded-lg border border-border bg-background text-sm"
           />
+          <label className="inline-flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={(e) => { setShowAll(e.target.checked); setSelected(new Set()); }}
+              className="w-3.5 h-3.5"
+            />
+            Mostrar todo o estoque
+          </label>
           {shortage > 0 && (
             <Button
               size="sm"
@@ -290,6 +310,12 @@ function StockPickerDialog({
             Limpar
           </Button>
         </div>
+
+        {hasDifferentProduct && (
+          <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-[11px] text-amber-600">
+            ⚠ Você selecionou proxies de produto diferente do pedido. A alocação seguirá assim mesmo.
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-2">
           {isLoading ? (
@@ -318,9 +344,14 @@ function StockPickerDialog({
                           {s.host}:{s.port}{" "}
                           {s.username && <span className="text-muted-foreground">· {s.username}</span>}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}
-                          {s.expires_at && ` · expira ${new Date(s.expires_at).toLocaleDateString()}`}
+                        <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
+                          <span>{(s.protocol ?? "http").toUpperCase()} · {s.country_code ?? "—"}</span>
+                          {s.product_name && (
+                            <span className={`px-1.5 py-0.5 rounded ${s.same_product ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/15 text-amber-600"}`}>
+                              {s.product_name}
+                            </span>
+                          )}
+                          {s.expires_at && <span>· expira {new Date(s.expires_at).toLocaleDateString()}</span>}
                         </div>
                       </div>
                     </label>

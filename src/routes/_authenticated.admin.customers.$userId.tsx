@@ -144,7 +144,6 @@ function CustomerDetailPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={o.available_stock === 0}
                   onClick={() => setPickerOrderId(o.id)}
                   title="Escolher proxies específicos do estoque"
                 >

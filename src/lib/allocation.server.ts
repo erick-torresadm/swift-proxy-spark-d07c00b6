@@ -216,6 +216,9 @@ async function autoPurchaseIpv6IntoStock(
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }
 
+  // ProxySeller requires minimum block of 10 for IPv6
+  const quantityToBuy = Math.max(needed, PROXYSELLER_IPV6_MIN_BLOCK);
+
   let cfg: {
     countryId?: number;
     periodId?: string;

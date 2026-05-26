@@ -9,6 +9,8 @@ import {
   adminManualAllocate,
   listAvailableStockForOrder,
   adminManualAllocateBulk,
+  listAvailableStockForCustomer,
+  adminManualAllocateToCustomer,
 } from "@/lib/admin-ops.functions";
 import { Button } from "@/components/ui/button";
 
@@ -40,6 +42,7 @@ function CustomerDetailPage() {
   });
 
   const [pickerOrderId, setPickerOrderId] = useState<string | null>(null);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
 
 
   if (isLoading) {
@@ -71,14 +74,22 @@ function CustomerDetailPage() {
 
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold">Pedidos & direito a proxy</h3>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="w-4 h-4" /> Atualizar
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setCustomerPickerOpen(true)}>
+            <ListChecks className="w-4 h-4" /> Alocar proxy manual
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4" /> Atualizar
+          </Button>
+        </div>
       </div>
 
       {orders.length === 0 && (
-        <div className="bg-card border border-border rounded-2xl p-10 text-center text-sm text-muted-foreground">
-          Nenhum pedido para este cliente.
+        <div className="bg-card border border-border rounded-2xl p-10 text-center text-sm text-muted-foreground space-y-4">
+          <p>Nenhum pedido para este cliente.</p>
+          <Button size="sm" onClick={() => setCustomerPickerOpen(true)}>
+            <ListChecks className="w-4 h-4" /> Escolher proxy do estoque
+          </Button>
         </div>
       )}
 
@@ -178,6 +189,16 @@ function CustomerDetailPage() {
         <StockPickerDialog
           orderId={pickerOrderId}
           onClose={() => setPickerOrderId(null)}
+          onAllocated={() => {
+            qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
+            qc.invalidateQueries({ queryKey: ["admin-allocations"] });
+          }}
+        />
+      )}
+      {customerPickerOpen && (
+        <CustomerStockPickerDialog
+          userId={userId}
+          onClose={() => setCustomerPickerOpen(false)}
           onAllocated={() => {
             qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
             qc.invalidateQueries({ queryKey: ["admin-allocations"] });

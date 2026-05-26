@@ -248,7 +248,7 @@ async function autoPurchaseIpv6IntoStock(
     const calc = await calcOrder("ipv6", {
       countryId: cfg.countryId,
       periodId: cfg.periodId,
-      quantity: needed,
+      quantity: quantityToBuy,
       protocol: cfg.protocol,
       targetSectionId: cfg.targetSectionId,
       targetId: cfg.targetId,
@@ -272,7 +272,7 @@ async function autoPurchaseIpv6IntoStock(
         baseOrderNumber: fakeBase,
         dryRun: true,
         simulateReadyAt,
-        quantityRequested: needed,
+        quantityRequested: quantityToBuy,
         periodId: cfg.periodId,
         countryId: cfg.countryId,
       } as never,
@@ -286,7 +286,7 @@ async function autoPurchaseIpv6IntoStock(
   const result = await purchaseIpv6Block({
     countryId: cfg.countryId,
     periodId: cfg.periodId,
-    quantity: needed,
+    quantity: quantityToBuy,
     protocol: cfg.protocol,
     targetSectionId: cfg.targetSectionId,
     targetId: cfg.targetId,

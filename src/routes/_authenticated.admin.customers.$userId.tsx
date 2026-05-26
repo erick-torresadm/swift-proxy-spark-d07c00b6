@@ -1,14 +1,21 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Plus, CreditCard, Mail, Phone } from "lucide-react";
+import { ArrowLeft, RefreshCw, Plus, CreditCard, Mail, Phone, ListChecks, X } from "lucide-react";
 import { toast } from "sonner";
-import { getCustomerDetail, adminManualAllocate } from "@/lib/admin-ops.functions";
+import {
+  getCustomerDetail,
+  adminManualAllocate,
+  listAvailableStockForOrder,
+  adminManualAllocateBulk,
+} from "@/lib/admin-ops.functions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/customers/$userId")({
   component: CustomerDetailPage,
 });
+
 
 function CustomerDetailPage() {
   const { userId } = Route.useParams();

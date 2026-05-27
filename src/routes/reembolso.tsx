@@ -16,9 +16,9 @@ export const Route = createFileRoute("/reembolso")({
         property: "og:description",
         content: "7 dias de arrependimento, cancelamento sem burocracia e regras de reembolso.",
       },
-      { property: "og:url", content: "https://swift-proxy-spark.lovable.app/reembolso" },
+      { property: "og:url", content: "https://www.fastproxy.com.br/reembolso" },
     ],
-    links: [{ rel: "canonical", href: "https://swift-proxy-spark.lovable.app/reembolso" }],
+    links: [{ rel: "canonical", href: "https://www.fastproxy.com.br/reembolso" }],
   }),
 });
 

@@ -16,9 +16,9 @@ export const Route = createFileRoute("/privacidade")({
         property: "og:description",
         content: "Tratamento de dados conforme LGPD e Marco Civil da Internet.",
       },
-      { property: "og:url", content: "https://swift-proxy-spark.lovable.app/privacidade" },
+      { property: "og:url", content: "https://www.fastproxy.com.br/privacidade" },
     ],
-    links: [{ rel: "canonical", href: "https://swift-proxy-spark.lovable.app/privacidade" }],
+    links: [{ rel: "canonical", href: "https://www.fastproxy.com.br/privacidade" }],
   }),
 });
 

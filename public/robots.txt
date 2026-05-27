@@ -5,4 +5,4 @@ Disallow: /dashboard
 Disallow: /checkout
 Disallow: /api/
 
-Sitemap: https://fastproxy.com.br/sitemap.xml
+Sitemap: https://www.fastproxy.com.br/sitemap.xml

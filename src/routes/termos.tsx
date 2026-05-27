@@ -16,9 +16,9 @@ export const Route = createFileRoute("/termos")({
         property: "og:description",
         content: "Condições de uso, responsabilidades e compliance legal dos proxies FastProxy.",
       },
-      { property: "og:url", content: "https://swift-proxy-spark.lovable.app/termos" },
+      { property: "og:url", content: "https://www.fastproxy.com.br/termos" },
     ],
-    links: [{ rel: "canonical", href: "https://swift-proxy-spark.lovable.app/termos" }],
+    links: [{ rel: "canonical", href: "https://www.fastproxy.com.br/termos" }],
   }),
 });
 

@@ -331,7 +331,7 @@ export const createReactivateCheckout = createServerFn({ method: "POST" })
     }
 
     const origin =
-      process.env.PUBLIC_SITE_URL ?? "https://swift-proxy-spark.lovable.app";
+      process.env.PUBLIC_SITE_URL ?? "https://www.fastproxy.com.br";
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

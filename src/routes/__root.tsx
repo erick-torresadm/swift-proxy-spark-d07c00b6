@@ -144,10 +144,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@graph": [
             {
               "@type": "Organization",
-              "@id": "https://swift-proxy-spark.lovable.app/#org",
+              "@id": "https://www.fastproxy.com.br/#org",
               name: "FastProxy",
-              url: "https://swift-proxy-spark.lovable.app",
-              logo: "https://swift-proxy-spark.lovable.app/icon-512.png",
+              url: "https://www.fastproxy.com.br",
+              logo: "https://www.fastproxy.com.br/icon-512.png",
               sameAs: ["https://twitter.com/fastproxybr"],
               contactPoint: {
                 "@type": "ContactPoint",
@@ -158,14 +158,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             },
             {
               "@type": "WebSite",
-              "@id": "https://swift-proxy-spark.lovable.app/#site",
-              url: "https://swift-proxy-spark.lovable.app",
+              "@id": "https://www.fastproxy.com.br/#site",
+              url: "https://www.fastproxy.com.br",
               name: "FastProxy",
-              publisher: { "@id": "https://swift-proxy-spark.lovable.app/#org" },
+              publisher: { "@id": "https://www.fastproxy.com.br/#org" },
               inLanguage: "pt-BR",
               potentialAction: {
                 "@type": "SearchAction",
-                target: "https://swift-proxy-spark.lovable.app/blog?q={search_term_string}",
+                target: "https://www.fastproxy.com.br/blog?q={search_term_string}",
                 "query-input": "required name=search_term_string",
               },
             },

@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { listPublishedPosts } from "@/lib/blog.functions";
 
-const SITE = "https://swift-proxy-spark.lovable.app";
+const SITE = "https://www.fastproxy.com.br";
 
 export const Route = createFileRoute("/blog/tag/$slug")({
   head: ({ params }) => ({

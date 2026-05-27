@@ -4,6 +4,34 @@ import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
 const BASE_URL = "https://fastproxy.com.br";
 
+// Mercados-alvo: países com moeda forte / alto poder de compra para proxies.
+// hreflang aponta para a mesma URL (site único, multi-mercado) — informa ao Google
+// quais regiões/idiomas devem ver este conteúdo na busca local.
+const HREFLANGS = [
+  "x-default",
+  "pt-BR",
+  "en", // inglês genérico
+  "en-US", // USD
+  "en-GB", // GBP
+  "en-CA", // CAD
+  "en-AU", // AUD
+  "en-NZ", // NZD
+  "en-IE", // EUR
+  "en-SG", // SGD
+  "de-DE", // EUR
+  "de-CH", // CHF
+  "de-AT", // EUR
+  "fr-FR", // EUR
+  "fr-CH", // CHF
+  "es-ES", // EUR
+  "it-IT", // EUR
+  "nl-NL", // EUR
+  "sv-SE", // SEK
+  "nb-NO", // NOK
+  "da-DK", // DKK
+  "ja-JP", // JPY
+];
+
 interface Entry {
   path: string;
   lastmod?: string;
@@ -61,22 +89,28 @@ export const Route = createFileRoute("/sitemap.xml")({
           })),
         ];
 
-        const urls = entries.map((e) =>
-          [
+        const urls = entries.map((e) => {
+          const loc = `${BASE_URL}${e.path}`;
+          const alternates = HREFLANGS.map(
+            (lang) =>
+              `    <xhtml:link rel="alternate" hreflang="${lang}" href="${loc}" />`,
+          ).join("\n");
+          return [
             "  <url>",
-            `    <loc>${BASE_URL}${e.path}</loc>`,
+            `    <loc>${loc}</loc>`,
             e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>` : null,
             e.changefreq ? `    <changefreq>${e.changefreq}</changefreq>` : null,
             e.priority ? `    <priority>${e.priority}</priority>` : null,
+            alternates,
             "  </url>",
           ]
             .filter(Boolean)
-            .join("\n"),
-        );
+            .join("\n");
+        });
 
         const xml = [
           '<?xml version="1.0" encoding="UTF-8"?>',
-          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
           ...urls,
           "</urlset>",
         ].join("\n");

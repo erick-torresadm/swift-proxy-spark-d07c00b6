@@ -12,7 +12,7 @@ import { Footer } from "@/components/site/Footer";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { InstallGuide } from "@/components/site/InstallGuide";
 
-const SITE = "https://swift-proxy-spark.lovable.app";
+const SITE = "https://www.fastproxy.com.br";
 
 const FAQ_ITEMS = [
   { q: "Qual a diferença entre proxy IPv6, IPv4 e ISP?", a: "O IPv6 é o mais barato e indicado para grandes volumes de automação. O IPv4 tem compatibilidade máxima com qualquer plataforma. O ISP combina velocidade de datacenter com a confiabilidade de IPs residenciais." },

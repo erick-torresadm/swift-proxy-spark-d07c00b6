@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
-const BASE_URL = "https://fastproxy.com.br";
+const BASE_URL = "https://www.fastproxy.com.br";
 
 // Mercados-alvo: países com moeda forte / alto poder de compra para proxies.
 // hreflang aponta para a mesma URL (site único, multi-mercado) — informa ao Google

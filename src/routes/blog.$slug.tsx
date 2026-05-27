@@ -4,7 +4,7 @@ import { getPostBySlug } from "@/lib/blog.functions";
 import { MarkdownRender } from "@/components/blog/markdown-render";
 import { CommentThread } from "@/components/blog/comment-thread";
 
-const SITE = "https://swift-proxy-spark.lovable.app";
+const SITE = "https://www.fastproxy.com.br";
 
 export const Route = createFileRoute("/blog/$slug")({
   loader: async ({ params }) => {

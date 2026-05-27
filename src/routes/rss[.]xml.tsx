@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
-const BASE_URL = "https://swift-proxy-spark.lovable.app";
+const BASE_URL = "https://www.fastproxy.com.br";
 
 function xmlEscape(s: string) {
   return s

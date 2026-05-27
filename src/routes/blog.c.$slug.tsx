@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Clock } from "lucide-react";
 import { listPublishedPosts, listCategories } from "@/lib/blog.functions";
 
-const SITE = "https://swift-proxy-spark.lovable.app";
+const SITE = "https://www.fastproxy.com.br";
 
 export const Route = createFileRoute("/blog/c/$slug")({
   loader: async ({ params }) => {

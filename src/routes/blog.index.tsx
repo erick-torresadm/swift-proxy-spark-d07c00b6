@@ -20,9 +20,9 @@ export const Route = createFileRoute("/blog/")({
         property: "og:description",
         content: "Conteúdo técnico sobre proxies, scraping, automação e anonimato.",
       },
-      { property: "og:url", content: "https://swift-proxy-spark.lovable.app/blog" },
+      { property: "og:url", content: "https://www.fastproxy.com.br/blog" },
     ],
-    links: [{ rel: "canonical", href: "https://swift-proxy-spark.lovable.app/blog" }],
+    links: [{ rel: "canonical", href: "https://www.fastproxy.com.br/blog" }],
   }),
 });
 

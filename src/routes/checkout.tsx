@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -16,62 +17,71 @@ import {
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { validateCouponPublic } from "@/lib/coupons.functions";
+import { getPublicCatalog } from "@/lib/catalog.functions";
 
-type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us";
+type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "ipv6-fb-us" | "isp-us" | "ipv6-us";
 type Country = "BR" | "US";
+type Kind = "ipv6" | "ipv6_fb" | "ipv4" | "isp";
 
-type CatalogItem = {
+type CatalogMeta = {
   slug: Slug;
   country: Country;
+  kind: Kind;
   name: string;
   tagline: string;
-  monthly: number;
-  yearly: number;
   blockSize: number;
   unitLabel: string;
 };
 
-const CATALOG: Record<Slug, CatalogItem> = {
+type CatalogItem = CatalogMeta & { monthly: number; yearly: number };
+
+// Static metadata. Prices come from the DB (getPublicCatalog) with fallbacks.
+const META: Record<Slug, CatalogMeta> = {
   "ipv6-br": {
-    slug: "ipv6-br",
-    country: "BR",
+    slug: "ipv6-br", country: "BR", kind: "ipv6",
     name: "Proxy IPv6 Brasil",
     tagline: "Econômico para escala — 1 IP por proxy",
-    monthly: 3000,
-    yearly: 29700,
-    blockSize: 1,
-    unitLabel: "proxy",
+    blockSize: 1, unitLabel: "proxy",
   },
   "ipv6-fb-br": {
-    slug: "ipv6-fb-br",
-    country: "BR",
-    name: "IPv6 para Facebook Ads",
+    slug: "ipv6-fb-br", country: "BR", kind: "ipv6_fb",
+    name: "IPv6 Facebook Ads — Brasil",
     tagline: "Inclui rotações de IP / mês por proxy",
-    monthly: 8000,
-    yearly: 79200,
-    blockSize: 1,
-    unitLabel: "proxy",
+    blockSize: 1, unitLabel: "proxy",
+  },
+  "ipv6-us": {
+    slug: "ipv6-us", country: "US", kind: "ipv6",
+    name: "Proxy IPv6 EUA",
+    tagline: "IPs americanos — escala internacional",
+    blockSize: 1, unitLabel: "proxy",
+  },
+  "ipv6-fb-us": {
+    slug: "ipv6-fb-us", country: "US", kind: "ipv6_fb",
+    name: "IPv6 Facebook Ads — EUA",
+    tagline: "Inclui rotações de IP / mês por proxy",
+    blockSize: 1, unitLabel: "proxy",
   },
   "ipv4-us": {
-    slug: "ipv4-us",
-    country: "US",
+    slug: "ipv4-us", country: "US", kind: "ipv4",
     name: "IPv4 Dedicado EUA",
     tagline: "IP exclusivo, banda ilimitada",
-    monthly: 12000,
-    yearly: 118800,
-    blockSize: 1,
-    unitLabel: "proxy",
+    blockSize: 1, unitLabel: "proxy",
   },
   "isp-us": {
-    slug: "isp-us",
-    country: "US",
+    slug: "isp-us", country: "US", kind: "isp",
     name: "Proxy ISP Residencial EUA",
     tagline: "IP residencial puro, indetectável",
-    monthly: 18000,
-    yearly: 178200,
-    blockSize: 1,
-    unitLabel: "proxy",
+    blockSize: 1, unitLabel: "proxy",
   },
+};
+
+const FALLBACK_PRICES: Record<Slug, { monthly: number; yearly: number }> = {
+  "ipv6-br":    { monthly: 3000, yearly: 29700 },
+  "ipv6-fb-br": { monthly: 8000, yearly: 79200 },
+  "ipv6-us":    { monthly: 3000, yearly: 29700 },
+  "ipv6-fb-us": { monthly: 8000, yearly: 79200 },
+  "ipv4-us":    { monthly: 4990, yearly: 49401 },
+  "isp-us":     { monthly: 9900, yearly: 98010 },
 };
 
 const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] = [
@@ -80,7 +90,7 @@ const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] 
 ];
 
 const searchSchema = z.object({
-  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "isp-us"]).optional(),
+  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us"]).optional(),
   billing: z.enum(["monthly", "yearly"]).optional(),
   qty: z.coerce.number().int().min(1).max(500).optional(),
   canceled: z.coerce.boolean().optional(),
@@ -120,13 +130,16 @@ function CheckoutPage() {
   const search = Route.useSearch();
   const startCheckout = useServerFn(createCheckoutSession);
   const validateCoupon = useServerFn(validateCouponPublic);
+  const fetchCatalog = useServerFn(getPublicCatalog);
 
-  if (location.pathname !== "/checkout") {
-    return <Outlet />;
-  }
+  const { data: liveCatalog } = useQuery({
+    queryKey: ["public-catalog"],
+    queryFn: () => fetchCatalog(),
+    staleTime: 60_000,
+  });
 
   const initialSlug: Slug = search.plan ?? "ipv6-br";
-  const [country, setCountry] = useState<Country>(CATALOG[initialSlug].country);
+  const [country, setCountry] = useState<Country>(META[initialSlug].country);
   const [slug, setSlug] = useState<Slug>(initialSlug);
   const [billing, setBilling] = useState<"monthly" | "yearly">(
     search.billing ?? "monthly",
@@ -141,10 +154,37 @@ function CheckoutPage() {
   const [couponMsg, setCouponMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_cents: number } | null>(null);
 
+  // Merge live DB prices with static metadata.
+  const CATALOG = useMemo(() => {
+    const byslug = new Map(
+      (liveCatalog ?? []).map((p) => [
+        p.slug,
+        {
+          monthly: p.price_monthly_cents,
+          yearly: p.price_yearly_cents ?? Math.round(p.price_monthly_cents * 12 * 0.825),
+        },
+      ]),
+    );
+    const out = {} as Record<Slug, CatalogItem>;
+    (Object.keys(META) as Slug[]).forEach((s) => {
+      const live = byslug.get(s);
+      out[s] = {
+        ...META[s],
+        monthly: live?.monthly ?? FALLBACK_PRICES[s].monthly,
+        yearly: live?.yearly ?? FALLBACK_PRICES[s].yearly,
+      };
+    });
+    return out;
+  }, [liveCatalog]);
+
   const plansForCountry = useMemo(
     () => (Object.values(CATALOG) as CatalogItem[]).filter((p) => p.country === country),
-    [country],
+    [country, CATALOG],
   );
+
+  if (location.pathname !== "/checkout") {
+    return <Outlet />;
+  }
 
   const item = CATALOG[slug];
   const unitCents = billing === "yearly" ? item.yearly : item.monthly;
@@ -187,12 +227,18 @@ function CheckoutPage() {
 
   function handleCountry(c: Country) {
     setCountry(c);
-    // pick first plan of that country if current plan doesn't match
-    const stillValid = CATALOG[slug].country === c;
-    if (!stillValid) {
-      const first = (Object.values(CATALOG) as CatalogItem[]).find((p) => p.country === c);
-      if (first) setSlug(first.slug);
+    if (META[slug].country === c) return;
+    // Preserve the same proxy kind across countries when available
+    const currentKind = META[slug].kind;
+    const sameKind = (Object.values(META) as CatalogMeta[]).find(
+      (p) => p.country === c && p.kind === currentKind,
+    );
+    if (sameKind) {
+      setSlug(sameKind.slug);
+      return;
     }
+    const first = (Object.values(META) as CatalogMeta[]).find((p) => p.country === c);
+    if (first) setSlug(first.slug);
   }
 
   async function handleSubmit() {

@@ -136,6 +136,30 @@ export async function reconcileOrderWithStripe(orderId: string): Promise<{
     response: { subscriptionId, customerId, periodEnd, userId } as never,
   });
 
+  // 🔔 Alerta admin: nova venda (fallback quando webhook não chega)
+  try {
+    const { data: ord } = await supabaseAdmin
+      .from("orders")
+      .select("amount_cents, quantity, customer_email, billing_cycle, products(name, slug)")
+      .eq("id", orderId)
+      .maybeSingle();
+    const prod = (ord as unknown as { products?: { name?: string; slug?: string } })?.products ?? null;
+    const amount = ((ord?.amount_cents ?? 0) / 100).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+    await notifyAllAdmins({
+      title: "💸 Nova venda",
+      body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? emailFromStripe ?? "cliente"}`,
+      link: `/admin/orders`,
+      metadata: { orderId, productSlug: prod?.slug, via: "reconcile" },
+      dedupeKey: `sale:${orderId}`,
+    });
+  } catch (e) {
+    console.error("admin sale notify (reconcile) failed", e);
+  }
+
+
   // Aloca
   let allocated = 0;
   let short = 0;

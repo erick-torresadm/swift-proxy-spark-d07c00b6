@@ -45,6 +45,10 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async () => {
         const staticEntries: Entry[] = [
           { path: "/", changefreq: "weekly", priority: "1.0" },
+          { path: "/proxy-ipv6", changefreq: "weekly", priority: "0.95" },
+          { path: "/proxy-ipv4", changefreq: "weekly", priority: "0.95" },
+          { path: "/proxy-isp", changefreq: "weekly", priority: "0.95" },
+          { path: "/proxy-facebook-ads", changefreq: "weekly", priority: "0.95" },
           { path: "/blog", changefreq: "daily", priority: "0.9" },
           { path: "/login", changefreq: "monthly", priority: "0.3" },
           { path: "/signup", changefreq: "monthly", priority: "0.3" },

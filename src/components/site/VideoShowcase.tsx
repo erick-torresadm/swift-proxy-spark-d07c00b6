@@ -46,7 +46,7 @@ export function VideoShowcase() {
   };
 
   return (
-    <section className="py-20 sm:py-28 bg-gradient-to-b from-background to-muted/20">
+    <section ref={sectionRef} className="py-20 sm:py-28 bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
           <div className="order-2 lg:order-1 space-y-6">

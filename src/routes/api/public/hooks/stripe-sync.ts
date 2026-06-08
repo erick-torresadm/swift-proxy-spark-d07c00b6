@@ -142,9 +142,10 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
               if (r.error) summary.errors.push(`${o.id}: allocation ${r.error}`);
             }
           } catch (e) {
-            summary.errors.push(
-              `${o.id}: ${e instanceof Error ? e.message : String(e)}`,
-            );
+            const msg = e instanceof Error ? e.message : String(e);
+            if (!msg.includes("similar object exists in test mode")) {
+              summary.errors.push(`${o.id}: ${msg}`);
+            }
           }
         }
 

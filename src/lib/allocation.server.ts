@@ -145,7 +145,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
           });
 
           try {
-            const bought = await autoPurchaseIpv6IntoStock(product, stillShortAfterReuse, order.id);
+            const bought = await autoPurchaseIntoStock(product, stillShortAfterReuse, order.id);
             if (bought > 0) {
               void notifyAllAdmins({
                 title: "📦 Estoque renovado",

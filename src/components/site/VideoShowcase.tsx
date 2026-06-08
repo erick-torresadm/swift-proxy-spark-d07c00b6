@@ -81,16 +81,26 @@ export function VideoShowcase() {
               {/* Phone frame */}
               <div className="relative w-[280px] sm:w-[320px] aspect-[9/19.5] rounded-[2.5rem] bg-neutral-900 p-3 shadow-2xl ring-1 ring-white/10">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-neutral-900 rounded-b-2xl z-10" />
-                <video
-                  ref={videoRef}
-                  src={videoAsset.url}
-                  poster={posterAsset.url}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover rounded-[2rem]"
-                />
+                {shouldLoad ? (
+                  <video
+                    ref={videoRef}
+                    src={videoAsset.url}
+                    poster={posterAsset.url}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="w-full h-full object-cover rounded-[2rem]"
+                  />
+                ) : (
+                  <img
+                    src={posterAsset.url}
+                    alt="FastProxy em ação"
+                    loading="lazy"
+                    className="w-full h-full object-cover rounded-[2rem]"
+                  />
+                )}
                 {/* Controls */}
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
                   <button

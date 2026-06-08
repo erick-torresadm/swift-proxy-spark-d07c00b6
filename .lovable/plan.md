@@ -1,95 +1,81 @@
-## Objetivo
+# Auditoria FastProxy — o que eu melhoraria
 
-Testar end-to-end (checkout pago → reconcile → allocation → compra ProxySeller → backfill → proxy entregue) de cada um dos 5 produtos do catálogo, usando `dry_run=true` pra não gastar saldo. Cobrir BR e US separados (sem cross-country) e identificar gaps de implementação.
+Olhei a home (Hero, Stats, Marquee, Solution, VideoShowcase, Features, InstallGuide, Plans, FAQ, CTA, Footer), Navbar, checkout e rotas públicas. Abaixo o que mais teria impacto, em ordem de prioridade. Você escolhe o que entra no próximo turno (posso fazer tudo ou em fatias).
 
-## Escopo por produto
+## 1. Conversão & confiança (impacto alto)
 
-**Grupo A — fluxo completo (IPv6 BR, IPv6 US, IPv6_FB BR):**
-Testa todas as etapas, incluindo compra simulada na ProxySeller via dry-run.
+- **Prova social real na home.** Hoje o Stats mostra "50K+ proxies, 500+ clientes, 4.9★ com 237 reviews" hard-coded e sem rosto. Criar uma seção `Testimonials` com 4–6 depoimentos (foto, nome, caso de uso: tráfego pago, automação, scraping) + logos de clientes/ferramentas (GoLogin, Multilogin, Dolphin, AdsPower, Scrapy). Sem isso, o "4.9★" parece inventado.
+- **Comparativo visual no Plans.** Hoje os 4 cards são paralelos e o usuário precisa adivinhar qual é o dele. Adicionar:
+  - Linha "Melhor para: tráfego pago / automação / scraping / multi-contas" já presente, mas **destacar com ícone de plataforma** (Facebook, Instagram, Google).
+  - Tabela comparativa abaixo dos cards (IPv6 × IPv4 × ISP × FB Ads) com colunas: tipo, ideal para, velocidade, preço.
+- **CTA secundário do Hero está fraco.** "Ver benefícios" não converte. Trocar por **"Falar no WhatsApp"** ou **"Testar grátis por 24h"** (se a regra permitir teste). Quem não compra na hora vai embora.
+- **Garantia explícita.** Não existe selo de "garantia de 7 dias / reembolso". Adicionar selo no Hero, no card de plano e na CTA final. Reduz fricção em primeira compra.
 
-**Grupo B — fluxo parcial (IPv4 US, ISP US):**
-Hoje **não têm `provider_tariff_id` configurado** e o restock cron só roda pra `category startsWith "ipv6"`. Vou testar só o que funciona:
-1. Allocation com estoque pré-existente → entrega o proxy.
-2. Allocation sem estoque → confirmar comportamento atual (retorna `short`, não compra). Reportar como gap.
+## 2. Hero (primeira tela)
 
-Se você quiser, depois do teste eu proponho um plano separado pra estender auto-purchase/restock pra IPv4 e ISP.
+- Está bonito mas **muito centralizado e genérico**. Sugiro layout assimétrico: copy à esquerda, **dashboard real / mockup do painel à direita** (com proxies, copy IP:porta, status verde). O `TerminalMock` atual fica abaixo como detalhe técnico.
+- Reduzir o título de 3 linhas para 2 — em mobile ocupa a tela inteira antes do CTA aparecer.
+- Adicionar **logos pequenos** logo abaixo do CTA: "Usado por equipes de…" (mesmo que sejam categorias: agências, afiliados, e-commerces).
 
-## Passos
+## 3. SEO & rotas
 
-1. **Diagnóstico inicial (read-only)**
-   - Estoque (`proxy_stock` available/allocated) por produto.
-   - `provider_orders` pending nos últimos 60min.
-   - `restock_rules` ativas pra cada produto.
-   - `purchase_locks` em aberto.
-   - Saldo ProxySeller (snapshot).
+- **Rotas faltando para conteúdo dedicado.** Hoje "/#planos", "/#beneficios", "/#faq" são âncoras. Para SEO e tráfego pago dedicado, criar:
+  - `/proxy-ipv6`, `/proxy-ipv4`, `/proxy-isp`, `/proxy-facebook-ads` — cada um com H1 próprio, casos de uso, FAQ específica, JSON-LD Product e CTA direto pro checkout.
+  - `/comparativo` — IPv6 vs IPv4 vs ISP.
+  - `/sobre` e `/contato` — institucionais (faltam no Footer também).
+- **og:image dinâmico**. As páginas usam só metadados de texto; não há imagem de compartilhamento. Gerar `/og-default.png` e setar em `__root.tsx`; nas páginas de produto sobrescrever com imagem do produto.
+- **Schema review faltando.** Já tem `AggregateRating` no Product, mas não há `Review` individual — Google só mostra estrelas com reviews reais marcadas.
+- **Idioma**: o site já tem i18n, mas faltam tags `<link rel="alternate" hreflang>`. Importante se você roda anúncios pra EUA.
 
-2. **Ligar dry-run**
-   `UPDATE provider_settings SET dry_run=true WHERE provider='proxyseller'`.
+## 4. Performance
 
-3. **Garantir condições de teste**
-   - Para os 3 IPv6: marcar temporariamente todo o estoque `available` como `allocated` (anotar IDs pra reverter), forçando o caminho de compra nova.
-   - Para IPv4 US e ISP US: criar **1 IP fake** em `proxy_stock` (status `available`) pra o teste A do grupo B; manter um segundo cenário sem estoque pro teste B.
+- **`logo-fastproxy.png` no `src/assets/`** — está bundlado no JS. Migrar pra Lovable Assets (CDN). Ganho ~30–80KB por bundle.
+- **Aurora + 2 blobs animados no Hero** rodam em loop infinito (12s/15s) com `blur-[120px]`. Em mobile é caro. Reduzir para 1 blob ou pausar via `prefers-reduced-motion`.
+- **`framer-motion` em quase todo componente.** Já é pesado. Trocar animações simples por CSS (`@keyframes` + `tailwindcss-animate`) onde não há gestos. Reduz JS inicial.
+- **Lazy-load do `VideoShowcase`**. O vídeo de 4.8MB começa a baixar mesmo se o usuário não rolar até lá. Carregar só quando entrar no viewport (`IntersectionObserver` + `preload="none"`).
 
-4. **Criar pedidos sintéticos pagos**
-   - 5 pedidos `paid` em `orders` (um por produto), `user_id` = admin/teste, `quantity=1`, `customer_email='e2e-test@…'`, sem `stripe_checkout_session_id`.
-   - +2 pedidos extras pra grupo B sem estoque (IPv4 e ISP), pra observar o `short`.
+## 5. UX / detalhes
 
-5. **Disparar allocation**
-   - Para cada pedido, chamar `allocateProxiesForOrder(orderId)` via server function admin (ou direto via script `code--exec` rodando contra o banco).
-   - Esperado grupo A: cria `provider_orders` pending dry-run com `simulateReadyAt` em 3–5min, retorna `pending=true`.
-   - Esperado grupo B (com estoque): aloca direto, `customer_proxies.active`.
-   - Esperado grupo B (sem estoque): `short>0`, `pending=false`, **nenhuma compra disparada**.
+- **Navbar mobile** não mostra o botão de comprar — só Login/Cadastro. Adicionar **"Comprar"** com destaque no menu mobile.
+- **FAQ** poderia ter um campo de **busca** + categorias (Pagamento, Técnico, Conta). 6 perguntas hoje, vai crescer.
+- **Cookie banner e Chat widget** — verificar se estão presentes em todas as páginas e se respeitam o `prefers-reduced-motion`.
+- **Footer sem redes sociais nem contato direto.** Adicionar: WhatsApp, Telegram, Instagram, e-mail de suporte. Aumenta confiança.
+- **Botão flutuante de WhatsApp** no mobile (canto inferior direito) — padrão Brasil, eleva conversão muito.
 
-6. **Validar invariantes pós-allocation**
-   - Exatamente 1 `provider_orders` pending por produto IPv6 (guard contra duplicate buy).
-   - Rodar allocation 2x no mesmo pedido → não duplica.
-   - Nenhuma chamada real à ProxySeller (audit_log limpo de `purchaseIpv6Block` real; só `calcOrder`).
-   - Notificações "Estoque insuficiente" disparadas pros IPv6.
+## 6. Checkout & pós-venda
 
-7. **Aguardar ~5min e rodar backfill**
-   - Sleep até passar do maior `simulateReadyAt`.
-   - Chamar `POST /api/public/hooks/proxyseller-backfill`.
-   - Esperado: `generateSimulatedProxies` cria IPs fake → entram em `proxy_stock` com o `country_code` correto → provider_order vira `active` → allocation do pedido que disparou completa, `customer_proxies.active` aparece.
+- Mostrar **3 selos de confiança** logo acima do botão pagar (SSL, cobrança recorrente segura, garantia 7 dias).
+- **Upsell discreto** no checkout: "Adicionar 10 proxies por +R$ X" antes do pagamento.
+- E-mail de boas-vindas pós-compra com **guia rápido de uso** (já existe o `InstallGuide` na home — replicar no e-mail).
 
-8. **Validar resultado final dos IPv6**
-   - 1 `customer_proxies.active` por pedido.
-   - IP do país correto (sem BR↔US trocado).
-   - Sem compras duplicadas (1 provider_order por pedido).
-   - `audit_log` e `notifications` coerentes.
+## 7. Dark / Light mode
 
-9. **Rodar restock cron manualmente**
-   - `POST /api/public/hooks/proxyseller-sync`.
-   - Esperado:
-     - IPv6: como já existe pending recente OU já tem ≥10 disponíveis pós-backfill, **não** compra de novo.
-     - IPv4/ISP: o cron pula (filtro `startsWith("ipv6")`) — registrar como gap.
+O `ThemeToggle` existe mas:
+- O logo aplica `brightness-0 dark:brightness-100`, ou seja, em light mode fica preto chapado e em dark fica colorido — invertido. Verificar se a versão light está realmente legível.
+- Algumas seções usam `bg-card/30` que somem em light mode.
 
-10. **Cleanup**
-    - Deletar `customer_proxies`, `proxy_stock` fakes, `provider_orders` dryRun, `orders` sintéticos, IPs fake do grupo B.
-    - Reverter estoque IPv6 do passo 3 pra `available`.
-    - `UPDATE provider_settings SET dry_run=false`.
+## 8. Acessibilidade
 
-## Saída pra você
+- Vários botões só com ícone (Navbar mobile, ThemeToggle, Lang) — confirmar `aria-label` em todos.
+- Contraste do `text-muted-foreground` em algumas seções (Solution "Antes") fica abaixo de 4.5:1 em dark mode.
+- `outline-none` em vários botões — adicionar `focus-visible:ring`.
 
-Relatório com:
-- Tabela "antes/depois" de estoque por produto.
-- Linha do tempo dos `provider_orders` (criado / simulateReadyAt / backfillado).
-- Tabela de invariantes por produto (✅/❌):
-  1. dry-run: zero chamada real de compra.
-  2. zero duplicate buy.
-  3. zero cross-country.
-  4. cliente recebeu proxy.
-- Gaps confirmados:
-  - IPv4 US e ISP US sem auto-purchase nem restock.
-  - Qualquer outro bug encontrado, com proposta de fix.
+## 9. Conteúdo
 
-## Detalhes técnicos
+- **Blog está ativo** mas sem destaque na home. Adicionar seção "Últimos artigos" antes do FAQ — bom pra SEO e retenção.
+- Página `/comparativo` ou bloco "Por que FastProxy x Concorrentes" (Smartproxy, Bright Data) — todo mundo pesquisa isso antes de comprar.
 
-- Dry-run ainda chama `calcOrder` real (network, não dinheiro).
-- `PENDING_REUSE_MAX_AGE_MS=20min`: manter o teste dentro dessa janela.
-- Vou precisar de um `user_id` admin pra usar nos pedidos sintéticos — uso o seu (`ericktorresadm@hotmail.com`) ou prefere outro?
-- Cleanup é DELETE, então vou agrupar tudo numa única migration no final (a tool de insert não faz delete).
+## 10. Métricas (não-visual)
 
-## Riscos
+- Confirmar que Google Analytics / Meta Pixel / TikTok Pixel estão instalados e disparando eventos `purchase`, `add_to_cart`, `view_plan`. Sem isso, anúncios pagos não otimizam.
+- Adicionar **Microsoft Clarity** (gratuito) pra mapa de calor — você vê onde o usuário trava no checkout.
 
-- Se algum invariante falhar, paro o teste, reporto e proponho fix antes de seguir.
-- Backfill route depende do `simulateReadyAt`; se eu precisar acelerar, posso reescrever o `simulateReadyAt` pra `now()` no banco em vez de esperar 5min de verdade (mais rápido pro teste, mesmo resultado funcional).
+---
+
+## Resumo do que mais converte (se for fazer só 3 coisas)
+
+1. **Seção de depoimentos + logos** na home (acima do Plans).
+2. **Botão flutuante WhatsApp** no mobile.
+3. **Páginas dedicadas** `/proxy-ipv6`, `/proxy-ipv4`, `/proxy-isp`, `/proxy-facebook-ads` com SEO próprio.
+
+Me diz quais blocos você quer que eu execute — posso fazer todos, escolher os 3 de maior impacto, ou ir por etapas (ex: começar pelo bloco 1 + 5).

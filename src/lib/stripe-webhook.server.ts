@@ -1,0 +1,321 @@
+import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
+import { allocateProxiesForOrder, renewProxyBlocksForOrder } from "@/lib/allocation.server";
+import { notifyAllAdmins } from "@/lib/notifications.server";
+import { getStripe } from "@/lib/stripe.server";
+import type Stripe from "stripe";
+
+async function logAudit(action: string, status: string, payload: unknown, error?: string) {
+  try {
+    await supabaseAdmin.from("audit_log").insert({
+      source: "stripe_webhook",
+      action,
+      status,
+      request: payload as never,
+      response: error ? ({ error } as never) : null,
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+function invoiceSubscriptionId(inv: Stripe.Invoice): string | null {
+  const raw = inv as unknown as {
+    subscription?: string | { id?: string } | null;
+    subscription_details?: { subscription?: string | null } | null;
+    parent?: { subscription_details?: { subscription?: string | null } | null } | null;
+  };
+  if (typeof raw.subscription === "string") return raw.subscription;
+  if (raw.subscription?.id) return raw.subscription.id;
+  return raw.subscription_details?.subscription ?? raw.parent?.subscription_details?.subscription ?? null;
+}
+
+function invoicePeriodEnd(inv: Stripe.Invoice): number | null {
+  return (inv.lines?.data?.[0] as unknown as { period?: { end?: number } } | undefined)?.period?.end ?? null;
+}
+
+async function getSubscriptionPeriodEnd(subscriptionId: string | null | undefined) {
+  if (!subscriptionId) return null;
+  try {
+    const sub = await getStripe().subscriptions.retrieve(subscriptionId);
+    return (sub as unknown as { current_period_end?: number }).current_period_end ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function attachUserToOrder(orderId: string, email: string | null, name: string | null) {
+  if (!email) return;
+  const { data: existingOrder } = await supabaseAdmin
+    .from("orders")
+    .select("user_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (existingOrder?.user_id) return;
+
+  let userId: string | null = null;
+  try {
+    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    userId = list.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id ?? null;
+  } catch {
+    /* ignore */
+  }
+
+  if (!userId) {
+    try {
+      const { data: invited } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        data: { full_name: name ?? undefined },
+      });
+      userId = invited.user?.id ?? null;
+    } catch (err) {
+      await logAudit("auto_provision_user", "error", { email }, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (userId) await supabaseAdmin.from("orders").update({ user_id: userId }).eq("id", orderId);
+}
+
+async function markOrderPaid(opts: {
+  orderId?: string | null;
+  sessionId?: string | null;
+  subscriptionId?: string | null;
+  customerId?: string | null;
+  currentPeriodEnd?: number | null;
+  promoCode?: string | null;
+  discountCents?: number | null;
+}) {
+  const updates: Record<string, unknown> = {
+    status: "paid",
+    last_payment_check_at: new Date().toISOString(),
+    grace_until: null,
+  };
+  if (opts.subscriptionId) updates.stripe_subscription_id = opts.subscriptionId;
+  if (opts.customerId) updates.stripe_customer_id = opts.customerId;
+  if (opts.currentPeriodEnd) updates.current_period_end = new Date(opts.currentPeriodEnd * 1000).toISOString();
+  if (opts.promoCode) updates.promo_code = opts.promoCode;
+  if (typeof opts.discountCents === "number") updates.discount_cents = opts.discountCents;
+
+  let query = supabaseAdmin.from("orders").update(updates as never).select("id");
+  if (opts.orderId) query = query.eq("id", opts.orderId);
+  else if (opts.sessionId) query = query.eq("stripe_checkout_session_id", opts.sessionId);
+  else if (opts.subscriptionId) query = query.eq("stripe_subscription_id", opts.subscriptionId);
+  else return [];
+
+  const { data } = await query;
+  return (data ?? []).map((row) => row.id as string);
+}
+
+async function markOrderPastDue(subscriptionId: string) {
+  const graceUntil = new Date(Date.now() + 7 * 86400000).toISOString();
+  await supabaseAdmin
+    .from("orders")
+    .update({ status: "past_due", grace_until: graceUntil, last_payment_check_at: new Date().toISOString() })
+    .eq("stripe_subscription_id", subscriptionId);
+}
+
+async function markOrderCanceled(subscriptionId: string) {
+  await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("stripe_subscription_id", subscriptionId);
+}
+
+async function notifySale(orderId: string, via: string) {
+  const { data: ord } = await supabaseAdmin
+    .from("orders")
+    .select("amount_cents, quantity, customer_email, billing_cycle, product_id, products(name, slug)")
+    .eq("id", orderId)
+    .maybeSingle();
+  const prod = (ord as unknown as { products?: { name?: string; slug?: string } })?.products ?? null;
+  const amount = ((ord?.amount_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  await notifyAllAdmins({
+    title: "💸 Nova venda",
+    body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}`,
+    link: "/admin/orders",
+    metadata: { orderId, productSlug: prod?.slug, via },
+    dedupeKey: `sale:${orderId}`,
+  });
+}
+
+async function allocateOrder(orderId: string) {
+  try {
+    const result = await allocateProxiesForOrder(orderId);
+    await logAudit("allocate_proxies", result.short > 0 ? "partial" : "ok", { orderId, ...result }, result.error);
+  } catch (err) {
+    await logAudit("allocate_proxies", "error", { orderId }, err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function handleCheckoutSession(s: Stripe.Checkout.Session, eventType: string) {
+  const orderId = (s.metadata?.order_id as string | undefined) ?? s.client_reference_id ?? undefined;
+  const subscriptionId = typeof s.subscription === "string" ? s.subscription : s.subscription?.id;
+  const customerId = typeof s.customer === "string" ? s.customer : s.customer?.id;
+  const customerEmail = (s.metadata?.customer_email as string | undefined) ?? s.customer_details?.email ?? s.customer_email ?? null;
+  const customerName = (s.metadata?.customer_name as string | undefined) ?? s.customer_details?.name ?? null;
+
+  if (eventType === "checkout.session.expired") {
+    if (orderId) await supabaseAdmin.from("orders").update({ status: "expired" }).eq("id", orderId).eq("status", "pending");
+    return;
+  }
+  if (s.payment_status !== "paid") return;
+
+  if (orderId) await attachUserToOrder(orderId, customerEmail, customerName);
+
+  let promoCode: string | null = null;
+  try {
+    const expanded = await getStripe().checkout.sessions.retrieve(s.id, {
+      expand: ["total_details.breakdown.discounts.discount.promotion_code"],
+    });
+    const disc = expanded.total_details?.breakdown?.discounts?.[0]?.discount as Stripe.Discount | undefined;
+    const pc = disc?.promotion_code;
+    if (pc && typeof pc !== "string") promoCode = pc.code ?? null;
+  } catch {
+    /* ignore */
+  }
+
+  const periodEnd = await getSubscriptionPeriodEnd(subscriptionId);
+  const paidOrderIds = await markOrderPaid({
+    orderId,
+    sessionId: s.id,
+    subscriptionId,
+    customerId,
+    currentPeriodEnd: periodEnd,
+    promoCode,
+    discountCents: s.total_details?.amount_discount ?? 0,
+  });
+
+  for (const id of paidOrderIds) {
+    await allocateOrder(id);
+    await notifySale(id, eventType);
+  }
+}
+
+async function handlePaidInvoice(inv: Stripe.Invoice) {
+  let subscriptionId = invoiceSubscriptionId(inv);
+  if (!subscriptionId && inv.id) {
+    try {
+      const expanded = await getStripe().invoices.retrieve(inv.id, { expand: ["subscription"] });
+      subscriptionId = invoiceSubscriptionId(expanded);
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!subscriptionId) return;
+
+  const { data: before } = await supabaseAdmin
+    .from("orders")
+    .select("id, status, current_period_end, amount_cents, quantity, customer_email, billing_cycle, products(name, slug)")
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+
+  const periodEnd = invoicePeriodEnd(inv) ?? (await getSubscriptionPeriodEnd(subscriptionId));
+  const customerId = typeof inv.customer === "string" ? inv.customer : inv.customer?.id ?? null;
+  const paidOrderIds = await markOrderPaid({
+    subscriptionId,
+    customerId,
+    currentPeriodEnd: periodEnd,
+    discountCents: inv.total_discount_amounts?.reduce((sum, d) => sum + (d.amount ?? 0), 0) ?? 0,
+  });
+
+  for (const id of paidOrderIds) await allocateOrder(id);
+
+  const billingReason = (inv as unknown as { billing_reason?: string }).billing_reason;
+  const oldEnd = before?.current_period_end ? new Date(before.current_period_end).getTime() : 0;
+  const newEnd = periodEnd ? periodEnd * 1000 : 0;
+  const isRenewal = billingReason === "subscription_cycle" || billingReason === "subscription_update" || (oldEnd > 0 && newEnd > oldEnd + 3600000);
+  if (!isRenewal || !before?.id) return;
+
+  const prod = (before as unknown as { products?: { name?: string; slug?: string } })?.products ?? null;
+  const amountCents = inv.amount_paid ?? before.amount_cents ?? 0;
+  const amount = (amountCents / 100).toLocaleString("pt-BR", { style: "currency", currency: (inv.currency ?? "brl").toUpperCase() });
+  await notifyAllAdmins({
+    title: "🔁 Renovação de plano",
+    body: `${prod?.name ?? "Produto"} × ${before.quantity ?? 1} — ${amount} (${before.billing_cycle ?? "monthly"}) · ${before.customer_email ?? "cliente"}`,
+    link: "/admin/orders",
+    metadata: { invoiceId: inv.id, subscriptionId, orderId: before.id, productSlug: prod?.slug },
+    dedupeKey: `renewal:${inv.id}`,
+  });
+
+  try {
+    const result = await renewProxyBlocksForOrder(before.id);
+    if (result.renewed_proxies > 0) {
+      await notifyAllAdmins({
+        title: result.dry_run ? "🧪 Renovação simulada (dry-run)" : "🔁 Blocos renovados no provedor",
+        body: `Pedido ${before.id.slice(0, 8)} — ${result.renewed_blocks} bloco(s) / ${result.renewed_proxies} IP(s) renovados · custo ≈ $${result.cost_usd.toFixed(2)}`,
+        link: "/admin/inventory",
+        metadata: { orderId: before.id, ...result },
+        dedupeKey: `prolong:${inv.id}`,
+      });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await notifyAllAdmins({
+      title: "🛑 Falha ao renovar blocos no provedor",
+      body: `Pedido ${before.id.slice(0, 8)}: ${msg}`,
+      link: "/admin/inventory",
+      metadata: { orderId: before.id, error: msg },
+      dedupeKey: `prolong-fail:${inv.id}`,
+    });
+  }
+}
+
+export async function handleStripeWebhook({ request }: { request: Request }) {
+  const sig = request.headers.get("stripe-signature");
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!sig || !secret) return new Response("missing signature", { status: 400 });
+
+  const body = await request.text();
+  let event: Stripe.Event;
+  try {
+    event = await getStripe().webhooks.constructEventAsync(body, sig, secret);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await logAudit("constructEvent", "error", { sig }, msg);
+    return new Response(`invalid signature: ${msg}`, { status: 400 });
+  }
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded":
+      case "checkout.session.expired":
+        await handleCheckoutSession(event.data.object as Stripe.Checkout.Session, event.type);
+        break;
+      case "invoice.paid":
+      case "invoice.payment_succeeded":
+        await handlePaidInvoice(event.data.object as Stripe.Invoice);
+        break;
+      case "invoice.payment_failed": {
+        const inv = event.data.object as Stripe.Invoice;
+        const subscriptionId = invoiceSubscriptionId(inv);
+        if (subscriptionId) {
+          await markOrderPastDue(subscriptionId);
+          await notifyAllAdmins({
+            title: "⚠️ Pagamento falhou",
+            body: `Assinatura ${subscriptionId} entrou em atraso.`,
+            link: "/admin/orders",
+            metadata: { invoiceId: inv.id, subscriptionId },
+            dedupeKey: `payment-failed:${inv.id}`,
+          });
+        }
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as Stripe.Subscription;
+        await markOrderCanceled(sub.id);
+        await notifyAllAdmins({
+          title: "⛔ Assinatura cancelada",
+          body: `Assinatura ${sub.id} cancelada no Stripe.`,
+          link: "/admin/orders",
+          metadata: { subscriptionId: sub.id },
+          dedupeKey: `subscription-canceled:${sub.id}`,
+        });
+        break;
+      }
+      default:
+        break;
+    }
+    await logAudit(event.type, "ok", { id: event.id });
+    return new Response("ok");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await logAudit(event.type, "error", { id: event.id }, msg);
+    return new Response(`handler error: ${msg}`, { status: 500 });
+  }
+}

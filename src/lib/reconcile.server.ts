@@ -33,9 +33,30 @@ export async function reconcileOrderWithStripe(orderId: string): Promise<{
 
   let changed = false;
 
-  // Já pago: só roda allocate idempotente
+  // Já pago: roda allocate idempotente + backfill da notificação de venda (dedupe protege)
   if (order.status === "paid") {
     const r = await allocateProxiesForOrder(orderId);
+    try {
+      const { data: ord } = await supabaseAdmin
+        .from("orders")
+        .select("amount_cents, quantity, customer_email, billing_cycle, products(name, slug)")
+        .eq("id", orderId)
+        .maybeSingle();
+      const prod = (ord as unknown as { products?: { name?: string; slug?: string } })?.products ?? null;
+      const amount = ((ord?.amount_cents ?? 0) / 100).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+      await notifyAllAdmins({
+        title: "💸 Nova venda",
+        body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}`,
+        link: `/admin/orders`,
+        metadata: { orderId, productSlug: prod?.slug, via: "reconcile-backfill" },
+        dedupeKey: `sale:${orderId}`,
+      });
+    } catch (e) {
+      console.error("admin sale notify (reconcile-backfill) failed", e);
+    }
     return { status: "paid", allocated: r.allocated, short: r.short, changed: false };
   }
 

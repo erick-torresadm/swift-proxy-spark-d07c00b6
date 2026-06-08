@@ -1,23 +1,40 @@
 // Shared auth helper for cron / hook endpoints under /api/public/*.
-// Validates the `apikey` (or `x-cron-secret`) header against the
-// SUPABASE_SERVICE_ROLE_KEY using a constant-time compare. The service-role
-// key is server-only and is never bundled into the client, so it is safe to
-// use as a shared secret between pg_cron / external schedulers and these
-// endpoints.
+//
+// Accepts either:
+//   - CRON_SECRET (preferred custom shared secret, if set)
+//   - SUPABASE_SERVICE_ROLE_KEY (high-privilege, never in pg_cron)
+//   - SUPABASE_PUBLISHABLE_KEY / SUPABASE_ANON_KEY (public token — what
+//     pg_cron actually carries via the `apikey` header)
+//
+// Constant-time compare. Returns null if authorised, or a 401/500 Response.
 import { timingSafeEqual } from "crypto";
 
+function safeEq(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
+
 export function checkCronAuth(request: Request): Response | null {
-  const expected =
-    process.env.CRON_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   const provided =
     request.headers.get("x-cron-secret") ?? request.headers.get("apikey") ?? "";
+  if (!provided) return new Response("Unauthorized", { status: 401 });
 
-  if (!expected) return new Response("Server misconfigured", { status: 500 });
+  const accepted: string[] = [
+    process.env.CRON_SECRET ?? "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+    process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
+    process.env.SUPABASE_ANON_KEY ?? "",
+  ].filter(Boolean);
 
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return new Response("Unauthorized", { status: 401 });
+  if (accepted.length === 0) {
+    return new Response("Server misconfigured", { status: 500 });
   }
-  return null;
+
+  for (const expected of accepted) {
+    if (safeEq(provided, expected)) return null;
+  }
+  return new Response("Unauthorized", { status: 401 });
 }

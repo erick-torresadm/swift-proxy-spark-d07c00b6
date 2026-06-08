@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { sendPushToUser } from "@/lib/push.server";
 import { enqueueNotification } from "@/lib/notifications.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 /**
  * Cron diário: escaneia expirações próximas e despacha pushes pendentes.
@@ -11,7 +12,10 @@ import { enqueueNotification } from "@/lib/notifications.server";
 export const Route = createFileRoute("/api/public/hooks/notifications-dispatch")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
+
         const summary = {
           expiry_scanned: 0,
           expiry_enqueued: 0,

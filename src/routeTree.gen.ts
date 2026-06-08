@@ -54,6 +54,7 @@ import { Route as AuthenticatedAdminInventoryIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminCustomersIndexRouteImport } from './routes/_authenticated.admin.customers.index'
 import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
+import { Route as ApiPublicHooksStripeRouteImport } from './routes/api/public/hooks/stripe'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
@@ -310,6 +311,11 @@ const ApiPublicHooksStripeSyncRoute =
     path: '/api/public/hooks/stripe-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksStripeRoute = ApiPublicHooksStripeRouteImport.update({
+  id: '/api/public/hooks/stripe',
+  path: '/api/public/hooks/stripe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksProxysellerSyncRoute =
   ApiPublicHooksProxysellerSyncRouteImport.update({
     id: '/api/public/hooks/proxyseller-sync',
@@ -449,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
   '/admin/customers/': typeof AuthenticatedAdminCustomersIndexRoute
@@ -506,6 +513,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog': typeof AuthenticatedAdminBlogIndexRoute
   '/admin/customers': typeof AuthenticatedAdminCustomersIndexRoute
@@ -568,6 +576,7 @@ export interface FileRoutesById {
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/_authenticated/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
   '/_authenticated/admin/customers/': typeof AuthenticatedAdminCustomersIndexRoute
@@ -630,6 +639,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog/'
     | '/admin/customers/'
@@ -687,6 +697,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog'
     | '/admin/customers'
@@ -748,6 +759,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/_authenticated/admin/blog/'
     | '/_authenticated/admin/customers/'
@@ -779,6 +791,7 @@ export interface RootRouteChildren {
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
+  ApiPublicHooksStripeRoute: typeof ApiPublicHooksStripeRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
 
@@ -1099,6 +1112,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksStripeSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/stripe': {
+      id: '/api/public/hooks/stripe'
+      path: '/api/public/hooks/stripe'
+      fullPath: '/api/public/hooks/stripe'
+      preLoaderRoute: typeof ApiPublicHooksStripeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/proxyseller-sync': {
       id: '/api/public/hooks/proxyseller-sync'
       path: '/api/public/hooks/proxyseller-sync'
@@ -1352,6 +1372,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksProxysellerBackfillRoute:
     ApiPublicHooksProxysellerBackfillRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
+  ApiPublicHooksStripeRoute: ApiPublicHooksStripeRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }
 export const routeTree = rootRouteImport

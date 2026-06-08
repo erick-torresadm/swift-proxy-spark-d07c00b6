@@ -49,7 +49,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
           typeof err === "object" && err && "statusCode" in err
             ? (err as { statusCode?: number }).statusCode
             : undefined;
-        if (status === 404 || status === 410) {
+        if (status === 400 || status === 403 || status === 404 || status === 410) {
           stale.push(s.id);
         } else {
           console.error("webpush error", status, err);

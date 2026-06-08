@@ -11,6 +11,7 @@ import { CTA } from "@/components/site/CTA";
 import { Footer } from "@/components/site/Footer";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { InstallGuide } from "@/components/site/InstallGuide";
+import { VideoShowcase } from "@/components/site/VideoShowcase";
 
 const SITE = "https://www.fastproxy.com.br";
 
@@ -82,6 +83,7 @@ function Index() {
         <Stats />
         <Marquee />
         <Solution />
+        <VideoShowcase />
         <Features />
         <InstallGuide />
         <Plans />

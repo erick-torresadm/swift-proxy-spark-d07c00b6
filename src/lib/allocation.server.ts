@@ -405,9 +405,10 @@ async function insertProxiesToStock(
  * Returns number of IPs newly added to stock.
  */
 async function tryFulfillFromPendingOrders(
-  product: { id: string; country_code: string | null },
+  product: { id: string; country_code: string | null; category?: string | null },
   triggeredByOrderId: string,
 ): Promise<number> {
+  const kind = categoryToKind(product.category);
   const cutoff = new Date(Date.now() - PENDING_REUSE_MAX_AGE_MS).toISOString();
   const { data: pending } = await supabaseAdmin
     .from("provider_orders")

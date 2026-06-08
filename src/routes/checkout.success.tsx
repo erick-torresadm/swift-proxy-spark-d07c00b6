@@ -235,14 +235,17 @@ function SuccessPage() {
             {polling ? (
               <>
                 <strong>Liberando seus proxies…</strong> Estamos preparando
-                tudo para você. Pode levar até 30 segundos.
+                tudo para você. Pode levar até <strong>10 minutos</strong> em
+                alguns produtos (IPv4 / ISP) porque o IP é provisionado sob
+                demanda no provedor.
               </>
             ) : (
               <>
-                Pagamento ok, mas o provedor não respondeu a tempo. Vá em{" "}
-                <strong>Meus proxies</strong> e clique em{" "}
-                <strong>Sincronizar agora</strong> — normalmente resolve em
-                segundos.
+                Pagamento confirmado. Seu proxy está sendo provisionado no
+                provedor — aguarde até <strong>10 minutos</strong> e atualize
+                a página <strong>Meus proxies</strong>. Se nada aparecer
+                depois disso, clique em <strong>Sincronizar agora</strong> ou
+                fale com o suporte.
               </>
             )}
             {syncError && (

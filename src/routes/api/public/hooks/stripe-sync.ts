@@ -5,6 +5,15 @@ import { checkCronAuth } from "@/lib/cron-auth.server";
 import { allocateProxiesForOrder } from "@/lib/allocation.server";
 import { reconcileOrderWithStripe } from "@/lib/reconcile.server";
 
+function subscriptionPeriodEnd(subscription: unknown): string | null {
+  const sub = subscription as {
+    current_period_end?: number | null;
+    items?: { data?: Array<{ current_period_end?: number | null }> };
+  };
+  const ts = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end ?? null;
+  return ts ? new Date(ts * 1000).toISOString() : null;
+}
+
 /**
  * Cron-triggered job. For every order with a Stripe subscription, syncs the
  * status back to our DB:
@@ -84,9 +93,7 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
 
             let newStatus: string = o.status as string;
             let graceUntil: string | null = o.grace_until;
-            const periodEnd = new Date(
-              (sub as any).current_period_end * 1000,
-            ).toISOString();
+            const periodEnd = subscriptionPeriodEnd(sub);
 
             if (sub.status === "active" || sub.status === "trialing") {
               newStatus = "paid";
@@ -110,15 +117,16 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
             }
 
             const currentPeriodEnd = o.current_period_end ? new Date(o.current_period_end).toISOString() : null;
-            if (newStatus !== o.status || graceUntil !== o.grace_until || periodEnd !== currentPeriodEnd) {
+            if (newStatus !== o.status || graceUntil !== o.grace_until || (periodEnd && periodEnd !== currentPeriodEnd)) {
+              const updates: Record<string, unknown> = {
+                status: newStatus,
+                grace_until: graceUntil,
+                last_payment_check_at: new Date().toISOString(),
+              };
+              if (periodEnd) updates.current_period_end = periodEnd;
               await supabaseAdmin
                 .from("orders")
-                .update({
-                  status: newStatus as never,
-                  grace_until: graceUntil,
-                  current_period_end: periodEnd,
-                  last_payment_check_at: new Date().toISOString(),
-                })
+                .update(updates as never)
                 .eq("id", o.id);
               summary.updated++;
             } else {

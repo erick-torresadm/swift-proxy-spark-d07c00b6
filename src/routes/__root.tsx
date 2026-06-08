@@ -204,6 +204,7 @@ function RootComponent() {
       <ThemeProvider>
         <CurrencyProvider>
           <AuthSync />
+          <SaleSoundListener />
           <Outlet />
           <ChatWidget />
           <CookieBanner />

@@ -12,6 +12,8 @@ import { Footer } from "@/components/site/Footer";
 import { ScrollProgress } from "@/components/site/ScrollProgress";
 import { InstallGuide } from "@/components/site/InstallGuide";
 import { VideoShowcase } from "@/components/site/VideoShowcase";
+import { Testimonials } from "@/components/site/Testimonials";
+import { WhatsAppFloat } from "@/components/site/WhatsAppFloat";
 
 const SITE = "https://www.fastproxy.com.br";
 
@@ -86,11 +88,13 @@ function Index() {
         <VideoShowcase />
         <Features />
         <InstallGuide />
+        <Testimonials />
         <Plans />
         <FAQ />
         <CTA />
       </main>
       <Footer />
+      <WhatsAppFloat />
     </div>
   );
 }

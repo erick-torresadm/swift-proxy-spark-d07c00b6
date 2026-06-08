@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Zap, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Zap, ShieldCheck, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TerminalMock } from "./TerminalMock";
+import { whatsappUrl } from "@/config/contact";
 
 export function Hero() {
   const { t } = useTranslation();
@@ -74,10 +75,13 @@ export function Hero() {
               <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
             </a>
             <a
-              href="#beneficios"
-              className="inline-flex items-center gap-2 border border-border bg-card/50 backdrop-blur text-foreground font-medium px-8 py-4 rounded-2xl hover:bg-card transition"
+              href={whatsappUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-2 border border-border bg-card/50 backdrop-blur text-foreground font-medium px-8 py-4 rounded-2xl hover:bg-card hover:border-primary/30 transition"
             >
-              {t("hero.cta_secondary")}
+              <MessageCircle className="w-5 h-5 text-[#25D366]" fill="currentColor" />
+              Falar no WhatsApp
             </a>
           </motion.div>
 

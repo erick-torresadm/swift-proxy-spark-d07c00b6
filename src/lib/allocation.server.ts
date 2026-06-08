@@ -207,11 +207,67 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   const ids = picks.map((p) => p.id);
   await supabaseAdmin.from("proxy_stock").update({ status: "allocated" }).in("id", ids);
 
+  // ───────── 3) Proactive restock (stock-mode products only) ─────────
+  // If after allocation the available pool dropped to or below the product
+  // threshold, pre-buy a new block so future customers don't wait.
+  if (product.delivery_mode === "stock" && canAutoPurchase) {
+    void maybeProactiveRestock(product, order.id);
+  }
+
   return {
     allocated: (existing ?? 0) + picks.length,
     short: remaining - picks.length,
     error: purchaseError,
   };
+}
+
+/** Fire-and-forget: top up stock when available count ≤ restock_threshold. */
+async function maybeProactiveRestock(
+  product: {
+    id: string;
+    provider_tariff_id: string | null;
+    country_code: string | null;
+    category?: string | null;
+    restock_threshold?: number | null;
+  },
+  triggeringOrderId: string,
+): Promise<void> {
+  try {
+    const threshold = product.restock_threshold ?? 2;
+    const { count: avail } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", product.id)
+      .eq("status", "available");
+    if ((avail ?? 0) > threshold) return;
+
+    // Skip if another pending provider order is already in-flight
+    const cutoff = new Date(Date.now() - PENDING_BLOCK_NEW_BUY_MS).toISOString();
+    const { count: openPending } = await supabaseAdmin
+      .from("provider_orders")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", product.id)
+      .eq("status", "pending")
+      .gte("created_at", cutoff);
+    if ((openPending ?? 0) > 0) return;
+
+    const lockOk = await tryAcquirePurchaseLock(product.id, `restock:${triggeringOrderId}`);
+    if (!lockOk) return;
+    try {
+      await autoPurchaseIntoStock(product, PROXYSELLER_IPV6_MIN_BLOCK, triggeringOrderId);
+      void notifyAllAdmins({
+        title: "♻️ Restock automático",
+        body: `Estoque de ${product.category}/${product.country_code ?? "?"} caiu para ${avail ?? 0}. Comprando novo bloco.`,
+        link: "/admin/inventory",
+        metadata: { productId: product.id, available: avail ?? 0 },
+        dedupeKey: `proactive-restock:${product.id}:${Math.floor(Date.now() / 60000)}`,
+      });
+    } finally {
+      await releasePurchaseLock(product.id);
+    }
+  } catch (e) {
+    console.error("[allocation] proactive restock failed:", e);
+  }
 }
 
 /**

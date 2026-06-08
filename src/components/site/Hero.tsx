@@ -95,6 +95,7 @@ export function Hero() {
               { icon: Check, label: t("hero.trust_replacement") },
               { icon: Zap, label: t("hero.trust_delivery") },
               { icon: ShieldCheck, label: t("hero.trust_support") },
+              { icon: ShieldCheck, label: "Garantia de 7 dias" },
             ].map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-2">
                 <Icon className="w-5 h-5 text-primary" />

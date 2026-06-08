@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import {
-  purchaseIpv6Block,
+  purchaseProxyBlock,
   pollProxiesForOrder,
   psDateToIso,
   calcOrder,
@@ -10,6 +10,17 @@ import {
 } from "./proxyseller.server";
 import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
+
+/** Map our product.category → ProxySeller "kind" used in /order/* and /proxy/list/{kind}. */
+function categoryToKind(category: string | null | undefined): PsProxyKind {
+  switch (category) {
+    case "ipv4": return "ipv4";
+    case "isp": return "isp";
+    case "ipv6":
+    case "ipv6_fb":
+    default: return "ipv6";
+  }
+}
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
 // ProxySeller IPv6 minimum purchase block size

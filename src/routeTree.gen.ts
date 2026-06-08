@@ -31,7 +31,6 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as BlogTagSlugRouteImport } from './routes/blog.tag.$slug'
 import { Route as BlogCSlugRouteImport } from './routes/blog.c.$slug'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
-import { Route as ApiPublicTempPsRefRouteImport } from './routes/api/public/_temp-ps-ref'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated.dashboard.settings'
 import { Route as AuthenticatedDashboardProxiesRouteImport } from './routes/_authenticated.dashboard.proxies'
 import { Route as AuthenticatedDashboardOrdersRouteImport } from './routes/_authenticated.dashboard.orders'
@@ -174,11 +173,6 @@ const BlogCSlugRoute = BlogCSlugRouteImport.update({
 const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   id: '/api/public/stripe-webhook',
   path: '/api/public/stripe-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicTempPsRefRoute = ApiPublicTempPsRefRouteImport.update({
-  id: '/api/public/_temp-ps-ref',
-  path: '/api/public',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardSettingsRoute =
@@ -409,7 +403,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
-  '/api/public': typeof ApiPublicTempPsRefRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
@@ -463,7 +456,6 @@ export interface FileRoutesByTo {
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
-  '/api/public': typeof ApiPublicTempPsRefRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
@@ -522,7 +514,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/_authenticated/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
-  '/api/public/_temp-ps-ref': typeof ApiPublicTempPsRefRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
@@ -581,7 +572,6 @@ export interface FileRouteTypes {
     | '/dashboard/orders'
     | '/dashboard/proxies'
     | '/dashboard/settings'
-    | '/api/public'
     | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
@@ -635,7 +625,6 @@ export interface FileRouteTypes {
     | '/dashboard/orders'
     | '/dashboard/proxies'
     | '/dashboard/settings'
-    | '/api/public'
     | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
@@ -693,7 +682,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/orders'
     | '/_authenticated/dashboard/proxies'
     | '/_authenticated/dashboard/settings'
-    | '/api/public/_temp-ps-ref'
     | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
@@ -733,7 +721,6 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
-  ApiPublicTempPsRefRoute: typeof ApiPublicTempPsRefRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
@@ -897,13 +884,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/stripe-webhook'
       fullPath: '/api/public/stripe-webhook'
       preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/_temp-ps-ref': {
-      id: '/api/public/_temp-ps-ref'
-      path: '/api/public'
-      fullPath: '/api/public'
-      preLoaderRoute: typeof ApiPublicTempPsRefRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard/settings': {
@@ -1280,7 +1260,6 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
-  ApiPublicTempPsRefRoute: ApiPublicTempPsRefRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
@@ -1294,3 +1273,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

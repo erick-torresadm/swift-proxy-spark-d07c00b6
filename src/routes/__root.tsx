@@ -12,6 +12,7 @@ import { Toaster } from "sonner";
 import { supabase } from "@/lib/supabase-custom/client";
 import { ChatWidget } from "@/components/site/ChatWidget";
 import { CookieBanner } from "@/components/site/CookieBanner";
+import { SaleSoundListener } from "@/components/SaleSoundListener";
 import { ThemeProvider, themeInitScript, useTheme } from "@/lib/theme";
 import { CurrencyProvider } from "@/lib/currency";
 import "@/lib/i18n";

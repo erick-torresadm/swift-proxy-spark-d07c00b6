@@ -432,7 +432,7 @@ async function tryFulfillFromPendingOrders(
       const qty = payload.quantityRequested || po.quantity || 1;
       proxies = generateSimulatedProxies(baseOrderNumber, qty, product.country_code);
     } else {
-      proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500]);
+      proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500], kind);
     }
     if (proxies.length === 0) continue;
 

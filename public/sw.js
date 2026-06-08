@@ -45,6 +45,23 @@ self.addEventListener("push", (event) => {
 
   if (typeof data.badgeCount === "number") updateBadge(data.badgeCount);
 
+  // Avisa as abas abertas pra tocar o "ka-ching" quando for venda
+  const isSale =
+    (typeof title === "string" && /nova venda|💸/i.test(title)) ||
+    (typeof data.tag === "string" && /sale|venda/i.test(data.tag));
+  if (isSale) {
+    event.waitUntil(
+      (async () => {
+        const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        for (const w of wins) {
+          try { w.postMessage({ type: "PLAY_SALE_SOUND" }); } catch (_) { /* ignore */ }
+        }
+        await self.registration.showNotification(title, options);
+      })()
+    );
+    return;
+  }
+
   event.waitUntil(self.registration.showNotification(title, options));
 });
 

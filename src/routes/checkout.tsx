@@ -19,7 +19,11 @@ import { createCheckoutSession } from "@/lib/checkout.functions";
 import { validateCouponPublic } from "@/lib/coupons.functions";
 import { getPublicCatalog } from "@/lib/catalog.functions";
 
-type Slug = "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "ipv6-fb-us" | "isp-us" | "ipv6-us";
+type Slug =
+  | "ipv6-br" | "ipv6-us"
+  | "ipv6-fb-br" | "ipv6-fb-us"
+  | "ipv4-br" | "ipv4-us"
+  | "isp-br" | "isp-us";
 type Country = "BR" | "US";
 type Kind = "ipv6" | "ipv6_fb" | "ipv4" | "isp";
 
@@ -61,16 +65,28 @@ const META: Record<Slug, CatalogMeta> = {
     tagline: "Inclui rotações de IP / mês por proxy",
     blockSize: 1, unitLabel: "proxy",
   },
+  "ipv4-br": {
+    slug: "ipv4-br", country: "BR", kind: "ipv4",
+    name: "IPv4 Dedicado Brasil",
+    tagline: "IP exclusivo brasileiro (entrega em até 10 min)",
+    blockSize: 1, unitLabel: "proxy",
+  },
   "ipv4-us": {
     slug: "ipv4-us", country: "US", kind: "ipv4",
     name: "IPv4 Dedicado EUA",
-    tagline: "IP exclusivo, banda ilimitada",
+    tagline: "IP exclusivo, banda ilimitada (entrega em até 10 min)",
+    blockSize: 1, unitLabel: "proxy",
+  },
+  "isp-br": {
+    slug: "isp-br", country: "BR", kind: "isp",
+    name: "Proxy ISP Residencial Brasil",
+    tagline: "IP residencial brasileiro (entrega em até 10 min)",
     blockSize: 1, unitLabel: "proxy",
   },
   "isp-us": {
     slug: "isp-us", country: "US", kind: "isp",
     name: "Proxy ISP Residencial EUA",
-    tagline: "IP residencial puro, indetectável",
+    tagline: "IP residencial puro, indetectável (entrega em até 10 min)",
     blockSize: 1, unitLabel: "proxy",
   },
 };
@@ -80,7 +96,9 @@ const FALLBACK_PRICES: Record<Slug, { monthly: number; yearly: number }> = {
   "ipv6-fb-br": { monthly: 8000, yearly: 79200 },
   "ipv6-us":    { monthly: 3000, yearly: 29700 },
   "ipv6-fb-us": { monthly: 8000, yearly: 79200 },
+  "ipv4-br":    { monthly: 4990, yearly: 49401 },
   "ipv4-us":    { monthly: 4990, yearly: 49401 },
+  "isp-br":     { monthly: 9900, yearly: 98010 },
   "isp-us":     { monthly: 9900, yearly: 98010 },
 };
 

@@ -15,6 +15,10 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReembolsoRouteImport } from './routes/reembolso'
+import { Route as ProxyIspRouteImport } from './routes/proxy-isp'
+import { Route as ProxyIpv6RouteImport } from './routes/proxy-ipv6'
+import { Route as ProxyIpv4RouteImport } from './routes/proxy-ipv4'
+import { Route as ProxyFacebookAdsRouteImport } from './routes/proxy-facebook-ads'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -93,6 +97,26 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const ReembolsoRoute = ReembolsoRouteImport.update({
   id: '/reembolso',
   path: '/reembolso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProxyIspRoute = ProxyIspRouteImport.update({
+  id: '/proxy-isp',
+  path: '/proxy-isp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProxyIpv6Route = ProxyIpv6RouteImport.update({
+  id: '/proxy-ipv6',
+  path: '/proxy-ipv6',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProxyIpv4Route = ProxyIpv4RouteImport.update({
+  id: '/proxy-ipv4',
+  path: '/proxy-ipv4',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProxyFacebookAdsRoute = ProxyFacebookAdsRouteImport.update({
+  id: '/proxy-facebook-ads',
+  path: '/proxy-facebook-ads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -378,6 +402,10 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
+  '/proxy-ipv4': typeof ProxyIpv4Route
+  '/proxy-ipv6': typeof ProxyIpv6Route
+  '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
@@ -433,6 +461,10 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
+  '/proxy-ipv4': typeof ProxyIpv4Route
+  '/proxy-ipv6': typeof ProxyIpv6Route
+  '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
@@ -489,6 +521,10 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
+  '/proxy-ipv4': typeof ProxyIpv4Route
+  '/proxy-ipv6': typeof ProxyIpv6Route
+  '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
@@ -547,6 +583,10 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/privacidade'
+    | '/proxy-facebook-ads'
+    | '/proxy-ipv4'
+    | '/proxy-ipv6'
+    | '/proxy-isp'
     | '/reembolso'
     | '/reset-password'
     | '/rss.xml'
@@ -602,6 +642,10 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/privacidade'
+    | '/proxy-facebook-ads'
+    | '/proxy-ipv4'
+    | '/proxy-ipv6'
+    | '/proxy-isp'
     | '/reembolso'
     | '/reset-password'
     | '/rss.xml'
@@ -657,6 +701,10 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/privacidade'
+    | '/proxy-facebook-ads'
+    | '/proxy-ipv4'
+    | '/proxy-ipv6'
+    | '/proxy-isp'
     | '/reembolso'
     | '/reset-password'
     | '/rss.xml'
@@ -715,6 +763,10 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  ProxyFacebookAdsRoute: typeof ProxyFacebookAdsRoute
+  ProxyIpv4Route: typeof ProxyIpv4Route
+  ProxyIpv6Route: typeof ProxyIpv6Route
+  ProxyIspRoute: typeof ProxyIspRoute
   ReembolsoRoute: typeof ReembolsoRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
@@ -772,6 +824,34 @@ declare module '@tanstack/react-router' {
       path: '/reembolso'
       fullPath: '/reembolso'
       preLoaderRoute: typeof ReembolsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy-isp': {
+      id: '/proxy-isp'
+      path: '/proxy-isp'
+      fullPath: '/proxy-isp'
+      preLoaderRoute: typeof ProxyIspRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy-ipv6': {
+      id: '/proxy-ipv6'
+      path: '/proxy-ipv6'
+      fullPath: '/proxy-ipv6'
+      preLoaderRoute: typeof ProxyIpv6RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy-ipv4': {
+      id: '/proxy-ipv4'
+      path: '/proxy-ipv4'
+      fullPath: '/proxy-ipv4'
+      preLoaderRoute: typeof ProxyIpv4RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy-facebook-ads': {
+      id: '/proxy-facebook-ads'
+      path: '/proxy-facebook-ads'
+      fullPath: '/proxy-facebook-ads'
+      preLoaderRoute: typeof ProxyFacebookAdsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -1254,6 +1334,10 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  ProxyFacebookAdsRoute: ProxyFacebookAdsRoute,
+  ProxyIpv4Route: ProxyIpv4Route,
+  ProxyIpv6Route: ProxyIpv6Route,
+  ProxyIspRoute: ProxyIspRoute,
   ReembolsoRoute: ReembolsoRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RssDotxmlRoute: RssDotxmlRoute,

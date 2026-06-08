@@ -1,12 +1,30 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX, Play, Pause } from "lucide-react";
 import videoAsset from "@/assets/fastproxy-criativo.mp4.asset.json";
 import posterAsset from "@/assets/fastproxy-criativo-poster.jpg.asset.json";
 
 export function VideoShowcase() {
+  const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState(true);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const node = sectionRef.current;
+    if (!node || shouldLoad) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShouldLoad(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [shouldLoad]);
 
   const toggleMute = () => {
     const v = videoRef.current;

@@ -75,7 +75,11 @@ export async function reconcileOrderWithStripe(orderId: string): Promise<{
   if (subscriptionId) {
     try {
       const sub = await stripe.subscriptions.retrieve(subscriptionId);
-      const ts = (sub as unknown as { current_period_end?: number }).current_period_end;
+      const shaped = sub as unknown as {
+        current_period_end?: number | null;
+        items?: { data?: Array<{ current_period_end?: number | null }> };
+      };
+      const ts = shaped.current_period_end ?? shaped.items?.data?.[0]?.current_period_end;
       if (ts) periodEnd = new Date(ts * 1000).toISOString();
     } catch {
       /* ignore */

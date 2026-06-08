@@ -54,6 +54,7 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-backfill")({
           const payload = po.raw_payload as {
             baseOrderNumber?: string;
             dryRun?: boolean;
+            kind?: "ipv6" | "ipv4" | "isp" | "mobile";
             simulateReadyAt?: string;
             quantityRequested?: number;
           } | null;
@@ -61,6 +62,20 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-backfill")({
           if (!baseOrderNumber || !po.product_id) continue;
 
           try {
+            // Determine kind from saved payload, falling back to product.category
+            let kind: "ipv6" | "ipv4" | "isp" | "mobile" = payload?.kind ?? "ipv6";
+            if (!payload?.kind) {
+              const { data: prod } = await supabaseAdmin
+                .from("products")
+                .select("category")
+                .eq("id", po.product_id)
+                .maybeSingle();
+              const cat = prod?.category as string | undefined;
+              if (cat === "ipv4") kind = "ipv4";
+              else if (cat === "isp") kind = "isp";
+              else kind = "ipv6";
+            }
+
             let proxies;
             if (payload?.dryRun) {
               // Simulated order — wait until fake provisioning window passes
@@ -70,7 +85,7 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-backfill")({
               const qty = payload.quantityRequested || 1;
               proxies = generateSimulatedProxies(baseOrderNumber, qty, po.country_code);
             } else {
-              proxies = await pollProxiesForOrder(baseOrderNumber, 1, [0]);
+              proxies = await pollProxiesForOrder(baseOrderNumber, 1, [0], kind);
             }
             if (proxies.length === 0) continue;
 

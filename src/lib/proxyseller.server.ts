@@ -139,25 +139,21 @@ type PsOrderMakeData = {
 };
 
 /**
- * Buys an IPv6 block from ProxySeller and returns the provisioned proxies.
- * - countryId/periodId come from /reference/list/ipv6
+ * Buys a block from ProxySeller and returns the provisioned proxies.
+ * Works for any kind (ipv6 / ipv4 / isp / mobile). Params depend on kind.
  * - paymentId=1 → uses account balance
  */
-export async function purchaseIpv6Block(params: {
-  countryId: number;
-  periodId: string;
-  quantity: number;
-  protocol?: "HTTPS" | "SOCKS5";
-  targetSectionId?: number;
-  targetId?: number;
-}): Promise<{
+export async function purchaseProxyBlock(
+  kind: PsProxyKind,
+  params: Record<string, unknown> & { quantity: number },
+): Promise<{
   externalOrderId: string;
   baseOrderNumber: string;
   costCents: number;
   proxies: PsProxyItem[];
 }> {
   const order = await psPost<PsOrderMakeData>("/order/make", {
-    ...normalizeOrderParams("ipv6", params),
+    ...normalizeOrderParams(kind, params),
     paymentId: 1,
     authorization: "",
   });
@@ -165,11 +161,8 @@ export async function purchaseIpv6Block(params: {
   const baseOrderNumber = order.listBaseOrderNumbers?.[0];
   if (!baseOrderNumber) throw new Error("ProxySeller: no baseOrderNumber returned");
 
-  // ProxySeller provisioning may take seconds to a minute — poll /proxy/list
-  // with backoff until IPs appear or we time out. On timeout we still return
-  // success (with empty proxies) so the caller can persist a pending order
-  // for the backfill job to finish later.
-  const proxies = await pollProxiesForOrder(baseOrderNumber, params.quantity);
+  // ProxySeller provisioning may take seconds to minutes — poll /proxy/list.
+  const proxies = await pollProxiesForOrder(baseOrderNumber, params.quantity, undefined, kind);
 
   return {
     externalOrderId: String(order.orderId),
@@ -179,18 +172,29 @@ export async function purchaseIpv6Block(params: {
   };
 }
 
-/** Poll /proxy/list/ipv6?orderId=… until ≥ expected items or backoff exhausted. */
+/** Back-compat thin wrapper for callers still using the IPv6-specific name. */
+export const purchaseIpv6Block = (params: {
+  countryId: number;
+  periodId: string;
+  quantity: number;
+  protocol?: "HTTPS" | "SOCKS5";
+  targetSectionId?: number;
+  targetId?: number;
+}) => purchaseProxyBlock("ipv6", params);
+
+/** Poll /proxy/list/{kind}?orderId=… until ≥ expected items or backoff exhausted. */
 export async function pollProxiesForOrder(
   baseOrderNumber: string,
   expected: number,
   delaysMs: number[] = [1000, 2000, 4000, 8000, 15000],
+  kind: PsProxyKind = "ipv6",
 ): Promise<PsProxyItem[]> {
   let last: PsProxyItem[] = [];
   for (let i = 0; i < delaysMs.length; i++) {
     await new Promise((r) => setTimeout(r, delaysMs[i]));
     try {
       const list = await psGet<{ items: PsProxyItem[] }>(
-        `/proxy/list/ipv6?orderId=${encodeURIComponent(baseOrderNumber)}`,
+        `/proxy/list/${kind}?orderId=${encodeURIComponent(baseOrderNumber)}`,
       );
       last = list.items ?? [];
       if (last.length >= expected) return last;
@@ -205,12 +209,18 @@ function normalizeOrderParams(
   kind: PsProxyKind,
   params: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (kind !== "ipv6") return params;
+  if (kind === "ipv6") {
+    return {
+      ...params,
+      protocol: params.protocol ?? "HTTPS",
+      targetSectionId: params.targetSectionId ?? 8,
+      targetId: params.targetId ?? 1768,
+    };
+  }
+  // ipv4 / isp: accept either targetSectionId+targetId OR customTargetName
   return {
+    protocol: params.protocol ?? "HTTP",
     ...params,
-    protocol: params.protocol ?? "HTTPS",
-    targetSectionId: params.targetSectionId ?? 8,
-    targetId: params.targetId ?? 1768,
   };
 }
 

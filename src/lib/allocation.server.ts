@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import {
-  purchaseIpv6Block,
+  purchaseProxyBlock,
   pollProxiesForOrder,
   psDateToIso,
   calcOrder,
@@ -10,6 +10,17 @@ import {
 } from "./proxyseller.server";
 import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
+
+/** Map our product.category → ProxySeller "kind" used in /order/* and /proxy/list/{kind}. */
+function categoryToKind(category: string | null | undefined): PsProxyKind {
+  switch (category) {
+    case "ipv4": return "ipv4";
+    case "isp": return "isp";
+    case "ipv6":
+    case "ipv6_fb":
+    default: return "ipv6";
+  }
+}
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
 // ProxySeller IPv6 minimum purchase block size
@@ -53,7 +64,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("id, block_size, category, country_code, provider_tariff_id")
+    .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold")
     .eq("id", order.product_id)
     .maybeSingle();
   if (!product) throw new Error("product not found");
@@ -83,13 +94,16 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 
   let picks = pool ?? [];
 
-  // ───────── 2) If short and IPv6 → try reuse pending, then auto-purchase ─────────
-  const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
+  // ───────── 2) If short → try reuse pending, then auto-purchase from provider ─────────
+  // Works for any product with a provider_tariff_id (IPv6/IPv6-FB → stock,
+  // IPv4/ISP → direct on-demand. Direct products typically have no stock, so
+  // every paid order triggers a provider purchase here.)
+  const canAutoPurchase = !!product.provider_tariff_id;
   const stillShort = remaining - picks.length;
 
   let purchaseError: string | undefined;
   let pendingInFlight = false;
-  if (stillShort > 0 && isIpv6) {
+  if (stillShort > 0 && canAutoPurchase) {
     // 2a) Reuse recent pending provider_orders before spending more money
     const reused = await tryFulfillFromPendingOrders(product, order.id);
     if (reused > 0) {
@@ -131,7 +145,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
           });
 
           try {
-            const bought = await autoPurchaseIpv6IntoStock(product, stillShortAfterReuse, order.id);
+            const bought = await autoPurchaseIntoStock(product, stillShortAfterReuse, order.id);
             if (bought > 0) {
               void notifyAllAdmins({
                 title: "📦 Estoque renovado",
@@ -193,6 +207,13 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   const ids = picks.map((p) => p.id);
   await supabaseAdmin.from("proxy_stock").update({ status: "allocated" }).in("id", ids);
 
+  // ───────── 3) Proactive restock (stock-mode products only) ─────────
+  // If after allocation the available pool dropped to or below the product
+  // threshold, pre-buy a new block so future customers don't wait.
+  if (product.delivery_mode === "stock" && canAutoPurchase) {
+    void maybeProactiveRestock(product, order.id);
+  }
+
   return {
     allocated: (existing ?? 0) + picks.length,
     short: remaining - picks.length,
@@ -200,16 +221,67 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   };
 }
 
-/**
- * Buys an IPv6 block from ProxySeller and inserts the proxies into stock.
- * Reads ProxySeller config from product.provider_tariff_id as JSON:
- *   { "countryId": 20554, "periodId": "1m" }
- */
-async function autoPurchaseIpv6IntoStock(
+/** Fire-and-forget: top up stock when available count ≤ restock_threshold. */
+async function maybeProactiveRestock(
   product: {
     id: string;
     provider_tariff_id: string | null;
     country_code: string | null;
+    category?: string | null;
+    restock_threshold?: number | null;
+  },
+  triggeringOrderId: string,
+): Promise<void> {
+  try {
+    const threshold = product.restock_threshold ?? 2;
+    const { count: avail } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", product.id)
+      .eq("status", "available");
+    if ((avail ?? 0) > threshold) return;
+
+    // Skip if another pending provider order is already in-flight
+    const cutoff = new Date(Date.now() - PENDING_BLOCK_NEW_BUY_MS).toISOString();
+    const { count: openPending } = await supabaseAdmin
+      .from("provider_orders")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", product.id)
+      .eq("status", "pending")
+      .gte("created_at", cutoff);
+    if ((openPending ?? 0) > 0) return;
+
+    const lockOk = await tryAcquirePurchaseLock(product.id, `restock:${triggeringOrderId}`);
+    if (!lockOk) return;
+    try {
+      await autoPurchaseIntoStock(product, PROXYSELLER_IPV6_MIN_BLOCK, triggeringOrderId);
+      void notifyAllAdmins({
+        title: "♻️ Restock automático",
+        body: `Estoque de ${product.category}/${product.country_code ?? "?"} caiu para ${avail ?? 0}. Comprando novo bloco.`,
+        link: "/admin/inventory",
+        metadata: { productId: product.id, available: avail ?? 0 },
+        dedupeKey: `proactive-restock:${product.id}:${Math.floor(Date.now() / 60000)}`,
+      });
+    } finally {
+      await releasePurchaseLock(product.id);
+    }
+  } catch (e) {
+    console.error("[allocation] proactive restock failed:", e);
+  }
+}
+
+/**
+ * Buys a block from ProxySeller and inserts the proxies into stock.
+ * Generic for all kinds (ipv6/ipv4/isp). Reads ProxySeller config from
+ * product.provider_tariff_id as JSON. For IPv6 the provider enforces a
+ * minimum block of 10; for IPv4/ISP we buy exactly what is needed.
+ */
+async function autoPurchaseIntoStock(
+  product: {
+    id: string;
+    provider_tariff_id: string | null;
+    country_code: string | null;
+    category?: string | null;
   },
   needed: number,
   triggeredByOrderId: string,
@@ -218,15 +290,14 @@ async function autoPurchaseIpv6IntoStock(
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }
 
-  // ProxySeller requires minimum block of 10 for IPv6
-  const quantityToBuy = Math.max(needed, PROXYSELLER_IPV6_MIN_BLOCK);
+  const kind = categoryToKind(product.category);
+  // IPv6 minimum block at provider is 10. IPv4/ISP buy what's needed.
+  const minBlock = kind === "ipv6" ? PROXYSELLER_IPV6_MIN_BLOCK : 1;
+  const quantityToBuy = Math.max(needed, minBlock);
 
-  let cfg: {
+  let cfg: Record<string, unknown> & {
     countryId?: number;
     periodId?: string;
-    protocol?: "HTTPS" | "SOCKS5";
-    targetSectionId?: number;
-    targetId?: number;
   };
   try {
     cfg = JSON.parse(product.provider_tariff_id);
@@ -246,15 +317,7 @@ async function autoPurchaseIpv6IntoStock(
   const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
 
   if (dryRun) {
-    // 1) Real /order/calc call (validates country/period/qty, no charge)
-    const calc = await calcOrder("ipv6", {
-      countryId: cfg.countryId,
-      periodId: cfg.periodId,
-      quantity: quantityToBuy,
-      protocol: cfg.protocol,
-      targetSectionId: cfg.targetSectionId,
-      targetId: cfg.targetId,
-    });
+    const calc = await calcOrder(kind, { ...cfg, quantity: quantityToBuy });
     const costCents = Math.round((Number(calc.total) || 0) * 100);
     const delay =
       DRY_RUN_DELAY_MIN_MS +
@@ -273,6 +336,7 @@ async function autoPurchaseIpv6IntoStock(
       raw_payload: {
         baseOrderNumber: fakeBase,
         dryRun: true,
+        kind,
         simulateReadyAt,
         quantityRequested: quantityToBuy,
         periodId: cfg.periodId,
@@ -285,14 +349,7 @@ async function autoPurchaseIpv6IntoStock(
     return 0;
   }
 
-  const result = await purchaseIpv6Block({
-    countryId: cfg.countryId,
-    periodId: cfg.periodId,
-    quantity: quantityToBuy,
-    protocol: cfg.protocol,
-    targetSectionId: cfg.targetSectionId,
-    targetId: cfg.targetId,
-  });
+  const result = await purchaseProxyBlock(kind, { ...cfg, quantity: quantityToBuy });
 
   const isReady = result.proxies.length > 0;
 
@@ -306,7 +363,7 @@ async function autoPurchaseIpv6IntoStock(
       cost_cents: result.costCents,
       country_code: product.country_code,
       triggered_by_order_id: triggeredByOrderId,
-      raw_payload: { baseOrderNumber: result.baseOrderNumber } as never,
+      raw_payload: { baseOrderNumber: result.baseOrderNumber, kind } as never,
     })
     .select("id")
     .maybeSingle();
@@ -315,6 +372,7 @@ async function autoPurchaseIpv6IntoStock(
 
   return await insertProxiesToStock(product, provOrder?.id ?? null, result.proxies);
 }
+
 
 async function insertProxiesToStock(
   product: { id: string; country_code: string | null },
@@ -347,9 +405,10 @@ async function insertProxiesToStock(
  * Returns number of IPs newly added to stock.
  */
 async function tryFulfillFromPendingOrders(
-  product: { id: string; country_code: string | null },
+  product: { id: string; country_code: string | null; category?: string | null },
   triggeredByOrderId: string,
 ): Promise<number> {
+  const kind = categoryToKind(product.category);
   const cutoff = new Date(Date.now() - PENDING_REUSE_MAX_AGE_MS).toISOString();
   const { data: pending } = await supabaseAdmin
     .from("provider_orders")
@@ -373,7 +432,7 @@ async function tryFulfillFromPendingOrders(
       const qty = payload.quantityRequested || po.quantity || 1;
       proxies = generateSimulatedProxies(baseOrderNumber, qty, product.country_code);
     } else {
-      proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500]);
+      proxies = await pollProxiesForOrder(baseOrderNumber, 1, [500, 1500], kind);
     }
     if (proxies.length === 0) continue;
 

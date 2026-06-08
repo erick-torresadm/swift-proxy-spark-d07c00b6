@@ -756,6 +756,7 @@ export type Database = {
           price_monthly_cents: number
           price_yearly_cents: number | null
           provider_tariff_id: string | null
+          restock_threshold: number
           slug: string
           stripe_price_monthly_id: string | null
           stripe_price_yearly_id: string | null
@@ -779,6 +780,7 @@ export type Database = {
           price_monthly_cents: number
           price_yearly_cents?: number | null
           provider_tariff_id?: string | null
+          restock_threshold?: number
           slug: string
           stripe_price_monthly_id?: string | null
           stripe_price_yearly_id?: string | null
@@ -802,6 +804,7 @@ export type Database = {
           price_monthly_cents?: number
           price_yearly_cents?: number | null
           provider_tariff_id?: string | null
+          restock_threshold?: number
           slug?: string
           stripe_price_monthly_id?: string | null
           stripe_price_yearly_id?: string | null

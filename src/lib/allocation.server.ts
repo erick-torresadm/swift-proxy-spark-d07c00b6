@@ -103,7 +103,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 
   let purchaseError: string | undefined;
   let pendingInFlight = false;
-  if (stillShort > 0 && isIpv6) {
+  if (stillShort > 0 && canAutoPurchase) {
     // 2a) Reuse recent pending provider_orders before spending more money
     const reused = await tryFulfillFromPendingOrders(product, order.id);
     if (reused > 0) {

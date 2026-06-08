@@ -34,7 +34,6 @@ import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as BlogTagSlugRouteImport } from './routes/blog.tag.$slug'
 import { Route as BlogCSlugRouteImport } from './routes/blog.c.$slug'
-import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated.dashboard.settings'
 import { Route as AuthenticatedDashboardProxiesRouteImport } from './routes/_authenticated.dashboard.proxies'
 import { Route as AuthenticatedDashboardOrdersRouteImport } from './routes/_authenticated.dashboard.orders'
@@ -193,11 +192,6 @@ const BlogCSlugRoute = BlogCSlugRouteImport.update({
   id: '/c/$slug',
   path: '/c/$slug',
   getParentRoute: () => BlogRoute,
-} as any)
-const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
-  id: '/api/public/stripe-webhook',
-  path: '/api/public/stripe-webhook',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardSettingsRoute =
   AuthenticatedDashboardSettingsRouteImport.update({
@@ -431,7 +425,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -488,7 +481,6 @@ export interface FileRoutesByTo {
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -550,7 +542,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/_authenticated/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -612,7 +603,6 @@ export interface FileRouteTypes {
     | '/dashboard/orders'
     | '/dashboard/proxies'
     | '/dashboard/settings'
-    | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin/'
@@ -669,7 +659,6 @@ export interface FileRouteTypes {
     | '/dashboard/orders'
     | '/dashboard/proxies'
     | '/dashboard/settings'
-    | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/admin'
@@ -730,7 +719,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/orders'
     | '/_authenticated/dashboard/proxies'
     | '/_authenticated/dashboard/settings'
-    | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
     | '/_authenticated/admin/'
@@ -773,7 +761,6 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
-  ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
@@ -958,13 +945,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/c/$slug'
       preLoaderRoute: typeof BlogCSlugRouteImport
       parentRoute: typeof BlogRoute
-    }
-    '/api/public/stripe-webhook': {
-      id: '/api/public/stripe-webhook'
-      path: '/api/public/stripe-webhook'
-      fullPath: '/api/public/stripe-webhook'
-      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard/settings': {
       id: '/_authenticated/dashboard/settings'
@@ -1344,7 +1324,6 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
-  ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
   ApiPublicHooksNotificationsDispatchRoute:

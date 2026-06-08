@@ -215,15 +215,17 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 }
 
 /**
- * Buys an IPv6 block from ProxySeller and inserts the proxies into stock.
- * Reads ProxySeller config from product.provider_tariff_id as JSON:
- *   { "countryId": 20554, "periodId": "1m" }
+ * Buys a block from ProxySeller and inserts the proxies into stock.
+ * Generic for all kinds (ipv6/ipv4/isp). Reads ProxySeller config from
+ * product.provider_tariff_id as JSON. For IPv6 the provider enforces a
+ * minimum block of 10; for IPv4/ISP we buy exactly what is needed.
  */
-async function autoPurchaseIpv6IntoStock(
+async function autoPurchaseIntoStock(
   product: {
     id: string;
     provider_tariff_id: string | null;
     country_code: string | null;
+    category?: string | null;
   },
   needed: number,
   triggeredByOrderId: string,
@@ -232,15 +234,14 @@ async function autoPurchaseIpv6IntoStock(
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }
 
-  // ProxySeller requires minimum block of 10 for IPv6
-  const quantityToBuy = Math.max(needed, PROXYSELLER_IPV6_MIN_BLOCK);
+  const kind = categoryToKind(product.category);
+  // IPv6 minimum block at provider is 10. IPv4/ISP buy what's needed.
+  const minBlock = kind === "ipv6" ? PROXYSELLER_IPV6_MIN_BLOCK : 1;
+  const quantityToBuy = Math.max(needed, minBlock);
 
-  let cfg: {
+  let cfg: Record<string, unknown> & {
     countryId?: number;
     periodId?: string;
-    protocol?: "HTTPS" | "SOCKS5";
-    targetSectionId?: number;
-    targetId?: number;
   };
   try {
     cfg = JSON.parse(product.provider_tariff_id);
@@ -260,15 +261,7 @@ async function autoPurchaseIpv6IntoStock(
   const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
 
   if (dryRun) {
-    // 1) Real /order/calc call (validates country/period/qty, no charge)
-    const calc = await calcOrder("ipv6", {
-      countryId: cfg.countryId,
-      periodId: cfg.periodId,
-      quantity: quantityToBuy,
-      protocol: cfg.protocol,
-      targetSectionId: cfg.targetSectionId,
-      targetId: cfg.targetId,
-    });
+    const calc = await calcOrder(kind, { ...cfg, quantity: quantityToBuy });
     const costCents = Math.round((Number(calc.total) || 0) * 100);
     const delay =
       DRY_RUN_DELAY_MIN_MS +
@@ -287,6 +280,7 @@ async function autoPurchaseIpv6IntoStock(
       raw_payload: {
         baseOrderNumber: fakeBase,
         dryRun: true,
+        kind,
         simulateReadyAt,
         quantityRequested: quantityToBuy,
         periodId: cfg.periodId,
@@ -299,14 +293,7 @@ async function autoPurchaseIpv6IntoStock(
     return 0;
   }
 
-  const result = await purchaseIpv6Block({
-    countryId: cfg.countryId,
-    periodId: cfg.periodId,
-    quantity: quantityToBuy,
-    protocol: cfg.protocol,
-    targetSectionId: cfg.targetSectionId,
-    targetId: cfg.targetId,
-  });
+  const result = await purchaseProxyBlock(kind, { ...cfg, quantity: quantityToBuy });
 
   const isReady = result.proxies.length > 0;
 
@@ -320,7 +307,7 @@ async function autoPurchaseIpv6IntoStock(
       cost_cents: result.costCents,
       country_code: product.country_code,
       triggered_by_order_id: triggeredByOrderId,
-      raw_payload: { baseOrderNumber: result.baseOrderNumber } as never,
+      raw_payload: { baseOrderNumber: result.baseOrderNumber, kind } as never,
     })
     .select("id")
     .maybeSingle();
@@ -329,6 +316,7 @@ async function autoPurchaseIpv6IntoStock(
 
   return await insertProxiesToStock(product, provOrder?.id ?? null, result.proxies);
 }
+
 
 async function insertProxiesToStock(
   product: { id: string; country_code: string | null },

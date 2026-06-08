@@ -54,16 +54,14 @@ export const Route = createFileRoute("/api/public/_test/run-simulation")({
               product_id: p.id,
               quantity: 1,
               status: "paid",
-              billing: "monthly",
+              billing_cycle: "monthly",
               amount_cents: p.price_monthly_cents,
-              subtotal_cents: p.price_monthly_cents,
-              currency: "BRL",
-              current_period_start: now.toISOString(),
               current_period_end: periodEnd.toISOString(),
-              metadata: { test_simulation: true } as never,
+              customer_email: "ericktorresadm@hotmail.com",
             })
             .select("id")
             .maybeSingle();
+          void now;
 
           if (orderErr || !order) {
             log.push({ step: "create_order", product: p.slug, error: orderErr?.message });

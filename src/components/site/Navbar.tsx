@@ -129,11 +129,18 @@ export function Navbar() {
                 </a>
               ))}
               <div className="pt-2 border-t border-border/60 mt-2 space-y-2">
+                <Link
+                  to="/checkout"
+                  onClick={() => setOpen(false)}
+                  className="block w-full text-center py-2.5 rounded-full bg-gradient-primary text-primary-foreground text-sm font-bold shadow-glow"
+                >
+                  Comprar agora
+                </Link>
                 {user ? (
                   <Link
                     to="/dashboard"
                     onClick={() => setOpen(false)}
-                    className="block w-full text-center py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-bold"
+                    className="block w-full text-center py-2.5 rounded-full border border-border text-sm font-semibold"
                   >
                     {t("nav.dashboard")}
                   </Link>
@@ -149,7 +156,7 @@ export function Navbar() {
                     <Link
                       to="/signup"
                       onClick={() => setOpen(false)}
-                      className="block w-full text-center py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-bold"
+                      className="block w-full text-center py-2.5 rounded-full bg-foreground/5 text-foreground text-sm font-semibold border border-border"
                     >
                       {t("nav.signup")}
                     </Link>

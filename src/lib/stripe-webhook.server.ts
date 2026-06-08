@@ -37,7 +37,11 @@ async function getSubscriptionPeriodEnd(subscriptionId: string | null | undefine
   if (!subscriptionId) return null;
   try {
     const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-    return (sub as unknown as { current_period_end?: number }).current_period_end ?? null;
+    const shaped = sub as unknown as {
+      current_period_end?: number | null;
+      items?: { data?: Array<{ current_period_end?: number | null }> };
+    };
+    return shaped.current_period_end ?? shaped.items?.data?.[0]?.current_period_end ?? null;
   } catch {
     return null;
   }

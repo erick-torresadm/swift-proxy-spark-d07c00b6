@@ -64,7 +64,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("id, block_size, category, country_code, provider_tariff_id")
+    .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold")
     .eq("id", order.product_id)
     .maybeSingle();
   if (!product) throw new Error("product not found");
@@ -94,8 +94,11 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
 
   let picks = pool ?? [];
 
-  // ───────── 2) If short and IPv6 → try reuse pending, then auto-purchase ─────────
-  const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
+  // ───────── 2) If short → try reuse pending, then auto-purchase from provider ─────────
+  // Works for any product with a provider_tariff_id (IPv6/IPv6-FB → stock,
+  // IPv4/ISP → direct on-demand. Direct products typically have no stock, so
+  // every paid order triggers a provider purchase here.)
+  const canAutoPurchase = !!product.provider_tariff_id;
   const stillShort = remaining - picks.length;
 
   let purchaseError: string | undefined;

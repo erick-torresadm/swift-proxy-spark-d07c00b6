@@ -12,7 +12,8 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { getBalance, purchaseIpv6Block, psDateToIso, safe } from "@/lib/proxyseller.server";
+import { getBalance, purchaseIpv6Block, safe } from "@/lib/proxyseller.server";
+import { insertProxiesToStock } from "@/lib/allocation.server";
 import { getUsdBrl } from "@/lib/fx.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
@@ -153,36 +154,24 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
                 .select("id")
                 .maybeSingle();
 
-              const stockRows = result.proxies.map((p) => ({
-                product_id: product.id,
-                provider_order_id: provOrder?.id ?? null,
-                external_proxy_id: p.id,
-                host: p.ip_only || p.ip,
-                port: p.port_http,
-                username: p.login,
-                password: p.password,
-                protocol: (p.protocol || "http").toLowerCase(),
-                country_code: product.country_code,
-                status: "available" as const,
-                expires_at: psDateToIso(p.date_end),
-              }));
-
-              if (stockRows.length > 0) {
-                await supabaseAdmin.from("proxy_stock").insert(stockRows);
-              }
+              const added = await insertProxiesToStock(
+                { id: product.id, country_code: product.country_code },
+                provOrder?.id ?? null,
+                result.proxies,
+              );
 
               summary.restocks.push({
                 product: product.slug,
-                bought: result.proxies.length,
+                bought: added,
                 cost_cents: result.costCents,
               });
 
               // 🔔 Alerta admin: restock concluído
               void notifyAllAdmins({
                 title: "📦 Estoque renovado",
-                body: `${product.name}: +${result.proxies.length} IPs (US$ ${(result.costCents / 100).toFixed(2)}).`,
+                body: `${product.name}: +${added} IPs (US$ ${(result.costCents / 100).toFixed(2)}).`,
                 link: "/admin/inventory",
-                metadata: { productId: product.id, bought: result.proxies.length },
+                metadata: { productId: product.id, bought: added },
                 dedupeKey: `restock-cron:${product.id}:${result.externalOrderId}`,
               });
             } catch (e) {

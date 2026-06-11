@@ -12,8 +12,8 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { pollProxiesForOrder, psDateToIso, generateSimulatedProxies } from "@/lib/proxyseller.server";
-import { allocateProxiesForOrder } from "@/lib/allocation.server";
+import { pollProxiesForOrder, generateSimulatedProxies } from "@/lib/proxyseller.server";
+import { allocateProxiesForOrder, insertProxiesToStock } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
 
@@ -89,47 +89,33 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-backfill")({
             }
             if (proxies.length === 0) continue;
 
-            const stockRows = proxies.map((p) => ({
-              product_id: po.product_id as string,
-              provider_order_id: po.id,
-              external_proxy_id: p.id,
-              host: p.ip_only || p.ip,
-              port: p.port_http,
-              username: p.login,
-              password: p.password,
-              protocol: (p.protocol || "http").toLowerCase(),
-              country_code: po.country_code,
-              status: "available" as const,
-              expires_at: psDateToIso(p.date_end),
-            }));
+            const added = await insertProxiesToStock(
+              { id: po.product_id as string, country_code: po.country_code },
+              po.id,
+              proxies,
+            );
 
-            const { error: insErr } = await supabaseAdmin
-              .from("proxy_stock")
-              .insert(stockRows);
-            if (insErr) {
-              summary.errors.push(`stock insert ${baseOrderNumber}: ${insErr.message}`);
-              continue;
-            }
+            if (added === 0) continue;
 
             await supabaseAdmin
               .from("provider_orders")
-              .update({ status: "active", quantity: stockRows.length })
+              .update({ status: "active", quantity: added })
               .eq("id", po.id);
 
-            summary.recovered += stockRows.length;
+            summary.recovered += added;
 
             void notifyAllAdmins({
               title: "📦 Estoque renovado",
-              body: `+${stockRows.length} IPs entregues via backfill (${po.country_code ?? "?"}).`,
+              body: `+${added} IPs entregues via backfill (${po.country_code ?? "?"}).`,
               link: "/admin/inventory",
-              metadata: { providerOrderId: po.id, added: stockRows.length },
+              metadata: { providerOrderId: po.id, added },
               dedupeKey: `restock-backfill:${po.id}`,
             });
 
             // Finaliza alocação do cliente que disparou esta compra
             if (po.triggered_by_order_id) {
               try {
-                const r = await allocateProxiesForOrder(po.triggered_by_order_id);
+                const r = await allocateProxiesForOrder(po.triggered_by_order_id, { allowAutoPurchase: false });
                 summary.allocated += r.allocated;
               } catch (e) {
                 summary.errors.push(

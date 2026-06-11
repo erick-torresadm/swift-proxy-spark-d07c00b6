@@ -81,6 +81,23 @@ export function usePushSubscription() {
         const reg = await navigator.serviceWorker.getRegistration("/sw.js");
         const sub = await reg?.pushManager.getSubscription();
         subscribed = !!sub;
+        // Re-sincroniza endpoint com o backend (vincula ao user logado agora)
+        if (sub && permission === "granted") {
+          const json = sub.toJSON() as {
+            endpoint?: string;
+            keys?: { p256dh?: string; auth?: string };
+          };
+          if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
+            subscribeFn({
+              data: {
+                endpoint: json.endpoint,
+                p256dh: json.keys.p256dh,
+                auth: json.keys.auth,
+                userAgent: navigator.userAgent.slice(0, 500),
+              },
+            }).catch(() => {/* silencioso */});
+          }
+        }
       } catch {
         // ignore
       }
@@ -96,7 +113,8 @@ export function usePushSubscription() {
       isIOS,
       isAndroid,
     });
-  }, []);
+  }, [subscribeFn]);
+
 
   useEffect(() => {
     refresh();

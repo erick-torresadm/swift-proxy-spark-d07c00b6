@@ -43,7 +43,7 @@ const DRY_RUN_DELAY_MAX_MS = 5 * 60_000;
  * - inserts into customer_proxies and flips stock status to `allocated`
  * Idempotent: if proxies are already allocated for this order, does nothing.
  */
-export async function allocateProxiesForOrder(orderId: string): Promise<{
+export async function allocateProxiesForOrder(orderId: string, opts: { allowAutoPurchase?: boolean } = {}): Promise<{
   allocated: number;
   short: number;
   error?: string;
@@ -98,7 +98,7 @@ export async function allocateProxiesForOrder(orderId: string): Promise<{
   // Works for any product with a provider_tariff_id (IPv6/IPv6-FB → stock,
   // IPv4/ISP → direct on-demand. Direct products typically have no stock, so
   // every paid order triggers a provider purchase here.)
-  const canAutoPurchase = !!product.provider_tariff_id;
+  const canAutoPurchase = !!product.provider_tariff_id && opts.allowAutoPurchase !== false;
   const stillShort = remaining - picks.length;
 
   let purchaseError: string | undefined;
@@ -374,12 +374,32 @@ async function autoPurchaseIntoStock(
 }
 
 
-async function insertProxiesToStock(
+export async function insertProxiesToStock(
   product: { id: string; country_code: string | null },
   providerOrderId: string | null,
   proxies: PsProxyItem[],
 ): Promise<number> {
-  const stockRows = proxies.map((p) => ({
+  const uniqueProxies = Array.from(
+    new Map(proxies.map((p) => [`${p.id}:${p.port_http}`, p])).values(),
+  );
+
+  const existingKeys = new Set<string>();
+  if (providerOrderId && uniqueProxies.length > 0) {
+    const externalIds = uniqueProxies.map((p) => p.id).filter(Boolean);
+    const { data: existing } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("external_proxy_id, port")
+      .eq("provider_order_id", providerOrderId)
+      .in("external_proxy_id", externalIds);
+
+    for (const row of existing ?? []) {
+      existingKeys.add(`${row.external_proxy_id}:${row.port}`);
+    }
+  }
+
+  const stockRows = uniqueProxies
+    .filter((p) => !existingKeys.has(`${p.id}:${p.port_http}`))
+    .map((p) => ({
     product_id: product.id,
     provider_order_id: providerOrderId,
     external_proxy_id: p.id,

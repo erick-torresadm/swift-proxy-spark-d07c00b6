@@ -48,7 +48,7 @@ const accentMap: Record<
 };
 
 export function Plans() {
-  const [billing, setBilling] = useState<Billing>("monthly");
+  const [billing, setBilling] = useState<Billing>("yearly");
   const { t } = useTranslation();
   const { parts, format } = useCurrency();
 
@@ -90,38 +90,47 @@ export function Plans() {
           <p className="text-muted-foreground text-base sm:text-lg">{t("plans.subtitle")}</p>
         </motion.div>
 
-        <div className="flex items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-14 flex-wrap">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={`text-sm font-semibold transition ${
-              billing === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t("plans.monthly")}
-          </button>
-          <button
-            onClick={() => setBilling(billing === "monthly" ? "yearly" : "monthly")}
-            className="relative w-14 h-7 rounded-full bg-card border border-border flex items-center px-1"
-            aria-label="toggle billing"
-          >
-            <motion.div
-              className="w-5 h-5 rounded-full bg-foreground shadow-md"
-              animate={{ x: billing === "yearly" ? 26 : 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            />
-          </button>
-          <button
-            onClick={() => setBilling("yearly")}
-            className={`text-sm font-semibold transition ${
-              billing === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t("plans.yearly")}
-          </button>
-          <span className="inline-flex px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider">
-            {t("plans.discount_badge")}
-          </span>
+        <div className="flex flex-col items-center gap-3 mb-10 sm:mb-14">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`text-sm font-semibold transition ${
+                billing === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("plans.monthly")}
+            </button>
+            <button
+              onClick={() => setBilling(billing === "monthly" ? "yearly" : "monthly")}
+              className="relative w-14 h-7 rounded-full bg-card border border-border flex items-center px-1"
+              aria-label="toggle billing"
+            >
+              <motion.div
+                className="w-5 h-5 rounded-full bg-primary shadow-md"
+                animate={{ x: billing === "yearly" ? 26 : 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            </button>
+            <button
+              onClick={() => setBilling("yearly")}
+              className={`text-sm font-bold transition ${
+                billing === "yearly" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("plans.yearly")}
+            </button>
+            <span className="inline-flex px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
+              {t("plans.yearly_badge_save")}
+            </span>
+            <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider">
+              {t("plans.yearly_badge_months")}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {billing === "yearly" ? t("plans.helper_yearly") : t("plans.helper_monthly")}
+          </p>
         </div>
+
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
           {planDefs.map((plan, i) => {

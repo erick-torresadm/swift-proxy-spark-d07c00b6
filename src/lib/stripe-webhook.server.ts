@@ -303,7 +303,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
   }
 
   // Build a base event row that we always record, regardless of type
-  const obj = event.data.object as Record<string, unknown>;
+  const obj = event.data.object as unknown as Record<string, unknown>;
   const baseRow: EventRow = {
     id: event.id,
     type: event.type,

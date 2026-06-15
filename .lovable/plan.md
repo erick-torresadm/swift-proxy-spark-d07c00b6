@@ -1,81 +1,79 @@
-# Auditoria FastProxy — o que eu melhoraria
 
-Olhei a home (Hero, Stats, Marquee, Solution, VideoShowcase, Features, InstallGuide, Plans, FAQ, CTA, Footer), Navbar, checkout e rotas públicas. Abaixo o que mais teria impacto, em ordem de prioridade. Você escolhe o que entra no próximo turno (posso fazer tudo ou em fatias).
+# Painel Admin — KPIs Stripe + Contato com Clientes
 
-## 1. Conversão & confiança (impacto alto)
+Objetivo: deixar o painel admin realmente útil — KPIs vindos do Stripe (não só do banco), lista de inadimplentes com telefone/email, e botões pra disparar email (Resend, que você já tem) e WhatsApp.
 
-- **Prova social real na home.** Hoje o Stats mostra "50K+ proxies, 500+ clientes, 4.9★ com 237 reviews" hard-coded e sem rosto. Criar uma seção `Testimonials` com 4–6 depoimentos (foto, nome, caso de uso: tráfego pago, automação, scraping) + logos de clientes/ferramentas (GoLogin, Multilogin, Dolphin, AdsPower, Scrapy). Sem isso, o "4.9★" parece inventado.
-- **Comparativo visual no Plans.** Hoje os 4 cards são paralelos e o usuário precisa adivinhar qual é o dele. Adicionar:
-  - Linha "Melhor para: tráfego pago / automação / scraping / multi-contas" já presente, mas **destacar com ícone de plataforma** (Facebook, Instagram, Google).
-  - Tabela comparativa abaixo dos cards (IPv6 × IPv4 × ISP × FB Ads) com colunas: tipo, ideal para, velocidade, preço.
-- **CTA secundário do Hero está fraco.** "Ver benefícios" não converte. Trocar por **"Falar no WhatsApp"** ou **"Testar grátis por 24h"** (se a regra permitir teste). Quem não compra na hora vai embora.
-- **Garantia explícita.** Não existe selo de "garantia de 7 dias / reembolso". Adicionar selo no Hero, no card de plano e na CTA final. Reduz fricção em primeira compra.
+## 1. Novo serverFn `getAdminKpis` (lib/admin-kpis.functions.ts)
 
-## 2. Hero (primeira tela)
+Roda em paralelo:
 
-- Está bonito mas **muito centralizado e genérico**. Sugiro layout assimétrico: copy à esquerda, **dashboard real / mockup do painel à direita** (com proxies, copy IP:porta, status verde). O `TerminalMock` atual fica abaixo como detalhe técnico.
-- Reduzir o título de 3 linhas para 2 — em mobile ocupa a tela inteira antes do CTA aparecer.
-- Adicionar **logos pequenos** logo abaixo do CTA: "Usado por equipes de…" (mesmo que sejam categorias: agências, afiliados, e-commerces).
+- **Stripe** (`src/lib/stripe.server.ts`):
+  - `stripe.customers.list({ limit: 100 })` paginado → total de clientes Stripe
+  - `stripe.subscriptions.list({ status: 'active', limit: 100 })` paginado → MRR (somando `items.price.unit_amount` * recorrência → normalizado mensal) e total ativos
+  - `stripe.subscriptions.list({ status: 'past_due' })` + `status: 'unpaid'` → inadimplentes
+  - `stripe.charges.list({ created: { gte: now-30d } })` → receita 30d real (paid - refunded), conta de pagamentos
+- **Banco** (mantém o que já existe): clientes cadastrados, proxies ativos, estoque disponível/alocado/alertas.
 
-## 3. SEO & rotas
+Retorna um único objeto com tudo. Faz cache em memória de 60s pra não martelar Stripe (módulo simples com Map + TTL).
 
-- **Rotas faltando para conteúdo dedicado.** Hoje "/#planos", "/#beneficios", "/#faq" são âncoras. Para SEO e tráfego pago dedicado, criar:
-  - `/proxy-ipv6`, `/proxy-ipv4`, `/proxy-isp`, `/proxy-facebook-ads` — cada um com H1 próprio, casos de uso, FAQ específica, JSON-LD Product e CTA direto pro checkout.
-  - `/comparativo` — IPv6 vs IPv4 vs ISP.
-  - `/sobre` e `/contato` — institucionais (faltam no Footer também).
-- **og:image dinâmico**. As páginas usam só metadados de texto; não há imagem de compartilhamento. Gerar `/og-default.png` e setar em `__root.tsx`; nas páginas de produto sobrescrever com imagem do produto.
-- **Schema review faltando.** Já tem `AggregateRating` no Product, mas não há `Review` individual — Google só mostra estrelas com reviews reais marcadas.
-- **Idioma**: o site já tem i18n, mas faltam tags `<link rel="alternate" hreflang>`. Importante se você roda anúncios pra EUA.
+## 2. Atualizar `_authenticated.admin.index.tsx`
 
-## 4. Performance
+Substitui o grid atual por seções:
 
-- **`logo-fastproxy.png` no `src/assets/`** — está bundlado no JS. Migrar pra Lovable Assets (CDN). Ganho ~30–80KB por bundle.
-- **Aurora + 2 blobs animados no Hero** rodam em loop infinito (12s/15s) com `blur-[120px]`. Em mobile é caro. Reduzir para 1 blob ou pausar via `prefers-reduced-motion`.
-- **`framer-motion` em quase todo componente.** Já é pesado. Trocar animações simples por CSS (`@keyframes` + `tailwindcss-animate`) onde não há gestos. Reduz JS inicial.
-- **Lazy-load do `VideoShowcase`**. O vídeo de 4.8MB começa a baixar mesmo se o usuário não rolar até lá. Carregar só quando entrar no viewport (`IntersectionObserver` + `preload="none"`).
+```
+[ Receita 30d (Stripe) ] [ MRR ]      [ Assinaturas ativas ]
+[ Inadimplentes ]        [ Clientes Stripe ] [ Clientes cadastrados ]
+[ Proxies ativos ]       [ Estoque disp. ]   [ Alertas estoque ]
+```
 
-## 5. UX / detalhes
+Inadimplentes vira link → nova rota `/admin/inadimplentes`.
 
-- **Navbar mobile** não mostra o botão de comprar — só Login/Cadastro. Adicionar **"Comprar"** com destaque no menu mobile.
-- **FAQ** poderia ter um campo de **busca** + categorias (Pagamento, Técnico, Conta). 6 perguntas hoje, vai crescer.
-- **Cookie banner e Chat widget** — verificar se estão presentes em todas as páginas e se respeitam o `prefers-reduced-motion`.
-- **Footer sem redes sociais nem contato direto.** Adicionar: WhatsApp, Telegram, Instagram, e-mail de suporte. Aumenta confiança.
-- **Botão flutuante de WhatsApp** no mobile (canto inferior direito) — padrão Brasil, eleva conversão muito.
+## 3. Nova rota `/admin/inadimplentes` (lista + ações)
 
-## 6. Checkout & pós-venda
+ServerFn `listDelinquents`:
+- Busca `orders` com `status in ('past_due','grace')` OU `subscriptions` Stripe `past_due/unpaid`
+- Junta com `profiles` (nome, telefone) e `auth.users.email`
+- Retorna: nome, email, telefone, valor, ciclo, dias em atraso, link Stripe customer
 
-- Mostrar **3 selos de confiança** logo acima do botão pagar (SSL, cobrança recorrente segura, garantia 7 dias).
-- **Upsell discreto** no checkout: "Adicionar 10 proxies por +R$ X" antes do pagamento.
-- E-mail de boas-vindas pós-compra com **guia rápido de uso** (já existe o `InstallGuide` na home — replicar no e-mail).
+Tabela com colunas: Cliente | Contato | Atraso | Valor | Ações.
 
-## 7. Dark / Light mode
+Ações por linha:
+- **WhatsApp**: link `https://wa.me/55<phone>?text=<msg padrão configurável>` (abre em nova aba)
+- **Email**: botão que chama serverFn `sendDunningEmail` (usa Resend já configurado, template "Pagamento pendente" com link do portal Stripe `billing_portal.sessions.create`)
+- **Copiar email / telefone**
 
-O `ThemeToggle` existe mas:
-- O logo aplica `brightness-0 dark:brightness-100`, ou seja, em light mode fica preto chapado e em dark fica colorido — invertido. Verificar se a versão light está realmente legível.
-- Algumas seções usam `bg-card/30` que somem em light mode.
+Mensagem padrão (template editável depois): "Olá {nome}, identificamos que sua assinatura FastProxy está com pagamento pendente desde {data}. Regularize aqui: {portal_url}".
 
-## 8. Acessibilidade
+## 4. Aprimorar `/admin/customers`
 
-- Vários botões só com ícone (Navbar mobile, ThemeToggle, Lang) — confirmar `aria-label` em todos.
-- Contraste do `text-muted-foreground` em algumas seções (Solution "Antes") fica abaixo de 4.5:1 em dark mode.
-- `outline-none` em vários botões — adicionar `focus-visible:ring`.
+Adicionar colunas: **Email**, **Status Stripe** (active/past_due/none), **MRR do cliente**. ServerFn `listCustomers` passa a:
+- Buscar `auth.users` (admin API) pra email
+- Buscar `orders` agregando por user_id pra status/MRR
 
-## 9. Conteúdo
+Botões na linha: WhatsApp + Email (mesma ação do item 3).
 
-- **Blog está ativo** mas sem destaque na home. Adicionar seção "Últimos artigos" antes do FAQ — bom pra SEO e retenção.
-- Página `/comparativo` ou bloco "Por que FastProxy x Concorrentes" (Smartproxy, Bright Data) — todo mundo pesquisa isso antes de comprar.
+## 5. Email transacional (Resend)
 
-## 10. Métricas (não-visual)
+Função `sendDunningEmail({ userId, orderId })`:
+- Gera Stripe Billing Portal session pra esse customer
+- Envia via Resend (template HTML simples, marca FastProxy)
+- Loga em `email_send_log` (tabela já usada no projeto)
 
-- Confirmar que Google Analytics / Meta Pixel / TikTok Pixel estão instalados e disparando eventos `purchase`, `add_to_cart`, `view_plan`. Sem isso, anúncios pagos não otimizam.
-- Adicionar **Microsoft Clarity** (gratuito) pra mapa de calor — você vê onde o usuário trava no checkout.
+## 6. Detalhes técnicos
 
----
+- Arquivos novos:
+  - `src/lib/admin-kpis.functions.ts` — getAdminKpis, listDelinquents, sendDunningEmail
+  - `src/lib/admin-kpis.server.ts` — helpers Stripe (cache TTL, MRR normalization)
+  - `src/routes/_authenticated.admin.inadimplentes.tsx`
+- Arquivos editados:
+  - `src/routes/_authenticated.admin.index.tsx` (novo grid)
+  - `src/routes/_authenticated.admin.customers.index.tsx` (colunas + ações)
+  - `src/lib/inventory.functions.ts` (`listCustomers` enriquecido)
+- Todos os serverFns usam `requireSupabaseAuth` + `assertAdmin`.
+- Sem migrations. Sem mexer em allocation/proxy logic (não foi pedido).
 
-## Resumo do que mais converte (se for fazer só 3 coisas)
+## Perguntas
 
-1. **Seção de depoimentos + logos** na home (acima do Plans).
-2. **Botão flutuante WhatsApp** no mobile.
-3. **Páginas dedicadas** `/proxy-ipv6`, `/proxy-ipv4`, `/proxy-isp`, `/proxy-facebook-ads` com SEO próprio.
-
-Me diz quais blocos você quer que eu execute — posso fazer todos, escolher os 3 de maior impacto, ou ir por etapas (ex: começar pelo bloco 1 + 5).
+1. Telefone armazenado em `profiles.phone` — está em formato E.164 (`+5511...`) ou só dígitos? Preciso saber pra montar `wa.me`. Posso assumir BR (+55) quando vier sem prefixo?
+2. Template do WhatsApp e do email de cobrança — tem texto que prefere, ou uso um padrão e você ajusta depois?
+3. Quer que o botão "Email" abra um modal de pré-visualização antes de enviar, ou envia direto com confirmação?

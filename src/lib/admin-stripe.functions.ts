@@ -342,11 +342,13 @@ export const adminResumeSubscription = createServerFn({ method: "POST" })
     });
 
     await supabaseAdmin.from("audit_log").insert({
-      actor_id: context.userId,
+      user_id: context.userId,
+      source: "admin",
       action: "stripe.subscription.resume",
-      target: data.subscriptionId,
-      details: {} as never,
+      status: "ok",
+      request: { subscription_id: data.subscriptionId } as never,
     } as never);
+
 
     return { ok: true as const, subscription_id: sub.id, cancel_at_period_end: !!sub.cancel_at_period_end };
   });

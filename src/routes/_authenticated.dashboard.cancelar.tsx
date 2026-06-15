@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ShieldCheck, Sparkles, Gift } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMyCancellableOrders,
   cancelMySubscription,
+  applyRetentionDiscount,
 } from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/cancelar")({

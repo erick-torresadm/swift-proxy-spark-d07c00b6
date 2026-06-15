@@ -27,6 +27,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as CancelarDothtmlRouteImport } from './routes/cancelar[.]html'
 import { Route as BlogDothtmlRouteImport } from './routes/blog[.]html'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
@@ -166,6 +167,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CancelarDothtmlRoute = CancelarDothtmlRouteImport.update({
+  id: '/cancelar.html',
+  path: '/cancelar.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogDothtmlRoute = BlogDothtmlRouteImport.update({
@@ -456,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteWithChildren
   '/blog.html': typeof BlogDothtmlRoute
+  '/cancelar.html': typeof CancelarDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
@@ -524,6 +531,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/blog.html': typeof BlogDothtmlRoute
+  '/cancelar.html': typeof CancelarDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
@@ -593,6 +601,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/blog.html': typeof BlogDothtmlRoute
+  '/cancelar.html': typeof CancelarDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
@@ -664,6 +673,7 @@ export interface FileRouteTypes {
     | '/'
     | '/blog'
     | '/blog.html'
+    | '/cancelar.html'
     | '/checkout'
     | '/forgot-password'
     | '/index.html'
@@ -732,6 +742,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/blog.html'
+    | '/cancelar.html'
     | '/checkout'
     | '/forgot-password'
     | '/index.html'
@@ -800,6 +811,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/blog'
     | '/blog.html'
+    | '/cancelar.html'
     | '/checkout'
     | '/forgot-password'
     | '/index.html'
@@ -871,6 +883,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
   BlogDothtmlRoute: typeof BlogDothtmlRoute
+  CancelarDothtmlRoute: typeof CancelarDothtmlRoute
   CheckoutRoute: typeof CheckoutRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IndexDothtmlRoute: typeof IndexDothtmlRoute
@@ -1025,6 +1038,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cancelar.html': {
+      id: '/cancelar.html'
+      path: '/cancelar.html'
+      fullPath: '/cancelar.html'
+      preLoaderRoute: typeof CancelarDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog.html': {
@@ -1517,6 +1537,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
   BlogDothtmlRoute: BlogDothtmlRoute,
+  CancelarDothtmlRoute: CancelarDothtmlRoute,
   CheckoutRoute: CheckoutRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   IndexDothtmlRoute: IndexDothtmlRoute,

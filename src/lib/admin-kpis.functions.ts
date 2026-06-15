@@ -415,7 +415,7 @@ export const listCanceled = createServerFn({ method: "GET" })
     for await (const sub of stripe.subscriptions.list({
       status: "canceled",
       limit: 100,
-      expand: ["data.items.data.price.product", "data.customer"],
+      expand: ["data.items.data.price", "data.customer"],
     })) {
       count++;
       if (count > 200) break;
@@ -438,10 +438,17 @@ export const listCanceled = createServerFn({ method: "GET" })
       const item = sub.items.data[0];
       const price = item?.price;
       const product = price?.product;
-      const productName =
-        typeof product === "object" && product && "name" in product
-          ? (product.name as string)
-          : null;
+      const productId = typeof product === "string" ? product : product?.id ?? null;
+      let productName: string | null = null;
+      if (productId) {
+        try {
+          const p = await stripe.products.retrieve(productId);
+          productName = p.name ?? null;
+        } catch {
+          productName = null;
+        }
+      }
+
       const amount = price?.unit_amount ?? 0;
       const interval = price?.recurring?.interval ?? null;
       const canceledAt = sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null;

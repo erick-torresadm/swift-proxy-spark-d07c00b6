@@ -103,7 +103,9 @@ function Index() {
         <VideoShowcase />
         <Features />
         <InstallGuide />
+        <Advertisers />
         <Testimonials />
+
         <Plans />
         <FAQ />
         <CTA />

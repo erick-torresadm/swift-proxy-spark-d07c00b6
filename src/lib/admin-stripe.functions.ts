@@ -206,6 +206,149 @@ export const syncStripeBackfill = createServerFn({ method: "POST" })
     return { imported };
   });
 
+/**
+ * Lista assinaturas ativas / trialing / past_due no Stripe — pra cancelar do painel.
+ * Inclui flag se já está agendada pra cancelar no fim do ciclo.
+ */
+export const listActiveStripeSubscriptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ limit: z.number().min(1).max(100).default(50) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { getStripe } = await import("@/lib/stripe.server");
+    const stripe = getStripe();
+
+    const rows: Array<{
+      id: string;
+      status: string;
+      customer_id: string | null;
+      customer_email: string | null;
+      amount_cents: number | null;
+      currency: string | null;
+      interval: string | null;
+      current_period_end: string | null;
+      cancel_at_period_end: boolean;
+      product_name: string | null;
+      created: string;
+    }> = [];
+
+    for (const statusFilter of ["active", "trialing", "past_due"] as const) {
+      const res = await stripe.subscriptions.list({
+        status: statusFilter,
+        limit: data.limit,
+        expand: ["data.items.data.price.product", "data.customer"],
+      });
+      for (const sub of res.data) {
+        const item = sub.items?.data?.[0];
+        const price = item?.price as { unit_amount?: number | null; currency?: string; recurring?: { interval?: string } | null; product?: unknown } | undefined;
+        const product = price?.product as { name?: string } | string | undefined;
+        const customer = sub.customer as unknown as { id?: string; email?: string | null } | string;
+        const pe = (sub as unknown as { current_period_end?: number }).current_period_end;
+        rows.push({
+          id: sub.id,
+          status: sub.status,
+          customer_id: typeof customer === "string" ? customer : customer?.id ?? null,
+          customer_email: typeof customer === "string" ? null : customer?.email ?? null,
+          amount_cents: typeof price?.unit_amount === "number" ? price.unit_amount * (item?.quantity ?? 1) : null,
+          currency: price?.currency ?? null,
+          interval: price?.recurring?.interval ?? null,
+          current_period_end: pe ? new Date(pe * 1000).toISOString() : null,
+          cancel_at_period_end: !!sub.cancel_at_period_end,
+          product_name: typeof product === "object" && product ? product.name ?? null : null,
+          created: new Date(sub.created * 1000).toISOString(),
+        });
+      }
+    }
+
+    rows.sort((a, b) => (a.current_period_end ?? "").localeCompare(b.current_period_end ?? ""));
+    return rows;
+  });
+
+/**
+ * Cancela uma assinatura Stripe NO FIM DO CICLO atual.
+ * - Não reembolsa.
+ * - Cliente mantém acesso até `current_period_end`.
+ * - Quando o período vencer, o webhook `customer.subscription.deleted` libera os proxies.
+ */
+export const adminCancelSubscriptionAtPeriodEnd = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        subscriptionId: z.string().min(3),
+        reason: z.string().max(500).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { getStripe } = await import("@/lib/stripe.server");
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const stripe = getStripe();
+
+    const sub = await stripe.subscriptions.update(data.subscriptionId, {
+      cancel_at_period_end: true,
+      cancellation_details: {
+        comment: data.reason ?? "Cancelado pelo admin (fim do ciclo)",
+      },
+    });
+
+    const pe = (sub as unknown as { current_period_end?: number }).current_period_end;
+    const periodEndIso = pe ? new Date(pe * 1000).toISOString() : null;
+
+    // Reflete no pedido vinculado (não muda status — cliente ainda tem acesso)
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        current_period_end: periodEndIso,
+        last_payment_check_at: new Date().toISOString(),
+      } as never)
+      .eq("stripe_subscription_id", data.subscriptionId);
+
+    await supabaseAdmin.from("audit_log").insert({
+      actor_id: context.userId,
+      action: "stripe.subscription.cancel_at_period_end",
+      target: data.subscriptionId,
+      details: { reason: data.reason ?? null, period_end: periodEndIso } as never,
+    } as never);
+
+    return {
+      ok: true as const,
+      subscription_id: sub.id,
+      cancel_at_period_end: !!sub.cancel_at_period_end,
+      current_period_end: periodEndIso,
+    };
+  });
+
+/**
+ * Reverte um cancelamento agendado (cliente / admin mudou de ideia antes do fim do ciclo).
+ */
+export const adminResumeSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ subscriptionId: z.string().min(3) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { getStripe } = await import("@/lib/stripe.server");
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const stripe = getStripe();
+
+    const sub = await stripe.subscriptions.update(data.subscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    await supabaseAdmin.from("audit_log").insert({
+      actor_id: context.userId,
+      action: "stripe.subscription.resume",
+      target: data.subscriptionId,
+      details: {} as never,
+    } as never);
+
+    return { ok: true as const, subscription_id: sub.id, cancel_at_period_end: !!sub.cancel_at_period_end };
+  });
+
+
 // Minimal Stripe type aliases (to avoid pulling full types here)
 type Stripe_Charge = { id: string; amount?: number; amount_refunded?: number; status?: string; paid?: boolean; refunded?: boolean; currency?: string };
 type Stripe_Refund = { id: string; amount?: number; currency?: string };

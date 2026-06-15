@@ -4,8 +4,9 @@ import { ProductLanding } from "@/components/site/ProductLanding";
 
 const SITE = "https://www.fastproxy.com.br";
 const URL = SITE + "/proxy-ipv4";
-const TITLE = "Proxy IPv4 Dedicado — Compatível com Tudo | FastProxy";
-const DESC = "Proxies IPv4 dedicados com máxima compatibilidade. Funciona em qualquer plataforma, marketplace ou ferramenta. Entrega imediata e reposição automática.";
+const TITLE = "Comprar Proxy IPv4 Dedicado Brasil — Compatibilidade Total | FastProxy";
+const DESC = "Comprar proxy IPv4 dedicado no Brasil com compatibilidade máxima: funciona em qualquer site, marketplace ou ferramenta que ainda não aceita IPv6. Entrega imediata e reposição automática. A partir de R$ 39,90.";
+
 
 export const Route = createFileRoute("/proxy-ipv4")({
   component: Page,

@@ -16,10 +16,11 @@ export function Navbar() {
 
   const links = [
     { href: "/#planos", label: t("nav.plans") },
-    { href: "/#recursos", label: t("nav.features") },
+    { href: "/#anunciantes", label: "Anunciantes" },
     { href: "/blog", label: t("nav.blog") },
     { href: "/#faq", label: t("nav.faq") },
   ];
+
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);

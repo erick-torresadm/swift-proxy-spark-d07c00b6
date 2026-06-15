@@ -4,8 +4,9 @@ import { ProductLanding } from "@/components/site/ProductLanding";
 
 const SITE = "https://www.fastproxy.com.br";
 const URL = SITE + "/proxy-facebook-ads";
-const TITLE = "Proxy para Facebook Ads — IPv6 Otimizado | FastProxy";
-const DESC = "Proxies IPv6 otimizados pra Facebook Ads e BMs. Evite bloqueios, escale contas e rode múltiplas BMs com IPs limpos e dedicados. A partir de R$ 79,90.";
+const TITLE = "Proxy para Facebook Ads e Anunciantes — IPv6 Limpo | FastProxy";
+const DESC = "Proxy pra Facebook Ads, Google Ads e anunciantes de tráfego pago. IPv6 dedicado e limpo, compatível com AdsPower, Dolphin, Multilogin e GoLogin. Escale BMs e contas de anúncio sem bloqueio. A partir de R$ 79,90.";
+
 
 export const Route = createFileRoute("/proxy-facebook-ads")({
   component: Page,

@@ -9,25 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermosDothtmlRouteImport } from './routes/termos[.]html'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ReembolsoDothtmlRouteImport } from './routes/reembolso[.]html'
 import { Route as ReembolsoRouteImport } from './routes/reembolso'
 import { Route as ProxyIspRouteImport } from './routes/proxy-isp'
 import { Route as ProxyIpv6RouteImport } from './routes/proxy-ipv6'
 import { Route as ProxyIpv4RouteImport } from './routes/proxy-ipv4'
 import { Route as ProxyFacebookAdsRouteImport } from './routes/proxy-facebook-ads'
+import { Route as PrivacidadeDothtmlRouteImport } from './routes/privacidade[.]html'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as CancelarDothtmlRouteImport } from './routes/cancelar[.]html'
+import { Route as BlogDothtmlRouteImport } from './routes/blog[.]html'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as CommentsSplatRouteImport } from './routes/comments.$'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
+import { Route as CategorySplatRouteImport } from './routes/category.$'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated.dashboard.index'
@@ -73,6 +81,11 @@ import { Route as AuthenticatedAdminBlogCategoriasRouteImport } from './routes/_
 import { Route as AuthenticatedAdminBlogIdRouteImport } from './routes/_authenticated.admin.blog.$id'
 import { Route as AuthenticatedDashboardProxyIdQuickRouteImport } from './routes/_authenticated.dashboard.proxy.$id.quick'
 
+const TermosDothtmlRoute = TermosDothtmlRouteImport.update({
+  id: '/termos.html',
+  path: '/termos.html',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
@@ -96,6 +109,11 @@ const RssDotxmlRoute = RssDotxmlRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReembolsoDothtmlRoute = ReembolsoDothtmlRouteImport.update({
+  id: '/reembolso.html',
+  path: '/reembolso.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReembolsoRoute = ReembolsoRouteImport.update({
@@ -123,6 +141,11 @@ const ProxyFacebookAdsRoute = ProxyFacebookAdsRouteImport.update({
   path: '/proxy-facebook-ads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeDothtmlRoute = PrivacidadeDothtmlRouteImport.update({
+  id: '/privacidade.html',
+  path: '/privacidade.html',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
@@ -133,6 +156,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IndexDothtmlRoute = IndexDothtmlRouteImport.update({
+  id: '/index.html',
+  path: '/index.html',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -141,6 +169,16 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CancelarDothtmlRoute = CancelarDothtmlRouteImport.update({
+  id: '/cancelar.html',
+  path: '/cancelar.html',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogDothtmlRoute = BlogDothtmlRouteImport.update({
+  id: '/blog.html',
+  path: '/blog.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -162,10 +200,20 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BlogRoute,
 } as any)
+const CommentsSplatRoute = CommentsSplatRouteImport.update({
+  id: '/comments/$',
+  path: '/comments/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   id: '/success',
   path: '/success',
   getParentRoute: () => CheckoutRoute,
+} as any)
+const CategorySplatRoute = CategorySplatRouteImport.update({
+  id: '/category/$',
+  path: '/category/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
@@ -425,23 +473,31 @@ const AuthenticatedDashboardProxyIdQuickRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteWithChildren
+  '/blog.html': typeof BlogDothtmlRoute
+  '/cancelar.html': typeof CancelarDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
   '/proxy-ipv4': typeof ProxyIpv4Route
   '/proxy-ipv6': typeof ProxyIpv6Route
   '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
+  '/reembolso.html': typeof ReembolsoDothtmlRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/termos.html': typeof TermosDothtmlRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
+  '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/comments/$': typeof CommentsSplatRoute
   '/blog/': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
@@ -488,22 +544,30 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/blog.html': typeof BlogDothtmlRoute
+  '/cancelar.html': typeof CancelarDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
   '/proxy-ipv4': typeof ProxyIpv4Route
   '/proxy-ipv6': typeof ProxyIpv6Route
   '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
+  '/reembolso.html': typeof ReembolsoDothtmlRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/termos.html': typeof TermosDothtmlRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/comments/$': typeof CommentsSplatRoute
   '/blog': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
@@ -552,23 +616,31 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
+  '/blog.html': typeof BlogDothtmlRoute
+  '/cancelar.html': typeof CancelarDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
   '/proxy-ipv4': typeof ProxyIpv4Route
   '/proxy-ipv6': typeof ProxyIpv6Route
   '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
+  '/reembolso.html': typeof ReembolsoDothtmlRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/termos.html': typeof TermosDothtmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
+  '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/comments/$': typeof CommentsSplatRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
@@ -618,23 +690,31 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/blog'
+    | '/blog.html'
+    | '/cancelar.html'
     | '/checkout'
     | '/forgot-password'
+    | '/index.html'
     | '/login'
     | '/privacidade'
+    | '/privacidade.html'
     | '/proxy-facebook-ads'
     | '/proxy-ipv4'
     | '/proxy-ipv6'
     | '/proxy-isp'
     | '/reembolso'
+    | '/reembolso.html'
     | '/reset-password'
     | '/rss.xml'
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
+    | '/termos.html'
     | '/admin'
     | '/blog/$slug'
+    | '/category/$'
     | '/checkout/success'
+    | '/comments/$'
     | '/blog/'
     | '/admin/allocations'
     | '/admin/blog'
@@ -681,22 +761,30 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/blog.html'
+    | '/cancelar.html'
     | '/checkout'
     | '/forgot-password'
+    | '/index.html'
     | '/login'
     | '/privacidade'
+    | '/privacidade.html'
     | '/proxy-facebook-ads'
     | '/proxy-ipv4'
     | '/proxy-ipv6'
     | '/proxy-isp'
     | '/reembolso'
+    | '/reembolso.html'
     | '/reset-password'
     | '/rss.xml'
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
+    | '/termos.html'
     | '/blog/$slug'
+    | '/category/$'
     | '/checkout/success'
+    | '/comments/$'
     | '/blog'
     | '/admin/allocations'
     | '/admin/broadcast'
@@ -744,23 +832,31 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/blog'
+    | '/blog.html'
+    | '/cancelar.html'
     | '/checkout'
     | '/forgot-password'
+    | '/index.html'
     | '/login'
     | '/privacidade'
+    | '/privacidade.html'
     | '/proxy-facebook-ads'
     | '/proxy-ipv4'
     | '/proxy-ipv6'
     | '/proxy-isp'
     | '/reembolso'
+    | '/reembolso.html'
     | '/reset-password'
     | '/rss.xml'
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
+    | '/termos.html'
     | '/_authenticated/admin'
     | '/blog/$slug'
+    | '/category/$'
     | '/checkout/success'
+    | '/comments/$'
     | '/blog/'
     | '/_authenticated/admin/allocations'
     | '/_authenticated/admin/blog'
@@ -810,20 +906,28 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
+  BlogDothtmlRoute: typeof BlogDothtmlRoute
+  CancelarDothtmlRoute: typeof CancelarDothtmlRoute
   CheckoutRoute: typeof CheckoutRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  IndexDothtmlRoute: typeof IndexDothtmlRoute
   LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  PrivacidadeDothtmlRoute: typeof PrivacidadeDothtmlRoute
   ProxyFacebookAdsRoute: typeof ProxyFacebookAdsRoute
   ProxyIpv4Route: typeof ProxyIpv4Route
   ProxyIpv6Route: typeof ProxyIpv6Route
   ProxyIspRoute: typeof ProxyIspRoute
   ReembolsoRoute: typeof ReembolsoRoute
+  ReembolsoDothtmlRoute: typeof ReembolsoDothtmlRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
+  TermosDothtmlRoute: typeof TermosDothtmlRoute
+  CategorySplatRoute: typeof CategorySplatRoute
+  CommentsSplatRoute: typeof CommentsSplatRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
@@ -836,6 +940,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termos.html': {
+      id: '/termos.html'
+      path: '/termos.html'
+      fullPath: '/termos.html'
+      preLoaderRoute: typeof TermosDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/termos': {
       id: '/termos'
       path: '/termos'
@@ -869,6 +980,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reembolso.html': {
+      id: '/reembolso.html'
+      path: '/reembolso.html'
+      fullPath: '/reembolso.html'
+      preLoaderRoute: typeof ReembolsoDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reembolso': {
@@ -906,6 +1024,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProxyFacebookAdsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade.html': {
+      id: '/privacidade.html'
+      path: '/privacidade.html'
+      fullPath: '/privacidade.html'
+      preLoaderRoute: typeof PrivacidadeDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacidade': {
       id: '/privacidade'
       path: '/privacidade'
@@ -920,6 +1045,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/index.html': {
+      id: '/index.html'
+      path: '/index.html'
+      fullPath: '/index.html'
+      preLoaderRoute: typeof IndexDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
@@ -932,6 +1064,20 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cancelar.html': {
+      id: '/cancelar.html'
+      path: '/cancelar.html'
+      fullPath: '/cancelar.html'
+      preLoaderRoute: typeof CancelarDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog.html': {
+      id: '/blog.html'
+      path: '/blog.html'
+      fullPath: '/blog.html'
+      preLoaderRoute: typeof BlogDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -962,12 +1108,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/comments/$': {
+      id: '/comments/$'
+      path: '/comments/$'
+      fullPath: '/comments/$'
+      preLoaderRoute: typeof CommentsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout/success': {
       id: '/checkout/success'
       path: '/success'
       fullPath: '/checkout/success'
       preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof CheckoutRoute
+    }
+    '/category/$': {
+      id: '/category/$'
+      path: '/category/$'
+      fullPath: '/category/$'
+      preLoaderRoute: typeof CategorySplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
       id: '/blog/$slug'
@@ -1416,20 +1576,28 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
+  BlogDothtmlRoute: BlogDothtmlRoute,
+  CancelarDothtmlRoute: CancelarDothtmlRoute,
   CheckoutRoute: CheckoutRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  IndexDothtmlRoute: IndexDothtmlRoute,
   LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  PrivacidadeDothtmlRoute: PrivacidadeDothtmlRoute,
   ProxyFacebookAdsRoute: ProxyFacebookAdsRoute,
   ProxyIpv4Route: ProxyIpv4Route,
   ProxyIpv6Route: ProxyIpv6Route,
   ProxyIspRoute: ProxyIspRoute,
   ReembolsoRoute: ReembolsoRoute,
+  ReembolsoDothtmlRoute: ReembolsoDothtmlRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RssDotxmlRoute: RssDotxmlRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
+  TermosDothtmlRoute: TermosDothtmlRoute,
+  CategorySplatRoute: CategorySplatRoute,
+  CommentsSplatRoute: CommentsSplatRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,

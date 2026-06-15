@@ -233,6 +233,64 @@ function CustomerDetailPage() {
                     Sincronizar com Stripe e alocar
                   </Button>
                 )}
+
+                {o.stripe_subscription_id &&
+                  (o.stripe_status === "active" ||
+                    o.stripe_status === "trialing" ||
+                    o.stripe_status === "past_due") &&
+                  !o.stripe_cancel_at_period_end && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                      disabled={cancelSub.isPending}
+                      onClick={() => {
+                        const when = o.stripe_period_end
+                          ? new Date(o.stripe_period_end).toLocaleDateString("pt-BR")
+                          : "fim do ciclo atual";
+                        if (
+                          !window.confirm(
+                            `Cancelar a assinatura no fim do ciclo (${when})?\n\n` +
+                              `• O cliente NÃO será reembolsado\n` +
+                              `• Mantém acesso aos proxies até ${when}\n` +
+                              `• Não será cobrado de novo`,
+                          )
+                        )
+                          return;
+                        const reason = window.prompt("Motivo (opcional, fica no audit log):") ?? undefined;
+                        cancelSub.mutate({
+                          subscriptionId: o.stripe_subscription_id!,
+                          reason: reason || undefined,
+                        });
+                      }}
+                    >
+                      <Ban className="w-4 h-4" />
+                      {cancelSub.isPending ? "Cancelando…" : "Cancelar (fim do ciclo)"}
+                    </Button>
+                  )}
+
+                {o.stripe_subscription_id && o.stripe_cancel_at_period_end && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-amber-500 self-center font-semibold">
+                      ⏳ Cancela em{" "}
+                      {o.stripe_period_end
+                        ? new Date(o.stripe_period_end).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={resumeSub.isPending}
+                      onClick={() =>
+                        resumeSub.mutate({ subscriptionId: o.stripe_subscription_id! })
+                      }
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Reativar
+                    </Button>
+                  </div>
+                )}
+
                 {o.shortage === 0 && (
                   <span className="text-xs text-muted-foreground self-center">
                     Pedido completo.

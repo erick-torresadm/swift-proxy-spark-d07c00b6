@@ -243,11 +243,18 @@ function AdminOverview() {
             com telefone/email e link para detalhe.
           </li>
           <li>
+            <Link to="/admin/cancelados" className="text-primary hover:underline">
+              Resgatar cancelados
+            </Link>{" "}
+            — winback por email com cupom opcional + WhatsApp.
+          </li>
+          <li>
             <Link to="/admin/orders" className="text-primary hover:underline">
               Pedidos recentes
             </Link>
             .
           </li>
+
         </ul>
       </div>
     </div>

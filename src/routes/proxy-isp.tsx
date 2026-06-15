@@ -4,8 +4,9 @@ import { ProductLanding } from "@/components/site/ProductLanding";
 
 const SITE = "https://www.fastproxy.com.br";
 const URL = SITE + "/proxy-isp";
-const TITLE = "Proxy ISP Residencial — Instagram & WhatsApp | FastProxy";
-const DESC = "Proxies ISP dedicados: velocidade de datacenter com a confiabilidade de IPs residenciais. Perfeito para Instagram, WhatsApp e multi-contas sociais.";
+const TITLE = "Proxy Residencial Brasil — ISP Dedicado, Instagram & WhatsApp | FastProxy";
+const DESC = "Proxy residencial dedicado no Brasil: IPs registrados em provedores reais (não datacenter) com velocidade de servidor. Perfeito pra Instagram, WhatsApp, Facebook Ads e multi-contas. A partir de R$ 49,90.";
+
 
 export const Route = createFileRoute("/proxy-isp")({
   component: Page,

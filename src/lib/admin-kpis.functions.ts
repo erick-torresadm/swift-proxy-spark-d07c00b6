@@ -111,8 +111,7 @@ export const getAdminKpis = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
 
-    const cached = getCache<Record<string, unknown>>("kpis", 60_000);
-    if (cached) return cached;
+
 
     let stripe: Awaited<ReturnType<typeof collectStripeMetrics>> | null = null;
     let stripeError: string | null = null;

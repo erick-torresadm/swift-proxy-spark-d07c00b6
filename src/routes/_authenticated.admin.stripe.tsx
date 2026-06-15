@@ -5,9 +5,19 @@ import { useEffect, useState } from "react";
 import {
   Activity, DollarSign, TrendingUp, Users, AlertTriangle, RefreshCw, CreditCard,
   CheckCircle2, XCircle, Repeat, AlertCircle, ShieldAlert, Clock, ExternalLink,
+  Ban, RotateCcw,
 } from "lucide-react";
-import { getStripeKpis, listStripeEvents, syncStripeBackfill } from "@/lib/admin-stripe.functions";
+import { toast } from "sonner";
+import {
+  getStripeKpis,
+  listStripeEvents,
+  syncStripeBackfill,
+  listActiveStripeSubscriptions,
+  adminCancelSubscriptionAtPeriodEnd,
+  adminResumeSubscription,
+} from "@/lib/admin-stripe.functions";
 import { supabase } from "@/lib/supabase-custom/client";
+
 
 export const Route = createFileRoute("/_authenticated/admin/stripe")({
   component: AdminStripePage,

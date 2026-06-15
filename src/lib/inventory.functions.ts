@@ -233,16 +233,30 @@ export const listCustomers = createServerFn({ method: "GET" })
       .limit(200);
     const enriched = await Promise.all(
       (data ?? []).map(async (p) => {
-        const { count } = await supabaseAdmin
-          .from("customer_proxies")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", p.user_id)
-          .eq("status", "active");
-        return { ...p, active_proxies: count ?? 0 };
+        const [{ count: activeProxies }, { count: pastDue }, userRes] = await Promise.all([
+          supabaseAdmin
+            .from("customer_proxies")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", p.user_id)
+            .eq("status", "active"),
+          supabaseAdmin
+            .from("orders")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", p.user_id)
+            .in("status", ["past_due", "grace"]),
+          supabaseAdmin.auth.admin.getUserById(p.user_id).catch(() => null),
+        ]);
+        return {
+          ...p,
+          active_proxies: activeProxies ?? 0,
+          past_due: pastDue ?? 0,
+          email: userRes?.data?.user?.email ?? null,
+        };
       }),
     );
     return enriched;
   });
+
 
 export const listAllOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

@@ -20,20 +20,21 @@ async function assertAdmin(userId: string) {
 
 // Normaliza um price recorrente para valor mensal em centavos.
 function priceToMonthlyCents(amount: number, interval: string, intervalCount: number): number {
-  const total = amount * (intervalCount || 1);
+  const n = intervalCount || 1;
   switch (interval) {
     case "day":
-      return Math.round(total * 30);
+      return Math.round((amount / n) * 30);
     case "week":
-      return Math.round(total * 4.345);
+      return Math.round((amount / n) * 4.345);
     case "month":
-      return Math.round(total / (intervalCount || 1)) * (intervalCount || 1) / (intervalCount || 1);
+      return Math.round(amount / n);
     case "year":
-      return Math.round(total / 12);
+      return Math.round(amount / (12 * n));
     default:
-      return total;
+      return amount;
   }
 }
+
 
 async function collectStripeMetrics() {
   const stripe = getStripe();

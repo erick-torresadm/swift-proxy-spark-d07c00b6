@@ -244,6 +244,35 @@ function CheckoutPage() {
     setCouponMsg(null);
   }
 
+  // Auto-apply coupon from URL (?coupon=VOLTA20) on first valid subtotal
+  const autoCouponTried = useRef(false);
+  useEffect(() => {
+    if (autoCouponTried.current) return;
+    const fromUrl = search.coupon?.trim().toUpperCase();
+    if (!fromUrl || subtotal <= 0) return;
+    autoCouponTried.current = true;
+    setCouponCode(fromUrl);
+    (async () => {
+      setCouponBusy(true);
+      try {
+        const res = await validateCoupon({
+          data: { code: fromUrl, amount_cents: subtotal, billing },
+        });
+        if (res.valid && res.discount_cents) {
+          setAppliedCoupon({ code: res.code ?? fromUrl, discount_cents: res.discount_cents });
+          setCouponMsg({ kind: "ok", text: `Cupom aplicado: -${formatBRL(res.discount_cents)}` });
+        } else {
+          setCouponMsg({ kind: "err", text: res.reason ?? "Cupom inválido" });
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setCouponBusy(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal]);
+
   function handleCountry(c: Country) {
     setCountry(c);
     if (META[slug].country === c) return;

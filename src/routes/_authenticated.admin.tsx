@@ -42,6 +42,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/pricing", label: "Preços", icon: DollarSign, roles: ["admin"] },
   { to: "/admin/cupons", label: "Cupons", icon: Tag, roles: ["admin"] },
   { to: "/admin/orders", label: "Pedidos", icon: Receipt, roles: ["admin"] },
+  { to: "/admin/stripe", label: "Stripe", icon: CreditCard, roles: ["admin"] },
   { to: "/admin/customers", label: "Clientes", icon: Users, roles: ["admin"] },
   { to: "/admin/inadimplentes", label: "Inadimplentes", icon: AlertCircle, roles: ["admin"] },
   { to: "/admin/cancelados", label: "Cancelados", icon: Users, roles: ["admin"] },

@@ -1,50 +1,97 @@
-# Priorizar plano anual com preço mensal equivalente
+# Painel admin com dados reais do Stripe — tempo real
 
-Objetivo: aumentar conversão em anual (mais receita previsível, menos inadimplência) mostrando o plano anual já selecionado por padrão, com o preço apresentado em formato "mensal equivalente" e a economia destacada vs. o mensal cheio.
+## O que você vai ver
 
-## Mudanças em `src/components/site/Plans.tsx`
+Uma nova página **`/admin/stripe`** mostrando, ao vivo, tudo que acontece na sua conta Stripe — sem precisar abrir o dashboard deles.
 
-1. **Padrão = anual**
-   - `useState<Billing>("yearly")` (era `"monthly"`).
-   - Toggle continua funcionando para quem quiser ver mensal.
+### Cards de KPI (período: hoje / 7d / 30d, com seletor)
+- **Receita líquida** — somatório de pagamentos confirmados
+- **MRR** (receita recorrente mensal) — soma de assinaturas ativas normalizadas para mês
+- **Assinaturas ativas** / **trial** / **past_due** / **canceladas no período**
+- **Churn %** (no período)
+- **Ticket médio**
+- **Reembolsos** (qtd + valor)
+- **Disputas/chargebacks** abertos (qtd + valor)
+- **Saldo Stripe disponível** + **a caminho** (payout pendente)
+- **Cupons** mais usados no período
 
-2. **Toggle redesenhado para incentivar o anual**
-   - Label "Anual" recebe destaque (cor primary + bold).
-   - Badge ao lado do "Anual": "ECONOMIZE 17%" + "2 meses grátis" (em vez de só "discount_badge").
-   - Pequeno helper text abaixo: "Pague 1x por ano e economize" quando anual; "Renova mensalmente" quando mensal.
+### Feed "Tudo que acontece" (tempo real)
+Lista cronológica das últimas 50 atividades, com filtro por tipo e badge colorida:
+- ✅ Venda nova (`checkout.session.completed`)
+- 🔁 Renovação paga (`invoice.payment_succeeded` recorrente)
+- ⚠️ Falha de pagamento (`invoice.payment_failed`)
+- 💸 Reembolso (`charge.refunded`)
+- ⛔ Cancelamento (`customer.subscription.deleted`)
+- 🚨 Disputa aberta (`charge.dispute.created`)
+- 🔄 Plano alterado (`customer.subscription.updated`)
+- 🧾 Recibo emitido
 
-3. **Card de preço (modo anual)**
-   - Preço grande = **mensal equivalente** (yearly/12) — como já está.
-   - Acima do preço grande: preço mensal cheio **riscado** (ex.: ~~R$ 29,90/mês~~) — substituindo `oldPrice` quando billing=yearly em todos os planos, não só no fbads.
-   - Abaixo do "/mês cobrado anualmente": linha em verde com **"Economia de R$ X,XX por ano"** (= (monthly − yearlyMonthly) × 12).
-   - Texto pequeno: "Total: R$ Y,YY/ano cobrado 1x" (= yearlyMonthly × 12).
+Cada item: data/hora, cliente (e-mail), produto, valor, link pro pedido interno + link "Ver no Stripe".
 
-4. **Card de preço (modo mensal)**
-   - Mantém preço atual.
-   - Adiciona linha informativa: "Economize R$ X,XX/ano mudando para o anual →" (clicável, alterna o toggle).
+### Tabela de pedidos enriquecida
+Na tabela admin já existente: colunas novas com **última fatura**, **próxima cobrança**, **método de pagamento** (Visa •••• 4242), **link direto pra fatura/recibo no Stripe**.
 
-5. **CTA**
-   - Mantém `to="/checkout"` com `billing` atual.
-   - No modo anual, texto do botão vira "Assinar anual" (mensal: "Assinar mensal" / featured mantém `cta_featured`).
+## Como funciona (parte técnica)
 
-## Strings i18n (`src/i18n/*`)
-Adicionar chaves novas em pt/en/es já existentes:
-- `plans.yearly_badge_save` → "Economize 17%"
-- `plans.yearly_badge_months` → "2 meses grátis"
-- `plans.yearly_total` → "Total {{total}} cobrado 1x/ano"
-- `plans.yearly_savings` → "Economia de {{amount}} por ano"
-- `plans.switch_to_yearly` → "Economize {{amount}}/ano no plano anual"
-- `plans.cta_yearly` / `plans.cta_monthly`
-- `plans.helper_yearly` / `plans.helper_monthly`
+### 1. Tabela nova `stripe_events`
+Migration cria:
+```
+stripe_events (
+  id text PK,              -- evt_xxx (idempotência)
+  type text,
+  created_at timestamptz,
+  customer_email text,
+  amount_cents int,
+  currency text,
+  order_id uuid,
+  subscription_id text,
+  invoice_id text,
+  charge_id text,
+  raw jsonb,
+  processed_at timestamptz
+)
+```
++ RLS (só admin lê via `is_staff`), GRANTs, índice por `created_at desc` e por `type`.
++ Realtime habilitado nessa tabela (`ALTER PUBLICATION supabase_realtime ADD TABLE`).
 
-## Detalhes técnicos
-- Cálculo já existe: `yearlyMonthly = live.yearly/12` ou fallback `monthly * (1 - 0.175)`.
-- `savingsPerYear = (monthly - yearlyMonthly) * 12`
-- `yearlyTotal = yearlyMonthly * 12`
-- Formatar via `format()` do `useCurrency` para respeitar BRL/USD.
-- Cor da economia: classe `text-emerald-500` (consistente com sucesso); não tocar tokens de design.
-- Sem mudança em checkout/backend — o parâmetro `billing` já é propagado e o Stripe já tem os preços anuais (`price_yearly_cents`).
+### 2. Webhook ampliado (`src/lib/stripe-webhook.server.ts`)
+Adiciono handlers que faltam:
+- `charge.refunded` → grava evento + notifica admin + marca order
+- `charge.dispute.created` / `dispute.closed` → notifica admin (alta prioridade)
+- `customer.subscription.updated` → detecta troca de plano, upgrade/downgrade
+- `customer.subscription.trial_will_end` → aviso 3 dias antes
+- `invoice.upcoming` → próxima cobrança
+- `payment_intent.succeeded` / `payment_intent.payment_failed` → cobre pagamentos avulsos (futuro EFI/pix one-off via Stripe também)
 
-## Arquivos
-- editar: `src/components/site/Plans.tsx`
-- editar: arquivos de tradução em `src/i18n/` (pt, en, es) para as novas chaves
+Todo evento processado é **gravado em `stripe_events`** (upsert por `id` → idempotente) e dispara `notifyAllAdmins` quando relevante.
+
+### 3. Server functions novas (`src/lib/admin-stripe.functions.ts`)
+- `getStripeKpis({ period })` — usa Stripe API: `balance.retrieve`, `subscriptions.list`, `charges.list`, `refunds.list`, `disputes.list`, agregando localmente. Cache de 60s em memória pra não estourar rate-limit.
+- `listStripeEvents({ limit, type })` — lê `stripe_events` da nossa base (rápido).
+- `getStripeMrr()` — soma de `subscriptions` ativas, normalizando ciclos (anual / 12, semestral / 6).
+- `syncStripeBackfill()` — botão "Sincronizar últimos 90 dias" que puxa eventos via `stripe.events.list` pra preencher histórico inicial.
+
+Todas com `requireSupabaseAuth` + checagem `has_role(admin)`.
+
+### 4. Página `/admin/stripe`
+- Loader prima KPIs e feed
+- `useQuery` com `refetchInterval: 30000`
+- **Realtime channel** assinando `stripe_events` → quando chega um INSERT, faz `queryClient.invalidateQueries(['admin-stripe'])` → painel atualiza sozinho
+- Push notification via VAPID já está pronto no projeto, então admin recebe no celular/desktop mesmo com aba fechada
+
+### 5. Link no menu admin
+Adiciono "Stripe" no nav admin entre "Pedidos" e "Cupons", com badge mostrando eventos não lidos das últimas 24h.
+
+## Arquivos tocados
+- `supabase/migrations/<novo>.sql` — tabela `stripe_events` + RLS + realtime
+- `src/lib/stripe-webhook.server.ts` — novos eventos + gravação em `stripe_events`
+- `src/lib/admin-stripe.functions.ts` — **novo**
+- `src/routes/_authenticated.admin.stripe.tsx` — **novo**
+- `src/components/admin/StripeEventFeed.tsx` — **novo**
+- `src/components/admin/StripeKpiCards.tsx` — **novo**
+- nav admin existente (1 link)
+
+## Fora do escopo (faço depois se pedir)
+- Gráficos históricos (linha de receita por dia) — começa com cards e feed, gráfico vem na v2
+- Painel do cliente — você pediu só o admin agora
+- Conexão com EFI — fica em standby como combinado

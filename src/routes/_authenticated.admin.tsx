@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useLocation, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail, DollarSign, Wrench, AlertCircle, MessageCircle, Megaphone, FileText, Users2, Cloud, Tag } from "lucide-react";
+import { Shield, Package, Users, Receipt, ServerCog, Activity, ArrowLeft, Mail, DollarSign, Wrench, AlertCircle, MessageCircle, Megaphone, FileText, Users2, Cloud, Tag, CreditCard } from "lucide-react";
 import { supabase } from "@/lib/supabase-custom/client";
 import { countOpenIssues } from "@/lib/admin-ops.functions";
 import { useAuth } from "@/hooks/use-auth";
@@ -42,6 +42,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/pricing", label: "Preços", icon: DollarSign, roles: ["admin"] },
   { to: "/admin/cupons", label: "Cupons", icon: Tag, roles: ["admin"] },
   { to: "/admin/orders", label: "Pedidos", icon: Receipt, roles: ["admin"] },
+  { to: "/admin/stripe", label: "Stripe", icon: CreditCard, roles: ["admin"] },
   { to: "/admin/customers", label: "Clientes", icon: Users, roles: ["admin"] },
   { to: "/admin/inadimplentes", label: "Inadimplentes", icon: AlertCircle, roles: ["admin"] },
   { to: "/admin/cancelados", label: "Cancelados", icon: Users, roles: ["admin"] },

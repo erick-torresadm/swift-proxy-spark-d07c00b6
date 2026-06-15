@@ -51,10 +51,21 @@ function OrdersPage() {
 
   return (
     <div className="max-w-6xl">
-      <h1 className="text-2xl sm:text-3xl font-black mb-1">Pedidos</h1>
-      <p className="text-muted-foreground mb-6">
-        Histórico das suas assinaturas e renovações.
-      </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black mb-1">Pedidos</h1>
+          <p className="text-muted-foreground">
+            Histórico das suas assinaturas e renovações.
+          </p>
+        </div>
+        <Link
+          to="/dashboard/cancelar"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40 transition"
+        >
+          <XCircle className="w-4 h-4" />
+          Cancelar assinatura
+        </Link>
+      </div>
 
       {isLoading ? (
         <div className="bg-card border border-border rounded-2xl p-10 text-center text-sm text-muted-foreground">

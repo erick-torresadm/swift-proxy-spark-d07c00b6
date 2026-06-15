@@ -48,28 +48,29 @@ function Page() {
   return (
     <ProductLanding
       slug="isp-us"
-      badge="Proxy ISP Residencial"
+      badge="Proxy Residencial Brasil"
       Icon={Building2}
       title={
         <>
-          Proxy <span className="text-gradient">ISP</span> com cara de residencial e velocidade de datacenter
+          Proxy <span className="text-gradient">residencial</span> com aparência real e velocidade de datacenter
         </>
       }
-      subtitle="O melhor dos dois mundos: IPs registrados em provedores reais (não datacenter) com a velocidade e estabilidade de servidor dedicado."
+      subtitle="O melhor dos dois mundos: IPs registrados em provedores residenciais (ISP) com a estabilidade e velocidade de servidor dedicado. O proxy residencial certo pra quem leva multi-contas a sério."
       bullets={[
-        "IPs registrados em provedores residenciais (ISP)",
-        "Aparência 100% residencial pras plataformas",
-        "Velocidade e estabilidade de datacenter",
-        "Ideal para Instagram, WhatsApp e contas sociais",
-        "Reposição inclusa e garantia de 7 dias",
+        "IPs residenciais registrados em provedores (ISP) brasileiros",
+        "Aparência 100% residencial — Instagram, WhatsApp e Meta não detectam como proxy",
+        "Velocidade e estabilidade de datacenter, sem queda",
+        "Compatível com AdsPower, Dolphin, Multilogin e GoLogin",
+        "Reposição inclusa, garantia de 7 dias e suporte humano",
       ]}
       useCases={[
-        { title: "Instagram & WhatsApp", desc: "Multi-contas sem suspensão por suspeita de proxy ou VPN." },
-        { title: "Social media managers", desc: "Gerenciamento de dezenas de perfis com IPs únicos e residenciais." },
-        { title: "E-commerce stealth", desc: "Operações em marketplaces que detectam IPs de datacenter." },
+        { title: "Instagram & WhatsApp", desc: "Gerencie múltiplas contas sem suspensão por suspeita de proxy, VPN ou datacenter." },
+        { title: "Facebook Ads & BMs", desc: "Proxy residencial limpo pra rodar BMs e contas de anúncio sem bloqueio." },
+        { title: "E-commerce e marketplaces", desc: "Mercado Livre, Amazon e plataformas que detectam e bloqueiam IPs de datacenter." },
       ]}
       priceFrom="R$ 49,90"
-      whatsappMessage="Olá! Vi a página de Proxy ISP e quero tirar uma dúvida."
+      whatsappMessage="Olá! Quero comprar um proxy residencial e tenho dúvidas."
+
     />
   );
 }

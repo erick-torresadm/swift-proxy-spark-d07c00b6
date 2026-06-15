@@ -19,6 +19,7 @@ import { Route as ProxyIspRouteImport } from './routes/proxy-isp'
 import { Route as ProxyIpv6RouteImport } from './routes/proxy-ipv6'
 import { Route as ProxyIpv4RouteImport } from './routes/proxy-ipv4'
 import { Route as ProxyFacebookAdsRouteImport } from './routes/proxy-facebook-ads'
+import { Route as PrivacidadeDothtmlRouteImport } from './routes/privacidade[.]html'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
@@ -123,6 +124,11 @@ const ProxyIpv4Route = ProxyIpv4RouteImport.update({
 const ProxyFacebookAdsRoute = ProxyFacebookAdsRouteImport.update({
   id: '/proxy-facebook-ads',
   path: '/proxy-facebook-ads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeDothtmlRoute = PrivacidadeDothtmlRouteImport.update({
+  id: '/privacidade.html',
+  path: '/privacidade.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
@@ -443,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
   '/proxy-ipv4': typeof ProxyIpv4Route
   '/proxy-ipv6': typeof ProxyIpv6Route
@@ -508,6 +515,7 @@ export interface FileRoutesByTo {
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
   '/proxy-ipv4': typeof ProxyIpv4Route
   '/proxy-ipv6': typeof ProxyIpv6Route
@@ -574,6 +582,7 @@ export interface FileRoutesById {
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
+  '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
   '/proxy-ipv4': typeof ProxyIpv4Route
   '/proxy-ipv6': typeof ProxyIpv6Route
@@ -642,6 +651,7 @@ export interface FileRouteTypes {
     | '/index.html'
     | '/login'
     | '/privacidade'
+    | '/privacidade.html'
     | '/proxy-facebook-ads'
     | '/proxy-ipv4'
     | '/proxy-ipv6'
@@ -707,6 +717,7 @@ export interface FileRouteTypes {
     | '/index.html'
     | '/login'
     | '/privacidade'
+    | '/privacidade.html'
     | '/proxy-facebook-ads'
     | '/proxy-ipv4'
     | '/proxy-ipv6'
@@ -772,6 +783,7 @@ export interface FileRouteTypes {
     | '/index.html'
     | '/login'
     | '/privacidade'
+    | '/privacidade.html'
     | '/proxy-facebook-ads'
     | '/proxy-ipv4'
     | '/proxy-ipv6'
@@ -840,6 +852,7 @@ export interface RootRouteChildren {
   IndexDothtmlRoute: typeof IndexDothtmlRoute
   LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
+  PrivacidadeDothtmlRoute: typeof PrivacidadeDothtmlRoute
   ProxyFacebookAdsRoute: typeof ProxyFacebookAdsRoute
   ProxyIpv4Route: typeof ProxyIpv4Route
   ProxyIpv6Route: typeof ProxyIpv6Route
@@ -930,6 +943,13 @@ declare module '@tanstack/react-router' {
       path: '/proxy-facebook-ads'
       fullPath: '/proxy-facebook-ads'
       preLoaderRoute: typeof ProxyFacebookAdsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade.html': {
+      id: '/privacidade.html'
+      path: '/privacidade.html'
+      fullPath: '/privacidade.html'
+      preLoaderRoute: typeof PrivacidadeDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacidade': {
@@ -1462,6 +1482,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexDothtmlRoute: IndexDothtmlRoute,
   LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
+  PrivacidadeDothtmlRoute: PrivacidadeDothtmlRoute,
   ProxyFacebookAdsRoute: ProxyFacebookAdsRoute,
   ProxyIpv4Route: ProxyIpv4Route,
   ProxyIpv6Route: ProxyIpv6Route,

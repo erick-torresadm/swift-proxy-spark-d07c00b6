@@ -52,10 +52,24 @@ async function collectStripeMetrics() {
   let trialingSubs = 0;
   let mrrCents = 0;
   const mrrByProduct = new Map<string, { name: string; mrr_cents: number; subs: number }>();
+  const productNameCache = new Map<string, string>();
+  const resolveProductName = async (productId: string): Promise<string> => {
+    const cached = productNameCache.get(productId);
+    if (cached) return cached;
+    try {
+      const p = await stripe.products.retrieve(productId);
+      const name = p.name || productId;
+      productNameCache.set(productId, name);
+      return name;
+    } catch {
+      productNameCache.set(productId, productId);
+      return productId;
+    }
+  };
   for await (const sub of stripe.subscriptions.list({
     status: "active",
     limit: 100,
-    expand: ["data.items.data.price.product"],
+    expand: ["data.items.data.price"],
   })) {
     activeSubs++;
     for (const item of sub.items.data) {
@@ -69,16 +83,14 @@ async function collectStripeMetrics() {
       mrrCents += monthly;
       const product = price.product;
       const prodId = typeof product === "string" ? product : product?.id ?? "unknown";
-      const prodName =
-        typeof product === "object" && product && "name" in product && product.name
-          ? (product.name as string)
-          : prodId;
+      const prodName = prodId === "unknown" ? prodId : await resolveProductName(prodId);
       const existing = mrrByProduct.get(prodId) ?? { name: prodName, mrr_cents: 0, subs: 0 };
       existing.mrr_cents += monthly;
       existing.subs += 1;
       mrrByProduct.set(prodId, existing);
     }
   }
+
   for await (const _ of stripe.subscriptions.list({ status: "trialing", limit: 100 })) {
     trialingSubs++;
   }
@@ -403,7 +415,7 @@ export const listCanceled = createServerFn({ method: "GET" })
     for await (const sub of stripe.subscriptions.list({
       status: "canceled",
       limit: 100,
-      expand: ["data.items.data.price.product", "data.customer"],
+      expand: ["data.items.data.price", "data.customer"],
     })) {
       count++;
       if (count > 200) break;
@@ -426,10 +438,17 @@ export const listCanceled = createServerFn({ method: "GET" })
       const item = sub.items.data[0];
       const price = item?.price;
       const product = price?.product;
-      const productName =
-        typeof product === "object" && product && "name" in product
-          ? (product.name as string)
-          : null;
+      const productId = typeof product === "string" ? product : product?.id ?? null;
+      let productName: string | null = null;
+      if (productId) {
+        try {
+          const p = await stripe.products.retrieve(productId);
+          productName = p.name ?? null;
+        } catch {
+          productName = null;
+        }
+      }
+
       const amount = price?.unit_amount ?? 0;
       const interval = price?.recurring?.interval ?? null;
       const canceledAt = sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null;

@@ -112,6 +112,7 @@ const searchSchema = z.object({
   billing: z.enum(["monthly", "yearly"]).optional(),
   qty: z.coerce.number().int().min(1).max(500).optional(),
   canceled: z.coerce.boolean().optional(),
+  coupon: z.string().trim().min(1).max(40).optional(),
 });
 
 export const Route = createFileRoute("/checkout")({

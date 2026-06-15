@@ -1231,6 +1231,72 @@ export type Database = {
           },
         ]
       }
+      stripe_events: {
+        Row: {
+          amount_cents: number | null
+          charge_id: string | null
+          created_at: string
+          currency: string | null
+          customer_email: string | null
+          customer_id: string | null
+          id: string
+          invoice_id: string | null
+          livemode: boolean
+          occurred_at: string
+          order_id: string | null
+          payment_intent_id: string | null
+          processed_at: string
+          raw: Json | null
+          reason: string | null
+          session_id: string | null
+          status: string | null
+          subscription_id: string | null
+          type: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          charge_id?: string | null
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          id: string
+          invoice_id?: string | null
+          livemode?: boolean
+          occurred_at?: string
+          order_id?: string | null
+          payment_intent_id?: string | null
+          processed_at?: string
+          raw?: Json | null
+          reason?: string | null
+          session_id?: string | null
+          status?: string | null
+          subscription_id?: string | null
+          type: string
+        }
+        Update: {
+          amount_cents?: number | null
+          charge_id?: string | null
+          created_at?: string
+          currency?: string | null
+          customer_email?: string | null
+          customer_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          livemode?: boolean
+          occurred_at?: string
+          order_id?: string | null
+          payment_intent_id?: string | null
+          processed_at?: string
+          raw?: Json | null
+          reason?: string | null
+          session_id?: string | null
+          status?: string | null
+          subscription_id?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

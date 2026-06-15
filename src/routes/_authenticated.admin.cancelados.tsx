@@ -112,9 +112,15 @@ function CanceladosPage() {
             <tbody>
               {rows.map((r) => {
                 const wa = normalizeBrPhone(r.phone);
-                const waMsg = `Oi ${r.name?.split(" ")[0] ?? "tudo bem"}! Aqui é da FastProxy. Vimos que você cancelou sua assinatura${
-                  r.product_name ? ` do ${r.product_name}` : ""
-                }. Posso te ajudar a voltar com uma condição especial?`;
+                const code = (coupon || "VOLTA20").trim().toUpperCase();
+                const checkoutUrl = `https://www.fastproxy.com.br/checkout?billing=yearly&coupon=${encodeURIComponent(code)}`;
+                const firstName = r.name?.split(" ")[0] ?? "tudo bem";
+                const waMsg =
+                  `Oi ${firstName}! 👋 Aqui é da FastProxy.\n\n` +
+                  `Vi que você cancelou${r.product_name ? ` o ${r.product_name}` : " seu plano"} e queria te chamar pra voltar com uma condição especial:\n\n` +
+                  `🎁 Cupom *${code}* — 20% OFF no plano anual (economia maior ainda no anual).\n\n` +
+                  `É só acessar: ${checkoutUrl}\n\n` +
+                  `Posso te ajudar com algo? Qual foi o motivo do cancelamento?`;
                 const waUrl = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(waMsg)}` : null;
                 return (
                   <tr key={r.subscription_id} className="border-t border-border hover:bg-muted/30 transition align-top">

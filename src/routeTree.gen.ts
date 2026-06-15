@@ -34,6 +34,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
+import { Route as CategorySplatRouteImport } from './routes/category.$'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated.dashboard.index'
@@ -202,6 +203,11 @@ const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   id: '/success',
   path: '/success',
   getParentRoute: () => CheckoutRoute,
+} as any)
+const CategorySplatRoute = CategorySplatRouteImport.update({
+  id: '/category/$',
+  path: '/category/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
@@ -483,6 +489,7 @@ export interface FileRoutesByFullPath {
   '/termos.html': typeof TermosDothtmlRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
+  '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
@@ -551,6 +558,7 @@ export interface FileRoutesByTo {
   '/termos': typeof TermosRoute
   '/termos.html': typeof TermosDothtmlRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
@@ -622,6 +630,7 @@ export interface FileRoutesById {
   '/termos.html': typeof TermosDothtmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
+  '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
@@ -694,6 +703,7 @@ export interface FileRouteTypes {
     | '/termos.html'
     | '/admin'
     | '/blog/$slug'
+    | '/category/$'
     | '/checkout/success'
     | '/blog/'
     | '/admin/allocations'
@@ -762,6 +772,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/termos.html'
     | '/blog/$slug'
+    | '/category/$'
     | '/checkout/success'
     | '/blog'
     | '/admin/allocations'
@@ -832,6 +843,7 @@ export interface FileRouteTypes {
     | '/termos.html'
     | '/_authenticated/admin'
     | '/blog/$slug'
+    | '/category/$'
     | '/checkout/success'
     | '/blog/'
     | '/_authenticated/admin/allocations'
@@ -902,6 +914,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
   TermosDothtmlRoute: typeof TermosDothtmlRoute
+  CategorySplatRoute: typeof CategorySplatRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
@@ -1088,6 +1101,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/checkout/success'
       preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof CheckoutRoute
+    }
+    '/category/$': {
+      id: '/category/$'
+      path: '/category/$'
+      fullPath: '/category/$'
+      preLoaderRoute: typeof CategorySplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
       id: '/blog/$slug'
@@ -1556,6 +1576,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
   TermosDothtmlRoute: TermosDothtmlRoute,
+  CategorySplatRoute: CategorySplatRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,

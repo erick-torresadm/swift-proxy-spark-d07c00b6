@@ -14,6 +14,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ReembolsoDothtmlRouteImport } from './routes/reembolso[.]html'
 import { Route as ReembolsoRouteImport } from './routes/reembolso'
 import { Route as ProxyIspRouteImport } from './routes/proxy-isp'
 import { Route as ProxyIpv6RouteImport } from './routes/proxy-ipv6'
@@ -99,6 +100,11 @@ const RssDotxmlRoute = RssDotxmlRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReembolsoDothtmlRoute = ReembolsoDothtmlRouteImport.update({
+  id: '/reembolso.html',
+  path: '/reembolso.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReembolsoRoute = ReembolsoRouteImport.update({
@@ -455,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/proxy-ipv6': typeof ProxyIpv6Route
   '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
+  '/reembolso.html': typeof ReembolsoDothtmlRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/signup': typeof SignupRoute
@@ -521,6 +528,7 @@ export interface FileRoutesByTo {
   '/proxy-ipv6': typeof ProxyIpv6Route
   '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
+  '/reembolso.html': typeof ReembolsoDothtmlRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/signup': typeof SignupRoute
@@ -588,6 +596,7 @@ export interface FileRoutesById {
   '/proxy-ipv6': typeof ProxyIpv6Route
   '/proxy-isp': typeof ProxyIspRoute
   '/reembolso': typeof ReembolsoRoute
+  '/reembolso.html': typeof ReembolsoDothtmlRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/signup': typeof SignupRoute
@@ -657,6 +666,7 @@ export interface FileRouteTypes {
     | '/proxy-ipv6'
     | '/proxy-isp'
     | '/reembolso'
+    | '/reembolso.html'
     | '/reset-password'
     | '/rss.xml'
     | '/signup'
@@ -723,6 +733,7 @@ export interface FileRouteTypes {
     | '/proxy-ipv6'
     | '/proxy-isp'
     | '/reembolso'
+    | '/reembolso.html'
     | '/reset-password'
     | '/rss.xml'
     | '/signup'
@@ -789,6 +800,7 @@ export interface FileRouteTypes {
     | '/proxy-ipv6'
     | '/proxy-isp'
     | '/reembolso'
+    | '/reembolso.html'
     | '/reset-password'
     | '/rss.xml'
     | '/signup'
@@ -858,6 +870,7 @@ export interface RootRouteChildren {
   ProxyIpv6Route: typeof ProxyIpv6Route
   ProxyIspRoute: typeof ProxyIspRoute
   ReembolsoRoute: typeof ReembolsoRoute
+  ReembolsoDothtmlRoute: typeof ReembolsoDothtmlRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
   SignupRoute: typeof SignupRoute
@@ -908,6 +921,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reembolso.html': {
+      id: '/reembolso.html'
+      path: '/reembolso.html'
+      fullPath: '/reembolso.html'
+      preLoaderRoute: typeof ReembolsoDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reembolso': {
@@ -1488,6 +1508,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProxyIpv6Route: ProxyIpv6Route,
   ProxyIspRoute: ProxyIspRoute,
   ReembolsoRoute: ReembolsoRoute,
+  ReembolsoDothtmlRoute: ReembolsoDothtmlRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RssDotxmlRoute: RssDotxmlRoute,
   SignupRoute: SignupRoute,

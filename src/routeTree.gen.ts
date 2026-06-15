@@ -48,6 +48,7 @@ import { Route as AuthenticatedAdminEmailsRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminCuponsRouteImport } from './routes/_authenticated.admin.cupons'
 import { Route as AuthenticatedAdminCloudRouteImport } from './routes/_authenticated.admin.cloud'
 import { Route as AuthenticatedAdminChatRouteImport } from './routes/_authenticated.admin.chat'
+import { Route as AuthenticatedAdminCanceladosRouteImport } from './routes/_authenticated.admin.cancelados'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated.admin.broadcast'
 import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authenticated.admin.blog'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated.admin.allocations'
@@ -277,6 +278,12 @@ const AuthenticatedAdminChatRoute = AuthenticatedAdminChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminCanceladosRoute =
+  AuthenticatedAdminCanceladosRouteImport.update({
+    id: '/cancelados',
+    path: '/cancelados',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminBroadcastRoute =
   AuthenticatedAdminBroadcastRouteImport.update({
     id: '/broadcast',
@@ -432,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
+  '/admin/cancelados': typeof AuthenticatedAdminCanceladosRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
@@ -491,6 +499,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
+  '/admin/cancelados': typeof AuthenticatedAdminCanceladosRoute
   '/admin/chat': typeof AuthenticatedAdminChatRoute
   '/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/admin/cupons': typeof AuthenticatedAdminCuponsRoute
@@ -555,6 +564,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
+  '/_authenticated/admin/cancelados': typeof AuthenticatedAdminCanceladosRoute
   '/_authenticated/admin/chat': typeof AuthenticatedAdminChatRoute
   '/_authenticated/admin/cloud': typeof AuthenticatedAdminCloudRoute
   '/_authenticated/admin/cupons': typeof AuthenticatedAdminCuponsRoute
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/admin/allocations'
     | '/admin/blog'
     | '/admin/broadcast'
+    | '/admin/cancelados'
     | '/admin/chat'
     | '/admin/cloud'
     | '/admin/cupons'
@@ -678,6 +689,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/admin/allocations'
     | '/admin/broadcast'
+    | '/admin/cancelados'
     | '/admin/chat'
     | '/admin/cloud'
     | '/admin/cupons'
@@ -741,6 +753,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/allocations'
     | '/_authenticated/admin/blog'
     | '/_authenticated/admin/broadcast'
+    | '/_authenticated/admin/cancelados'
     | '/_authenticated/admin/chat'
     | '/_authenticated/admin/cloud'
     | '/_authenticated/admin/cupons'
@@ -1083,6 +1096,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminChatRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/cancelados': {
+      id: '/_authenticated/admin/cancelados'
+      path: '/cancelados'
+      fullPath: '/admin/cancelados'
+      preLoaderRoute: typeof AuthenticatedAdminCanceladosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/broadcast': {
       id: '/_authenticated/admin/broadcast'
       path: '/broadcast'
@@ -1273,6 +1293,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAllocationsRoute: typeof AuthenticatedAdminAllocationsRoute
   AuthenticatedAdminBlogRoute: typeof AuthenticatedAdminBlogRouteWithChildren
   AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
+  AuthenticatedAdminCanceladosRoute: typeof AuthenticatedAdminCanceladosRoute
   AuthenticatedAdminChatRoute: typeof AuthenticatedAdminChatRoute
   AuthenticatedAdminCloudRoute: typeof AuthenticatedAdminCloudRoute
   AuthenticatedAdminCuponsRoute: typeof AuthenticatedAdminCuponsRoute
@@ -1293,6 +1314,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAllocationsRoute: AuthenticatedAdminAllocationsRoute,
   AuthenticatedAdminBlogRoute: AuthenticatedAdminBlogRouteWithChildren,
   AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
+  AuthenticatedAdminCanceladosRoute: AuthenticatedAdminCanceladosRoute,
   AuthenticatedAdminChatRoute: AuthenticatedAdminChatRoute,
   AuthenticatedAdminCloudRoute: AuthenticatedAdminCloudRoute,
   AuthenticatedAdminCuponsRoute: AuthenticatedAdminCuponsRoute,

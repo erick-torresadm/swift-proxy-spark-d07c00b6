@@ -44,6 +44,8 @@ const adminNav: NavItem[] = [
   { to: "/admin/orders", label: "Pedidos", icon: Receipt, roles: ["admin"] },
   { to: "/admin/customers", label: "Clientes", icon: Users, roles: ["admin"] },
   { to: "/admin/inadimplentes", label: "Inadimplentes", icon: AlertCircle, roles: ["admin"] },
+  { to: "/admin/cancelados", label: "Cancelados", icon: Users, roles: ["admin"] },
+
 
   { to: "/admin/equipe", label: "Equipe", icon: Users2, roles: ["admin"] },
   { to: "/admin/blog", label: "Blog & SEO", icon: FileText, roles: ["admin", "editor", "moderator"] },

@@ -4,8 +4,9 @@ import { ProductLanding } from "@/components/site/ProductLanding";
 
 const SITE = "https://www.fastproxy.com.br";
 const URL = SITE + "/proxy-ipv6";
-const TITLE = "Proxy IPv6 Brasil — Dedicado, R$ 29,90 | FastProxy";
-const DESC = "Proxies IPv6 dedicados no Brasil a partir de R$ 29,90. Entrega imediata, reposição automática e suporte humano. Ideal para automação e scraping em larga escala.";
+const TITLE = "Comprar Proxy IPv6 Brasil — Dedicado a R$ 29,90 | FastProxy";
+const DESC = "Comprar proxy IPv6 dedicado no Brasil a partir de R$ 29,90/mês. Entrega imediata, reposição automática e suporte humano. O proxy br ideal para automação, scraping e multi-contas em larga escala.";
+
 
 export const Route = createFileRoute("/proxy-ipv6")({
   component: Page,

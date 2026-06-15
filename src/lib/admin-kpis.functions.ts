@@ -15,21 +15,8 @@ async function assertAdmin(userId: string) {
   if (!data) throw new Error("forbidden");
 }
 
-// Pequeno cache em memória (TTL 60s) para evitar marteladas no Stripe.
-type CacheEntry<T> = { at: number; value: T };
-const cache = new Map<string, CacheEntry<unknown>>();
-function getCache<T>(key: string, ttlMs: number): T | null {
-  const e = cache.get(key) as CacheEntry<T> | undefined;
-  if (!e) return null;
-  if (Date.now() - e.at > ttlMs) {
-    cache.delete(key);
-    return null;
-  }
-  return e.value;
-}
-function setCache<T>(key: string, value: T) {
-  cache.set(key, { at: Date.now(), value });
-}
+
+
 
 // Normaliza um price recorrente para valor mensal em centavos.
 function priceToMonthlyCents(amount: number, interval: string, intervalCount: number): number {

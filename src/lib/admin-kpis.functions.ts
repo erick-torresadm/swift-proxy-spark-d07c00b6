@@ -47,20 +47,36 @@ async function collectStripeMetrics() {
     if (customersCount >= 1000) break;
   }
 
-  // Subscriptions: ativas, trial, past_due, unpaid
+  // Subscriptions: ativas, trial, past_due, unpaid, canceled
   let activeSubs = 0;
   let trialingSubs = 0;
   let mrrCents = 0;
-  for await (const sub of stripe.subscriptions.list({ status: "active", limit: 100, expand: ["data.items.data.price"] })) {
+  const mrrByProduct = new Map<string, { name: string; mrr_cents: number; subs: number }>();
+  for await (const sub of stripe.subscriptions.list({
+    status: "active",
+    limit: 100,
+    expand: ["data.items.data.price.product"],
+  })) {
     activeSubs++;
     for (const item of sub.items.data) {
       const price = item.price;
       if (!price.recurring || !price.unit_amount) continue;
-      mrrCents += priceToMonthlyCents(
+      const monthly = priceToMonthlyCents(
         price.unit_amount * (item.quantity ?? 1),
         price.recurring.interval,
         price.recurring.interval_count ?? 1,
       );
+      mrrCents += monthly;
+      const product = price.product;
+      const prodId = typeof product === "string" ? product : product?.id ?? "unknown";
+      const prodName =
+        typeof product === "object" && product && "name" in product && product.name
+          ? (product.name as string)
+          : prodId;
+      const existing = mrrByProduct.get(prodId) ?? { name: prodName, mrr_cents: 0, subs: 0 };
+      existing.mrr_cents += monthly;
+      existing.subs += 1;
+      mrrByProduct.set(prodId, existing);
     }
   }
   for await (const _ of stripe.subscriptions.list({ status: "trialing", limit: 100 })) {
@@ -72,6 +88,11 @@ async function collectStripeMetrics() {
   }
   for await (const _ of stripe.subscriptions.list({ status: "unpaid", limit: 100 })) {
     delinquentSubs++;
+  }
+  let canceledSubs = 0;
+  for await (const _ of stripe.subscriptions.list({ status: "canceled", limit: 100 })) {
+    canceledSubs++;
+    if (canceledSubs >= 500) break;
   }
 
   // Receita 30d via charges (succeeded - refunded).
@@ -88,11 +109,16 @@ async function collectStripeMetrics() {
     active_subs: activeSubs,
     trialing_subs: trialingSubs,
     delinquent_subs: delinquentSubs,
+    canceled_subs: canceledSubs,
     mrr_cents: mrrCents,
+    mrr_by_product: Array.from(mrrByProduct.entries())
+      .map(([id, v]) => ({ product_id: id, name: v.name, mrr_cents: v.mrr_cents, subs: v.subs }))
+      .sort((a, b) => b.mrr_cents - a.mrr_cents),
     revenue30d_cents: revenue30dCents,
     payments30d,
   };
 }
+
 
 export const getAdminKpis = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

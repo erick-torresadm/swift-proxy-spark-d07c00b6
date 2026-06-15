@@ -400,3 +400,226 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
       error: hadError && !pending ? "unavailable" : null,
     };
   });
+
+/**
+ * Lista pedidos do cliente que ainda podem ser cancelados (ativos / em atraso / carência).
+ * Inclui contagem de proxies ativos e flag se já está agendado pra cancelar no Stripe.
+ */
+export const listMyCancellableOrders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: orders } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "id, status, quantity, billing_cycle, amount_cents, current_period_end, stripe_subscription_id, created_at, products(name, slug, block_size)",
+      )
+      .eq("user_id", context.userId)
+      .in("status", ["paid", "past_due", "grace"])
+      .order("created_at", { ascending: false });
+
+    const out: Array<{
+      id: string;
+      status: string;
+      quantity: number;
+      billing_cycle: string;
+      amount_cents: number;
+      current_period_end: string | null;
+      product_name: string;
+      block_size: number;
+      active_proxies: number;
+      has_stripe_sub: boolean;
+      cancel_at_period_end: boolean;
+    }> = [];
+
+    const stripe = getStripe();
+
+    for (const o of orders ?? []) {
+      const { count } = await supabaseAdmin
+        .from("customer_proxies")
+        .select("*", { count: "exact", head: true })
+        .eq("order_id", o.id)
+        .neq("status", "released");
+
+      let cancelAtPeriodEnd = false;
+      if (stripe && o.stripe_subscription_id) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(o.stripe_subscription_id);
+          cancelAtPeriodEnd = !!sub.cancel_at_period_end || sub.status === "canceled";
+        } catch {
+          // ignora — segue fluxo
+        }
+      }
+
+      out.push({
+        id: o.id,
+        status: o.status as string,
+        quantity: o.quantity,
+        billing_cycle: o.billing_cycle as string,
+        amount_cents: o.amount_cents,
+        current_period_end: o.current_period_end,
+        product_name: o.products?.name ?? "Plano",
+        block_size: o.products?.block_size ?? 1,
+        active_proxies: count ?? 0,
+        has_stripe_sub: !!o.stripe_subscription_id,
+        cancel_at_period_end: cancelAtPeriodEnd,
+      });
+    }
+
+    return out;
+  });
+
+/**
+ * Cancela a assinatura de um pedido do cliente.
+ * - `immediate=false` (default): agenda cancelamento no Stripe pro fim do período (cliente mantém os proxies até lá).
+ * - `immediate=true`: cancela imediatamente no Stripe, marca pedido como cancelado e libera proxies.
+ *
+ * Sempre grava motivo no audit_log e no Stripe (cancellation_details).
+ */
+const CANCEL_REASONS = [
+  "too_expensive",
+  "missing_features",
+  "switched_service",
+  "unused",
+  "customer_service",
+  "low_quality",
+  "too_complex",
+  "other",
+] as const;
+
+export const cancelMySubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        orderId: z.string().uuid(),
+        reason: z.enum(CANCEL_REASONS),
+        feedback: z.string().trim().max(1000).optional().default(""),
+        immediate: z.boolean().optional().default(false),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: order, error: orderErr } = await supabaseAdmin
+      .from("orders")
+      .select("id, user_id, status, stripe_subscription_id, current_period_end, product_id")
+      .eq("id", data.orderId)
+      .maybeSingle();
+
+    if (orderErr) throw new Error(orderErr.message);
+    if (!order || order.user_id !== userId) {
+      throw new Error("Pedido não encontrado");
+    }
+    if (order.status === "cancelled") {
+      throw new Error("Este pedido já está cancelado");
+    }
+
+    const stripe = getStripe();
+    let stripeStatus: string | null = null;
+    let stripeCancelAt: string | null = null;
+
+    if (stripe && order.stripe_subscription_id) {
+      try {
+        if (data.immediate) {
+          const sub = await stripe.subscriptions.cancel(order.stripe_subscription_id, {
+            cancellation_details: {
+              comment: data.feedback || undefined,
+              feedback: mapFeedback(data.reason),
+            },
+          });
+          stripeStatus = sub.status;
+        } else {
+          const sub = await stripe.subscriptions.update(order.stripe_subscription_id, {
+            cancel_at_period_end: true,
+            cancellation_details: {
+              comment: data.feedback || undefined,
+              feedback: mapFeedback(data.reason),
+            },
+          });
+          stripeStatus = sub.status;
+          stripeCancelAt = sub.cancel_at
+            ? new Date(sub.cancel_at * 1000).toISOString()
+            : null;
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await supabaseAdmin.from("audit_log").insert({
+          user_id: userId,
+          source: "customer_cancel",
+          action: "stripe_cancel_failed",
+          status: "error",
+          request: { orderId: order.id, immediate: data.immediate, reason: data.reason },
+          response: { error: msg },
+        });
+        throw new Error("Não foi possível cancelar a assinatura no provedor de pagamento. Tente novamente em instantes.");
+      }
+    }
+
+    // Se for cancelamento imediato (ou se não havia assinatura ativa no Stripe),
+    // marca o pedido como cancelado e libera os proxies.
+    if (data.immediate || !order.stripe_subscription_id) {
+      const { error: upErr } = await supabaseAdmin
+        .from("orders")
+        .update({ status: "cancelled" })
+        .eq("id", order.id);
+      if (upErr) throw new Error(upErr.message);
+
+      const { data: allocs } = await supabaseAdmin
+        .from("customer_proxies")
+        .select("id, stock_id")
+        .eq("order_id", order.id)
+        .neq("status", "released");
+
+      for (const a of allocs ?? []) {
+        await supabaseAdmin
+          .from("customer_proxies")
+          .update({ status: "released", released_at: new Date().toISOString() })
+          .eq("id", a.id);
+        if (a.stock_id) {
+          await supabaseAdmin
+            .from("proxy_stock")
+            .update({ status: "available" })
+            .eq("id", a.stock_id)
+            .eq("status", "allocated");
+        }
+      }
+    }
+
+    await supabaseAdmin.from("audit_log").insert({
+      user_id: userId,
+      source: "customer_cancel",
+      action: data.immediate ? "cancel_immediate" : "cancel_at_period_end",
+      status: "ok",
+      request: {
+        orderId: order.id,
+        reason: data.reason,
+        feedback: data.feedback,
+      },
+      response: {
+        stripe_status: stripeStatus,
+        stripe_cancel_at: stripeCancelAt,
+        period_end: order.current_period_end,
+      },
+    });
+
+    return {
+      ok: true,
+      immediate: data.immediate,
+      effective_at: data.immediate
+        ? new Date().toISOString()
+        : stripeCancelAt ?? order.current_period_end,
+    };
+  });
+
+function mapFeedback(reason: typeof CANCEL_REASONS[number]):
+  | "too_expensive"
+  | "missing_features"
+  | "switched_service"
+  | "unused"
+  | "customer_service"
+  | "low_quality"
+  | "too_complex"
+  | "other" {
+  return reason;
+}

@@ -623,3 +623,88 @@ function mapFeedback(reason: typeof CANCEL_REASONS[number]):
   | "other" {
   return reason;
 }
+
+/**
+ * Oferta de retenção: aplica um cupom de 30% OFF na PRÓXIMA fatura da
+ * assinatura (once) e remove qualquer agendamento de cancelamento.
+ * Cada pedido só pode receber a oferta UMA vez (checado via audit_log).
+ */
+export const applyRetentionDiscount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ orderId: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: order } = await supabaseAdmin
+      .from("orders")
+      .select("id, user_id, status, stripe_subscription_id")
+      .eq("id", data.orderId)
+      .maybeSingle();
+
+    if (!order || order.user_id !== userId) {
+      throw new Error("Pedido não encontrado");
+    }
+    if (!order.stripe_subscription_id) {
+      throw new Error("Assinatura não encontrada no provedor de pagamento");
+    }
+
+    const { data: prior } = await supabaseAdmin
+      .from("audit_log")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("source", "customer_cancel")
+      .eq("action", "retention_offer_accepted")
+      .contains("request", { orderId: order.id })
+      .limit(1);
+
+    if (prior && prior.length > 0) {
+      throw new Error("Esta oferta já foi usada nesta assinatura.");
+    }
+
+    const stripe = getStripe();
+    if (!stripe) throw new Error("Stripe indisponível");
+
+    const couponId = "fastproxy_retention_30off_once";
+    try {
+      await stripe.coupons.retrieve(couponId);
+    } catch {
+      await stripe.coupons.create({
+        id: couponId,
+        percent_off: 30,
+        duration: "once",
+        name: "Desconto de retencao 30%",
+      });
+    }
+
+    try {
+      await stripe.subscriptions.update(order.stripe_subscription_id, {
+        discounts: [{ coupon: couponId }],
+        cancel_at_period_end: false,
+        cancellation_details: { comment: "retention_offer_accepted" },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await supabaseAdmin.from("audit_log").insert({
+        user_id: userId,
+        source: "customer_cancel",
+        action: "retention_offer_failed",
+        status: "error",
+        request: { orderId: order.id },
+        response: { error: msg },
+      });
+      throw new Error("Nao foi possivel aplicar o desconto. Tente novamente.");
+    }
+
+    await supabaseAdmin.from("audit_log").insert({
+      user_id: userId,
+      source: "customer_cancel",
+      action: "retention_offer_accepted",
+      status: "ok",
+      request: { orderId: order.id },
+      response: { coupon: couponId, percent_off: 30 },
+    });
+
+    return { ok: true, percent_off: 30 };
+  });

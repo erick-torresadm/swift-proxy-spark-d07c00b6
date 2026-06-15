@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermosDothtmlRouteImport } from './routes/termos[.]html'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
@@ -77,6 +78,11 @@ import { Route as AuthenticatedAdminBlogCategoriasRouteImport } from './routes/_
 import { Route as AuthenticatedAdminBlogIdRouteImport } from './routes/_authenticated.admin.blog.$id'
 import { Route as AuthenticatedDashboardProxyIdQuickRouteImport } from './routes/_authenticated.dashboard.proxy.$id.quick'
 
+const TermosDothtmlRoute = TermosDothtmlRouteImport.update({
+  id: '/termos.html',
+  path: '/termos.html',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
@@ -467,6 +473,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/termos.html': typeof TermosDothtmlRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -534,6 +541,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/termos.html': typeof TermosDothtmlRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/blog': typeof BlogIndexRoute
@@ -602,6 +610,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/termos.html': typeof TermosDothtmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/blog/$slug': typeof BlogSlugRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -672,6 +681,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
+    | '/termos.html'
     | '/admin'
     | '/blog/$slug'
     | '/checkout/success'
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
+    | '/termos.html'
     | '/blog/$slug'
     | '/checkout/success'
     | '/blog'
@@ -806,6 +817,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/sitemap.xml'
     | '/termos'
+    | '/termos.html'
     | '/_authenticated/admin'
     | '/blog/$slug'
     | '/checkout/success'
@@ -876,6 +888,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
+  TermosDothtmlRoute: typeof TermosDothtmlRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
@@ -888,6 +901,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termos.html': {
+      id: '/termos.html'
+      path: '/termos.html'
+      fullPath: '/termos.html'
+      preLoaderRoute: typeof TermosDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/termos': {
       id: '/termos'
       path: '/termos'
@@ -1514,6 +1534,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
+  TermosDothtmlRoute: TermosDothtmlRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,

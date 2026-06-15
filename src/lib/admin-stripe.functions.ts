@@ -308,11 +308,14 @@ export const adminCancelSubscriptionAtPeriodEnd = createServerFn({ method: "POST
       .eq("stripe_subscription_id", data.subscriptionId);
 
     await supabaseAdmin.from("audit_log").insert({
-      actor_id: context.userId,
+      user_id: context.userId,
+      source: "admin",
       action: "stripe.subscription.cancel_at_period_end",
-      target: data.subscriptionId,
-      details: { reason: data.reason ?? null, period_end: periodEndIso } as never,
+      status: "ok",
+      request: { subscription_id: data.subscriptionId, reason: data.reason ?? null } as never,
+      response: { period_end: periodEndIso } as never,
     } as never);
+
 
     return {
       ok: true as const,

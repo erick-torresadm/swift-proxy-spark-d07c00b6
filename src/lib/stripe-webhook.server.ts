@@ -18,6 +18,34 @@ async function logAudit(action: string, status: string, payload: unknown, error?
   }
 }
 
+type EventRow = {
+  id: string;
+  type: string;
+  livemode?: boolean;
+  occurred_at?: string;
+  customer_email?: string | null;
+  customer_id?: string | null;
+  subscription_id?: string | null;
+  invoice_id?: string | null;
+  charge_id?: string | null;
+  payment_intent_id?: string | null;
+  session_id?: string | null;
+  order_id?: string | null;
+  amount_cents?: number | null;
+  currency?: string | null;
+  status?: string | null;
+  reason?: string | null;
+  raw?: unknown;
+};
+
+async function recordStripeEvent(row: EventRow) {
+  try {
+    await supabaseAdmin.from("stripe_events").upsert(row as never, { onConflict: "id" });
+  } catch (err) {
+    await logAudit("record_stripe_event", "error", { id: row.id }, err instanceof Error ? err.message : String(err));
+  }
+}
+
 function invoiceSubscriptionId(inv: Stripe.Invoice): string | null {
   const raw = inv as unknown as {
     subscription?: string | { id?: string } | null;

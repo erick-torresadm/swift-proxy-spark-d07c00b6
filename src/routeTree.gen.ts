@@ -33,6 +33,7 @@ import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as CommentsSplatRouteImport } from './routes/comments.$'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as CategorySplatRouteImport } from './routes/category.$'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
@@ -198,6 +199,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BlogRoute,
+} as any)
+const CommentsSplatRoute = CommentsSplatRouteImport.update({
+  id: '/comments/$',
+  path: '/comments/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   id: '/success',
@@ -491,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/comments/$': typeof CommentsSplatRoute
   '/blog/': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
@@ -560,6 +567,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/comments/$': typeof CommentsSplatRoute
   '/blog': typeof BlogIndexRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
@@ -632,6 +640,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/comments/$': typeof CommentsSplatRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
@@ -705,6 +714,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/category/$'
     | '/checkout/success'
+    | '/comments/$'
     | '/blog/'
     | '/admin/allocations'
     | '/admin/blog'
@@ -774,6 +784,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/category/$'
     | '/checkout/success'
+    | '/comments/$'
     | '/blog'
     | '/admin/allocations'
     | '/admin/broadcast'
@@ -845,6 +856,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/category/$'
     | '/checkout/success'
+    | '/comments/$'
     | '/blog/'
     | '/_authenticated/admin/allocations'
     | '/_authenticated/admin/blog'
@@ -915,6 +927,7 @@ export interface RootRouteChildren {
   TermosRoute: typeof TermosRoute
   TermosDothtmlRoute: typeof TermosDothtmlRoute
   CategorySplatRoute: typeof CategorySplatRoute
+  CommentsSplatRoute: typeof CommentsSplatRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
@@ -1094,6 +1107,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof BlogRoute
+    }
+    '/comments/$': {
+      id: '/comments/$'
+      path: '/comments/$'
+      fullPath: '/comments/$'
+      preLoaderRoute: typeof CommentsSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/checkout/success': {
       id: '/checkout/success'
@@ -1577,6 +1597,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermosRoute: TermosRoute,
   TermosDothtmlRoute: TermosDothtmlRoute,
   CategorySplatRoute: CategorySplatRoute,
+  CommentsSplatRoute: CommentsSplatRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,

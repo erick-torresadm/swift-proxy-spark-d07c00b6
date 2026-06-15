@@ -373,3 +373,156 @@ export const sendDunningEmail = createServerFn({ method: "POST" })
     if (!r.ok) throw new Error(r.error ?? "Falha ao enviar");
     return { ok: true, id: r.id, sent_to: email, portal_url: portalUrl };
   });
+
+// ============== Cancelados (winback) ==============
+
+export interface CanceledRow {
+  subscription_id: string;
+  customer_id: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  user_id: string | null;
+  amount_cents: number;
+  interval: string | null;
+  canceled_at: string | null;
+  cancel_reason: string | null;
+  product_name: string | null;
+  days_since_cancel: number;
+}
+
+export const listCanceled = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+
+    const stripe = getStripe();
+    const rows: CanceledRow[] = [];
+    let count = 0;
+
+    for await (const sub of stripe.subscriptions.list({
+      status: "canceled",
+      limit: 100,
+      expand: ["data.items.data.price.product", "data.customer"],
+    })) {
+      count++;
+      if (count > 200) break;
+
+      const customer = sub.customer;
+      const customerId = typeof customer === "string" ? customer : customer.id;
+      const email =
+        typeof customer === "object" && customer && !("deleted" in customer)
+          ? customer.email ?? null
+          : null;
+      const name =
+        typeof customer === "object" && customer && !("deleted" in customer)
+          ? customer.name ?? null
+          : null;
+      const phone =
+        typeof customer === "object" && customer && !("deleted" in customer)
+          ? customer.phone ?? null
+          : null;
+
+      const item = sub.items.data[0];
+      const price = item?.price;
+      const product = price?.product;
+      const productName =
+        typeof product === "object" && product && "name" in product
+          ? (product.name as string)
+          : null;
+      const amount = price?.unit_amount ?? 0;
+      const interval = price?.recurring?.interval ?? null;
+      const canceledAt = sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null;
+      const days = sub.canceled_at
+        ? Math.floor((Date.now() - sub.canceled_at * 1000) / 86400000)
+        : 0;
+      const reason =
+        sub.cancellation_details?.reason ??
+        sub.cancellation_details?.feedback ??
+        null;
+
+      // tenta achar user_id local + phone via email
+      let userId: string | null = null;
+      let localPhone: string | null = null;
+      if (email) {
+        try {
+          const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+          const u = users.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+          if (u) {
+            userId = u.id;
+            const { data: p } = await supabaseAdmin
+              .from("profiles")
+              .select("phone")
+              .eq("user_id", u.id)
+              .maybeSingle();
+            localPhone = p?.phone ?? null;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      rows.push({
+        subscription_id: sub.id,
+        customer_id: customerId,
+        email,
+        name,
+        phone: phone ?? localPhone,
+        user_id: userId,
+        amount_cents: amount,
+        interval,
+        canceled_at: canceledAt,
+        cancel_reason: typeof reason === "string" ? reason : null,
+        product_name: productName,
+        days_since_cancel: days,
+      });
+    }
+
+    return { rows, total: rows.length };
+  });
+
+export const sendWinbackEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        email: z.string().email(),
+        name: z.string().nullable().optional(),
+        productName: z.string().nullable().optional(),
+        couponCode: z.string().max(40).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+
+    const greeting = data.name ? `Olá ${data.name.split(" ")[0]}` : "Olá";
+    const product = data.productName ? ` no plano <strong>${data.productName}</strong>` : "";
+    const promo = data.couponCode
+      ? `<p>Use o cupom <strong style="background:#fef3c7;padding:2px 6px;border-radius:4px">${data.couponCode}</strong> ao reativar para um desconto especial.</p>`
+      : "";
+
+    const html = `<!doctype html><html><body style="font-family:Inter,Arial,sans-serif;background:#f8fafc;padding:24px;color:#0f172a">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e2e8f0">
+  <h2 style="margin:0 0 12px 0">Sentimos sua falta na FastProxy 👋</h2>
+  <p>${greeting},</p>
+  <p>Notamos que sua assinatura${product} foi cancelada. Estamos sempre melhorando nossa rede de proxies — mais países, mais estabilidade e suporte mais rápido.</p>
+  ${promo}
+  <p style="margin:24px 0">
+    <a href="https://fastproxy.com.br/precos" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">
+      Reativar assinatura
+    </a>
+  </p>
+  <p>Se cancelou por algum problema, responda este email — adoraríamos resolver.</p>
+  <p style="font-size:12px;color:#64748b;margin-top:24px">Equipe FastProxy</p>
+</div></body></html>`;
+
+    const r = await sendEmail({
+      to: data.email,
+      subject: "Volte para a FastProxy — temos novidades para você",
+      html,
+      tags: [{ name: "kind", value: "winback" }],
+    });
+    if (!r.ok) throw new Error(r.error ?? "Falha ao enviar");
+    return { ok: true, id: r.id, sent_to: data.email };
+  });

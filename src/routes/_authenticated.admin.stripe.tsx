@@ -98,6 +98,39 @@ function AdminStripePage() {
     },
   });
 
+  const fetchSubs = useServerFn(listActiveStripeSubscriptions);
+  const cancelFn = useServerFn(adminCancelSubscriptionAtPeriodEnd);
+  const resumeFn = useServerFn(adminResumeSubscription);
+
+  const subs = useQuery({
+    queryKey: ["admin-stripe-active-subs"],
+    queryFn: () => fetchSubs({ data: { limit: 50 } }),
+    refetchInterval: 60_000,
+  });
+
+  const cancelSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string; reason?: string }) => cancelFn({ data: vars }),
+    onSuccess: (r) => {
+      const when = r.current_period_end
+        ? new Date(r.current_period_end).toLocaleDateString("pt-BR")
+        : "fim do ciclo";
+      toast.success(`Cancelará em ${when}. Sem reembolso, cliente mantém acesso até lá.`);
+      qc.invalidateQueries({ queryKey: ["admin-stripe-active-subs"] });
+      qc.invalidateQueries({ queryKey: ["admin-stripe-kpis"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resumeSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string }) => resumeFn({ data: vars }),
+    onSuccess: () => {
+      toast.success("Cancelamento revertido.");
+      qc.invalidateQueries({ queryKey: ["admin-stripe-active-subs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   // Realtime: novos eventos chegando → revalida lista e KPIs
   useEffect(() => {
     const channel = supabase

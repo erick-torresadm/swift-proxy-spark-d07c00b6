@@ -37,6 +37,7 @@ function formatDate(iso: string | null) {
 function CancelPage() {
   const fetchOrders = useServerFn(listMyCancellableOrders);
   const cancelFn = useServerFn(cancelMySubscription);
+  const retentionFn = useServerFn(applyRetentionDiscount);
   const qc = useQueryClient();
 
   const { data: orders, isLoading } = useQuery({
@@ -49,7 +50,8 @@ function CancelPage() {
   const [feedback, setFeedback] = useState("");
   const [immediate, setImmediate] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-  const [done, setDone] = useState<null | { immediate: boolean; effective_at: string | null }>(null);
+  const [showRetention, setShowRetention] = useState(false);
+  const [done, setDone] = useState<null | { immediate: boolean; effective_at: string | null; retention?: boolean }>(null);
 
   const selected = useMemo(
     () => (orders ?? []).find((o) => o.id === selectedId) ?? null,
@@ -74,6 +76,7 @@ function CancelPage() {
           ? "Assinatura cancelada e proxies liberados."
           : "Cancelamento agendado. Você mantém acesso até o fim do período.",
       );
+      setShowRetention(false);
       setDone({ immediate: r.immediate, effective_at: r.effective_at });
       qc.invalidateQueries({ queryKey: ["my-cancellable-orders"] });
       qc.invalidateQueries({ queryKey: ["my-orders"] });
@@ -81,6 +84,22 @@ function CancelPage() {
       qc.invalidateQueries({ queryKey: ["my-proxies"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao cancelar"),
+  });
+
+  const retentionMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedId) throw new Error("Selecione a assinatura.");
+      return await retentionFn({ data: { orderId: selectedId } });
+    },
+    onSuccess: () => {
+      toast.success("Pronto! 30% OFF aplicados na sua próxima fatura.");
+      setShowRetention(false);
+      setDone({ immediate: false, effective_at: null, retention: true });
+      qc.invalidateQueries({ queryKey: ["my-cancellable-orders"] });
+      qc.invalidateQueries({ queryKey: ["my-orders"] });
+      qc.invalidateQueries({ queryKey: ["my-overview"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao aplicar desconto"),
   });
 
   if (done) {

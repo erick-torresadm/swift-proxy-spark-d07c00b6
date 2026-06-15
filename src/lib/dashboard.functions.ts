@@ -680,7 +680,7 @@ export const applyRetentionDiscount = createServerFn({ method: "POST" })
 
     try {
       await stripe.subscriptions.update(order.stripe_subscription_id, {
-        coupon: couponId,
+        discounts: [{ coupon: couponId }],
         cancel_at_period_end: false,
         cancellation_details: { comment: "retention_offer_accepted" },
       });

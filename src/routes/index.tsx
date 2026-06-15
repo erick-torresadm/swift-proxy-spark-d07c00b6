@@ -14,6 +14,8 @@ import { InstallGuide } from "@/components/site/InstallGuide";
 import { VideoShowcase } from "@/components/site/VideoShowcase";
 import { Testimonials } from "@/components/site/Testimonials";
 import { WhatsAppFloat } from "@/components/site/WhatsAppFloat";
+import { Advertisers } from "@/components/site/Advertisers";
+
 
 const SITE = "https://www.fastproxy.com.br";
 

@@ -24,6 +24,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as BlogDothtmlRouteImport } from './routes/blog[.]html'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
@@ -147,6 +148,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogDothtmlRoute = BlogDothtmlRouteImport.update({
+  id: '/blog.html',
+  path: '/blog.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogRoute = BlogRouteImport.update({
@@ -431,6 +437,7 @@ const AuthenticatedDashboardProxyIdQuickRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteWithChildren
+  '/blog.html': typeof BlogDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
@@ -495,6 +502,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/blog.html': typeof BlogDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
@@ -560,6 +568,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
+  '/blog.html': typeof BlogDothtmlRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
@@ -627,6 +636,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/blog'
+    | '/blog.html'
     | '/checkout'
     | '/forgot-password'
     | '/index.html'
@@ -691,6 +701,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/blog.html'
     | '/checkout'
     | '/forgot-password'
     | '/index.html'
@@ -755,6 +766,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/blog'
+    | '/blog.html'
     | '/checkout'
     | '/forgot-password'
     | '/index.html'
@@ -822,6 +834,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
+  BlogDothtmlRoute: typeof BlogDothtmlRoute
   CheckoutRoute: typeof CheckoutRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IndexDothtmlRoute: typeof IndexDothtmlRoute
@@ -952,6 +965,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog.html': {
+      id: '/blog.html'
+      path: '/blog.html'
+      fullPath: '/blog.html'
+      preLoaderRoute: typeof BlogDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -1436,6 +1456,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
+  BlogDothtmlRoute: BlogDothtmlRoute,
   CheckoutRoute: CheckoutRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   IndexDothtmlRoute: IndexDothtmlRoute,

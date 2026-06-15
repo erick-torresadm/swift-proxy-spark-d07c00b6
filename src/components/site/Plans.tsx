@@ -139,6 +139,8 @@ export function Plans() {
             const yearlyMonthly =
               live?.yearly != null ? live.yearly / 12 : monthly * (1 - YEARLY_DISCOUNT);
             const priceBrl = billing === "yearly" ? yearlyMonthly : monthly;
+            const yearlyTotal = yearlyMonthly * 12;
+            const savingsPerYear = Math.max(0, (monthly - yearlyMonthly) * 12);
             const { symbol, int, dec } = parts(priceBrl);
             const accent = accentMap[plan.accent];
             const isFeatured = plan.badge?.variant === "recommended";
@@ -187,11 +189,15 @@ export function Plans() {
                   </div>
 
                   <div className="mb-1">
-                    {plan.oldPrice && billing === "monthly" && (
+                    {billing === "yearly" ? (
+                      <div className="text-muted-foreground line-through text-sm mb-1">
+                        {format(monthly)} /mês
+                      </div>
+                    ) : plan.oldPrice ? (
                       <div className="text-muted-foreground line-through text-sm mb-1">
                         {t("plans.from")} {format(plan.oldPrice, { decimals: 0 })}
                       </div>
-                    )}
+                    ) : null}
                     <div className="flex items-baseline gap-1">
                       <span className="text-muted-foreground text-base font-semibold">{symbol}</span>
                       <span
@@ -206,6 +212,27 @@ export function Plans() {
                     <div className="text-xs text-muted-foreground mt-1">
                       {billing === "yearly" ? t("plans.per_month_yearly") : t("plans.per_month")}
                     </div>
+
+                    {billing === "yearly" ? (
+                      <div className="mt-2 space-y-1">
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[11px] font-bold">
+                          {t("plans.yearly_savings", { amount: format(savingsPerYear) })}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {t("plans.yearly_total", { total: format(yearlyTotal) })}
+                        </div>
+                      </div>
+                    ) : (
+                      savingsPerYear > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setBilling("yearly")}
+                          className="mt-2 text-[11px] font-semibold text-emerald-500 hover:text-emerald-400 text-left"
+                        >
+                          {t("plans.switch_to_yearly", { amount: format(savingsPerYear) })}
+                        </button>
+                      )
+                    )}
                   </div>
 
                   {plan.highlightKey && (
@@ -239,12 +266,17 @@ export function Plans() {
                         : "bg-foreground/5 text-foreground hover:bg-foreground/10 border border-border"
                     }`}
                   >
-                    {isFeatured ? t("plans.cta_featured") : t("plans.cta_select")}
+                    {isFeatured
+                      ? t("plans.cta_featured")
+                      : billing === "yearly"
+                      ? t("plans.cta_yearly")
+                      : t("plans.cta_monthly")}
                   </Link>
                 </div>
               </motion.div>
             );
           })}
+
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">

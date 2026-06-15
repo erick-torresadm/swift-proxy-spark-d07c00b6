@@ -302,26 +302,61 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
     return new Response(`invalid signature: ${msg}`, { status: 400 });
   }
 
+  // Build a base event row that we always record, regardless of type
+  const obj = event.data.object as Record<string, unknown>;
+  const baseRow: EventRow = {
+    id: event.id,
+    type: event.type,
+    livemode: event.livemode,
+    occurred_at: new Date((event.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+    raw: { type: event.type, data: event.data },
+  };
+
   try {
     switch (event.type) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded":
-      case "checkout.session.expired":
-        await handleCheckoutSession(event.data.object as Stripe.Checkout.Session, event.type);
+      case "checkout.session.expired": {
+        const s = event.data.object as Stripe.Checkout.Session;
+        baseRow.session_id = s.id;
+        baseRow.customer_email = s.customer_details?.email ?? s.customer_email ?? null;
+        baseRow.customer_id = typeof s.customer === "string" ? s.customer : s.customer?.id ?? null;
+        baseRow.subscription_id = typeof s.subscription === "string" ? s.subscription : s.subscription?.id ?? null;
+        baseRow.amount_cents = s.amount_total ?? null;
+        baseRow.currency = s.currency ?? null;
+        baseRow.status = s.payment_status ?? s.status ?? null;
+        baseRow.order_id = (s.metadata?.order_id as string | undefined) ?? s.client_reference_id ?? null;
+        await handleCheckoutSession(s, event.type);
         break;
+      }
       case "invoice.paid":
-      case "invoice.payment_succeeded":
-        await handlePaidInvoice(event.data.object as Stripe.Invoice);
+      case "invoice.payment_succeeded": {
+        const inv = event.data.object as Stripe.Invoice;
+        baseRow.invoice_id = inv.id ?? null;
+        baseRow.subscription_id = invoiceSubscriptionId(inv);
+        baseRow.customer_id = typeof inv.customer === "string" ? inv.customer : inv.customer?.id ?? null;
+        baseRow.customer_email = inv.customer_email ?? null;
+        baseRow.amount_cents = inv.amount_paid ?? null;
+        baseRow.currency = inv.currency ?? null;
+        baseRow.status = inv.status ?? null;
+        await handlePaidInvoice(inv);
         break;
+      }
       case "invoice.payment_failed": {
         const inv = event.data.object as Stripe.Invoice;
         const subscriptionId = invoiceSubscriptionId(inv);
+        baseRow.invoice_id = inv.id ?? null;
+        baseRow.subscription_id = subscriptionId;
+        baseRow.customer_email = inv.customer_email ?? null;
+        baseRow.amount_cents = inv.amount_due ?? null;
+        baseRow.currency = inv.currency ?? null;
+        baseRow.status = "failed";
         if (subscriptionId) {
           await markOrderPastDue(subscriptionId);
           await notifyAllAdmins({
             title: "⚠️ Pagamento falhou",
-            body: `Assinatura ${subscriptionId} entrou em atraso.`,
-            link: "/admin/orders",
+            body: `Assinatura ${subscriptionId} entrou em atraso (${inv.customer_email ?? "cliente"}).`,
+            link: "/admin/stripe",
             metadata: { invoiceId: inv.id, subscriptionId },
             dedupeKey: `payment-failed:${inv.id}`,
           });
@@ -330,23 +365,119 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
       }
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
+        baseRow.subscription_id = sub.id;
+        baseRow.customer_id = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
+        baseRow.status = "canceled";
         await markOrderCanceled(sub.id);
         await notifyAllAdmins({
           title: "⛔ Assinatura cancelada",
-          body: `Assinatura ${sub.id} cancelada no Stripe.`,
-          link: "/admin/orders",
+          body: `Assinatura ${sub.id.slice(0, 12)}… cancelada no Stripe.`,
+          link: "/admin/stripe",
           metadata: { subscriptionId: sub.id },
           dedupeKey: `subscription-canceled:${sub.id}`,
         });
         break;
       }
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        baseRow.subscription_id = sub.id;
+        baseRow.customer_id = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
+        baseRow.status = sub.status;
+        const cancelAt = (sub as unknown as { cancel_at_period_end?: boolean }).cancel_at_period_end;
+        if (cancelAt) {
+          baseRow.reason = "cancel_at_period_end";
+          await notifyAllAdmins({
+            title: "🟡 Cancelamento agendado",
+            body: `Cliente agendou cancelamento da assinatura ${sub.id.slice(0, 12)}…`,
+            link: "/admin/stripe",
+            metadata: { subscriptionId: sub.id },
+            dedupeKey: `subscription-cancel-scheduled:${sub.id}`,
+          });
+        }
+        break;
+      }
+      case "customer.subscription.trial_will_end": {
+        const sub = event.data.object as Stripe.Subscription;
+        baseRow.subscription_id = sub.id;
+        baseRow.status = "trial_ending";
+        await notifyAllAdmins({
+          title: "⏰ Trial acabando",
+          body: `Trial da assinatura ${sub.id.slice(0, 12)}… termina em breve.`,
+          link: "/admin/stripe",
+          metadata: { subscriptionId: sub.id },
+          dedupeKey: `trial-ending:${sub.id}`,
+        });
+        break;
+      }
+      case "charge.refunded": {
+        const ch = event.data.object as Stripe.Charge;
+        baseRow.charge_id = ch.id;
+        baseRow.payment_intent_id = typeof ch.payment_intent === "string" ? ch.payment_intent : ch.payment_intent?.id ?? null;
+        baseRow.customer_email = ch.billing_details?.email ?? null;
+        baseRow.customer_id = typeof ch.customer === "string" ? ch.customer : ch.customer?.id ?? null;
+        baseRow.amount_cents = ch.amount_refunded ?? null;
+        baseRow.currency = ch.currency ?? null;
+        baseRow.status = "refunded";
+        const amount = ((ch.amount_refunded ?? 0) / 100).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: (ch.currency ?? "brl").toUpperCase(),
+        });
+        await notifyAllAdmins({
+          title: "💸 Reembolso emitido",
+          body: `${amount} reembolsado para ${ch.billing_details?.email ?? "cliente"}.`,
+          link: "/admin/stripe",
+          metadata: { chargeId: ch.id },
+          dedupeKey: `refund:${ch.id}`,
+        });
+        break;
+      }
+      case "charge.dispute.created":
+      case "charge.dispute.closed":
+      case "charge.dispute.updated": {
+        const d = event.data.object as Stripe.Dispute;
+        baseRow.charge_id = typeof d.charge === "string" ? d.charge : d.charge?.id ?? null;
+        baseRow.amount_cents = d.amount ?? null;
+        baseRow.currency = d.currency ?? null;
+        baseRow.status = d.status;
+        baseRow.reason = d.reason ?? null;
+        if (event.type === "charge.dispute.created") {
+          const amount = ((d.amount ?? 0) / 100).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: (d.currency ?? "brl").toUpperCase(),
+          });
+          await notifyAllAdmins({
+            title: "🚨 Disputa/chargeback aberto",
+            body: `${amount} contestado — motivo: ${d.reason ?? "desconhecido"}.`,
+            link: "/admin/stripe",
+            metadata: { disputeId: d.id, chargeId: baseRow.charge_id },
+            dedupeKey: `dispute:${d.id}`,
+          });
+        }
+        break;
+      }
+      case "payment_intent.succeeded":
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        baseRow.payment_intent_id = pi.id;
+        baseRow.customer_id = typeof pi.customer === "string" ? pi.customer : pi.customer?.id ?? null;
+        baseRow.amount_cents = pi.amount ?? null;
+        baseRow.currency = pi.currency ?? null;
+        baseRow.status = pi.status;
+        baseRow.customer_email = pi.receipt_email ?? null;
+        break;
+      }
       default:
+        // Ainda gravamos o evento bruto para visibilidade no painel
+        baseRow.customer_id = (obj.customer as string | undefined) ?? null;
         break;
     }
+
+    await recordStripeEvent(baseRow);
     await logAudit(event.type, "ok", { id: event.id });
     return new Response("ok");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    await recordStripeEvent({ ...baseRow, status: "error", reason: msg });
     await logAudit(event.type, "error", { id: event.id }, msg);
     return new Response(`handler error: ${msg}`, { status: 500 });
   }

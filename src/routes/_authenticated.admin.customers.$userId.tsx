@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Plus, CreditCard, Mail, Phone, ListChecks, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, Plus, CreditCard, Mail, Phone, ListChecks, X, Ban, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   getCustomerDetail,
@@ -12,7 +12,12 @@ import {
   listAvailableStockForCustomer,
   adminManualAllocateToCustomer,
 } from "@/lib/admin-ops.functions";
+import {
+  adminCancelSubscriptionAtPeriodEnd,
+  adminResumeSubscription,
+} from "@/lib/admin-stripe.functions";
 import { Button } from "@/components/ui/button";
+
 
 export const Route = createFileRoute("/_authenticated/admin/customers/$userId")({
   component: CustomerDetailPage,

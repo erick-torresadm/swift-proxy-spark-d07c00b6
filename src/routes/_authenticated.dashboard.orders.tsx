@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Receipt } from "lucide-react";
+import { Receipt, XCircle } from "lucide-react";
 import { listMyOrders } from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/orders")({

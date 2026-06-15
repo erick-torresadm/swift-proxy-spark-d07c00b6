@@ -39,6 +39,7 @@ import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_au
 import { Route as AuthenticatedDashboardProxiesRouteImport } from './routes/_authenticated.dashboard.proxies'
 import { Route as AuthenticatedDashboardOrdersRouteImport } from './routes/_authenticated.dashboard.orders'
 import { Route as AuthenticatedDashboardNotificacoesRouteImport } from './routes/_authenticated.dashboard.notificacoes'
+import { Route as AuthenticatedDashboardCancelarRouteImport } from './routes/_authenticated.dashboard.cancelar'
 import { Route as AuthenticatedAdminProviderRouteImport } from './routes/_authenticated.admin.provider'
 import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated.admin.pricing'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated.admin.orders'
@@ -224,6 +225,12 @@ const AuthenticatedDashboardNotificacoesRoute =
   AuthenticatedDashboardNotificacoesRouteImport.update({
     id: '/dashboard/notificacoes',
     path: '/dashboard/notificacoes',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedDashboardCancelarRoute =
+  AuthenticatedDashboardCancelarRouteImport.update({
+    id: '/dashboard/cancelar',
+    path: '/dashboard/cancelar',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminProviderRoute =
@@ -449,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
+  '/dashboard/cancelar': typeof AuthenticatedDashboardCancelarRoute
   '/dashboard/notificacoes': typeof AuthenticatedDashboardNotificacoesRoute
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
@@ -509,6 +517,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
+  '/dashboard/cancelar': typeof AuthenticatedDashboardCancelarRoute
   '/dashboard/notificacoes': typeof AuthenticatedDashboardNotificacoesRoute
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
@@ -574,6 +583,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/_authenticated/admin/provider': typeof AuthenticatedAdminProviderRoute
+  '/_authenticated/dashboard/cancelar': typeof AuthenticatedDashboardCancelarRoute
   '/_authenticated/dashboard/notificacoes': typeof AuthenticatedDashboardNotificacoesRoute
   '/_authenticated/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
   '/_authenticated/dashboard/proxies': typeof AuthenticatedDashboardProxiesRoute
@@ -639,6 +649,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/pricing'
     | '/admin/provider'
+    | '/dashboard/cancelar'
     | '/dashboard/notificacoes'
     | '/dashboard/orders'
     | '/dashboard/proxies'
@@ -699,6 +710,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/pricing'
     | '/admin/provider'
+    | '/dashboard/cancelar'
     | '/dashboard/notificacoes'
     | '/dashboard/orders'
     | '/dashboard/proxies'
@@ -763,6 +775,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/pricing'
     | '/_authenticated/admin/provider'
+    | '/_authenticated/dashboard/cancelar'
     | '/_authenticated/dashboard/notificacoes'
     | '/_authenticated/dashboard/orders'
     | '/_authenticated/dashboard/proxies'
@@ -1031,6 +1044,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard/notificacoes'
       fullPath: '/dashboard/notificacoes'
       preLoaderRoute: typeof AuthenticatedDashboardNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard/cancelar': {
+      id: '/_authenticated/dashboard/cancelar'
+      path: '/dashboard/cancelar'
+      fullPath: '/dashboard/cancelar'
+      preLoaderRoute: typeof AuthenticatedDashboardCancelarRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/provider': {
@@ -1338,6 +1358,7 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedDashboardCancelarRoute: typeof AuthenticatedDashboardCancelarRoute
   AuthenticatedDashboardNotificacoesRoute: typeof AuthenticatedDashboardNotificacoesRoute
   AuthenticatedDashboardOrdersRoute: typeof AuthenticatedDashboardOrdersRoute
   AuthenticatedDashboardProxiesRoute: typeof AuthenticatedDashboardProxiesRoute
@@ -1348,6 +1369,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedDashboardCancelarRoute: AuthenticatedDashboardCancelarRoute,
   AuthenticatedDashboardNotificacoesRoute:
     AuthenticatedDashboardNotificacoesRoute,
   AuthenticatedDashboardOrdersRoute: AuthenticatedDashboardOrdersRoute,

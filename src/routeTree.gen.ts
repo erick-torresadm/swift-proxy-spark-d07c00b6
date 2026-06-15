@@ -21,6 +21,7 @@ import { Route as ProxyIpv4RouteImport } from './routes/proxy-ipv4'
 import { Route as ProxyFacebookAdsRouteImport } from './routes/proxy-facebook-ads'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as BlogRouteImport } from './routes/blog'
@@ -131,6 +132,11 @@ const PrivacidadeRoute = PrivacidadeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexDothtmlRoute = IndexDothtmlRouteImport.update({
+  id: '/index.html',
+  path: '/index.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -427,6 +433,7 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRouteWithChildren
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -490,6 +497,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -554,6 +562,7 @@ export interface FileRoutesById {
   '/blog': typeof BlogRouteWithChildren
   '/checkout': typeof CheckoutRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -620,6 +629,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/checkout'
     | '/forgot-password'
+    | '/index.html'
     | '/login'
     | '/privacidade'
     | '/proxy-facebook-ads'
@@ -683,6 +693,7 @@ export interface FileRouteTypes {
     | '/'
     | '/checkout'
     | '/forgot-password'
+    | '/index.html'
     | '/login'
     | '/privacidade'
     | '/proxy-facebook-ads'
@@ -746,6 +757,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/checkout'
     | '/forgot-password'
+    | '/index.html'
     | '/login'
     | '/privacidade'
     | '/proxy-facebook-ads'
@@ -812,6 +824,7 @@ export interface RootRouteChildren {
   BlogRoute: typeof BlogRouteWithChildren
   CheckoutRoute: typeof CheckoutRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  IndexDothtmlRoute: typeof IndexDothtmlRoute
   LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   ProxyFacebookAdsRoute: typeof ProxyFacebookAdsRoute
@@ -918,6 +931,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/index.html': {
+      id: '/index.html'
+      path: '/index.html'
+      fullPath: '/index.html'
+      preLoaderRoute: typeof IndexDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -1418,6 +1438,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRoute: BlogRouteWithChildren,
   CheckoutRoute: CheckoutRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  IndexDothtmlRoute: IndexDothtmlRoute,
   LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   ProxyFacebookAdsRoute: ProxyFacebookAdsRoute,

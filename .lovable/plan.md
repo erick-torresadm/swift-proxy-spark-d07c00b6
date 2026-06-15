@@ -1,79 +1,50 @@
+# Priorizar plano anual com preço mensal equivalente
 
-# Painel Admin — KPIs Stripe + Contato com Clientes
+Objetivo: aumentar conversão em anual (mais receita previsível, menos inadimplência) mostrando o plano anual já selecionado por padrão, com o preço apresentado em formato "mensal equivalente" e a economia destacada vs. o mensal cheio.
 
-Objetivo: deixar o painel admin realmente útil — KPIs vindos do Stripe (não só do banco), lista de inadimplentes com telefone/email, e botões pra disparar email (Resend, que você já tem) e WhatsApp.
+## Mudanças em `src/components/site/Plans.tsx`
 
-## 1. Novo serverFn `getAdminKpis` (lib/admin-kpis.functions.ts)
+1. **Padrão = anual**
+   - `useState<Billing>("yearly")` (era `"monthly"`).
+   - Toggle continua funcionando para quem quiser ver mensal.
 
-Roda em paralelo:
+2. **Toggle redesenhado para incentivar o anual**
+   - Label "Anual" recebe destaque (cor primary + bold).
+   - Badge ao lado do "Anual": "ECONOMIZE 17%" + "2 meses grátis" (em vez de só "discount_badge").
+   - Pequeno helper text abaixo: "Pague 1x por ano e economize" quando anual; "Renova mensalmente" quando mensal.
 
-- **Stripe** (`src/lib/stripe.server.ts`):
-  - `stripe.customers.list({ limit: 100 })` paginado → total de clientes Stripe
-  - `stripe.subscriptions.list({ status: 'active', limit: 100 })` paginado → MRR (somando `items.price.unit_amount` * recorrência → normalizado mensal) e total ativos
-  - `stripe.subscriptions.list({ status: 'past_due' })` + `status: 'unpaid'` → inadimplentes
-  - `stripe.charges.list({ created: { gte: now-30d } })` → receita 30d real (paid - refunded), conta de pagamentos
-- **Banco** (mantém o que já existe): clientes cadastrados, proxies ativos, estoque disponível/alocado/alertas.
+3. **Card de preço (modo anual)**
+   - Preço grande = **mensal equivalente** (yearly/12) — como já está.
+   - Acima do preço grande: preço mensal cheio **riscado** (ex.: ~~R$ 29,90/mês~~) — substituindo `oldPrice` quando billing=yearly em todos os planos, não só no fbads.
+   - Abaixo do "/mês cobrado anualmente": linha em verde com **"Economia de R$ X,XX por ano"** (= (monthly − yearlyMonthly) × 12).
+   - Texto pequeno: "Total: R$ Y,YY/ano cobrado 1x" (= yearlyMonthly × 12).
 
-Retorna um único objeto com tudo. Faz cache em memória de 60s pra não martelar Stripe (módulo simples com Map + TTL).
+4. **Card de preço (modo mensal)**
+   - Mantém preço atual.
+   - Adiciona linha informativa: "Economize R$ X,XX/ano mudando para o anual →" (clicável, alterna o toggle).
 
-## 2. Atualizar `_authenticated.admin.index.tsx`
+5. **CTA**
+   - Mantém `to="/checkout"` com `billing` atual.
+   - No modo anual, texto do botão vira "Assinar anual" (mensal: "Assinar mensal" / featured mantém `cta_featured`).
 
-Substitui o grid atual por seções:
+## Strings i18n (`src/i18n/*`)
+Adicionar chaves novas em pt/en/es já existentes:
+- `plans.yearly_badge_save` → "Economize 17%"
+- `plans.yearly_badge_months` → "2 meses grátis"
+- `plans.yearly_total` → "Total {{total}} cobrado 1x/ano"
+- `plans.yearly_savings` → "Economia de {{amount}} por ano"
+- `plans.switch_to_yearly` → "Economize {{amount}}/ano no plano anual"
+- `plans.cta_yearly` / `plans.cta_monthly`
+- `plans.helper_yearly` / `plans.helper_monthly`
 
-```
-[ Receita 30d (Stripe) ] [ MRR ]      [ Assinaturas ativas ]
-[ Inadimplentes ]        [ Clientes Stripe ] [ Clientes cadastrados ]
-[ Proxies ativos ]       [ Estoque disp. ]   [ Alertas estoque ]
-```
+## Detalhes técnicos
+- Cálculo já existe: `yearlyMonthly = live.yearly/12` ou fallback `monthly * (1 - 0.175)`.
+- `savingsPerYear = (monthly - yearlyMonthly) * 12`
+- `yearlyTotal = yearlyMonthly * 12`
+- Formatar via `format()` do `useCurrency` para respeitar BRL/USD.
+- Cor da economia: classe `text-emerald-500` (consistente com sucesso); não tocar tokens de design.
+- Sem mudança em checkout/backend — o parâmetro `billing` já é propagado e o Stripe já tem os preços anuais (`price_yearly_cents`).
 
-Inadimplentes vira link → nova rota `/admin/inadimplentes`.
-
-## 3. Nova rota `/admin/inadimplentes` (lista + ações)
-
-ServerFn `listDelinquents`:
-- Busca `orders` com `status in ('past_due','grace')` OU `subscriptions` Stripe `past_due/unpaid`
-- Junta com `profiles` (nome, telefone) e `auth.users.email`
-- Retorna: nome, email, telefone, valor, ciclo, dias em atraso, link Stripe customer
-
-Tabela com colunas: Cliente | Contato | Atraso | Valor | Ações.
-
-Ações por linha:
-- **WhatsApp**: link `https://wa.me/55<phone>?text=<msg padrão configurável>` (abre em nova aba)
-- **Email**: botão que chama serverFn `sendDunningEmail` (usa Resend já configurado, template "Pagamento pendente" com link do portal Stripe `billing_portal.sessions.create`)
-- **Copiar email / telefone**
-
-Mensagem padrão (template editável depois): "Olá {nome}, identificamos que sua assinatura FastProxy está com pagamento pendente desde {data}. Regularize aqui: {portal_url}".
-
-## 4. Aprimorar `/admin/customers`
-
-Adicionar colunas: **Email**, **Status Stripe** (active/past_due/none), **MRR do cliente**. ServerFn `listCustomers` passa a:
-- Buscar `auth.users` (admin API) pra email
-- Buscar `orders` agregando por user_id pra status/MRR
-
-Botões na linha: WhatsApp + Email (mesma ação do item 3).
-
-## 5. Email transacional (Resend)
-
-Função `sendDunningEmail({ userId, orderId })`:
-- Gera Stripe Billing Portal session pra esse customer
-- Envia via Resend (template HTML simples, marca FastProxy)
-- Loga em `email_send_log` (tabela já usada no projeto)
-
-## 6. Detalhes técnicos
-
-- Arquivos novos:
-  - `src/lib/admin-kpis.functions.ts` — getAdminKpis, listDelinquents, sendDunningEmail
-  - `src/lib/admin-kpis.server.ts` — helpers Stripe (cache TTL, MRR normalization)
-  - `src/routes/_authenticated.admin.inadimplentes.tsx`
-- Arquivos editados:
-  - `src/routes/_authenticated.admin.index.tsx` (novo grid)
-  - `src/routes/_authenticated.admin.customers.index.tsx` (colunas + ações)
-  - `src/lib/inventory.functions.ts` (`listCustomers` enriquecido)
-- Todos os serverFns usam `requireSupabaseAuth` + `assertAdmin`.
-- Sem migrations. Sem mexer em allocation/proxy logic (não foi pedido).
-
-## Perguntas
-
-1. Telefone armazenado em `profiles.phone` — está em formato E.164 (`+5511...`) ou só dígitos? Preciso saber pra montar `wa.me`. Posso assumir BR (+55) quando vier sem prefixo?
-2. Template do WhatsApp e do email de cobrança — tem texto que prefere, ou uso um padrão e você ajusta depois?
-3. Quer que o botão "Email" abra um modal de pré-visualização antes de enviar, ou envia direto com confirmação?
+## Arquivos
+- editar: `src/components/site/Plans.tsx`
+- editar: arquivos de tradução em `src/i18n/` (pt, en, es) para as novas chaves

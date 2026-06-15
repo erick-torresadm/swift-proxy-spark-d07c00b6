@@ -48,7 +48,7 @@ const accentMap: Record<
 };
 
 export function Plans() {
-  const [billing, setBilling] = useState<Billing>("monthly");
+  const [billing, setBilling] = useState<Billing>("yearly");
   const { t } = useTranslation();
   const { parts, format } = useCurrency();
 
@@ -90,38 +90,47 @@ export function Plans() {
           <p className="text-muted-foreground text-base sm:text-lg">{t("plans.subtitle")}</p>
         </motion.div>
 
-        <div className="flex items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-14 flex-wrap">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={`text-sm font-semibold transition ${
-              billing === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t("plans.monthly")}
-          </button>
-          <button
-            onClick={() => setBilling(billing === "monthly" ? "yearly" : "monthly")}
-            className="relative w-14 h-7 rounded-full bg-card border border-border flex items-center px-1"
-            aria-label="toggle billing"
-          >
-            <motion.div
-              className="w-5 h-5 rounded-full bg-foreground shadow-md"
-              animate={{ x: billing === "yearly" ? 26 : 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            />
-          </button>
-          <button
-            onClick={() => setBilling("yearly")}
-            className={`text-sm font-semibold transition ${
-              billing === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t("plans.yearly")}
-          </button>
-          <span className="inline-flex px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider">
-            {t("plans.discount_badge")}
-          </span>
+        <div className="flex flex-col items-center gap-3 mb-10 sm:mb-14">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+            <button
+              onClick={() => setBilling("monthly")}
+              className={`text-sm font-semibold transition ${
+                billing === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("plans.monthly")}
+            </button>
+            <button
+              onClick={() => setBilling(billing === "monthly" ? "yearly" : "monthly")}
+              className="relative w-14 h-7 rounded-full bg-card border border-border flex items-center px-1"
+              aria-label="toggle billing"
+            >
+              <motion.div
+                className="w-5 h-5 rounded-full bg-primary shadow-md"
+                animate={{ x: billing === "yearly" ? 26 : 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            </button>
+            <button
+              onClick={() => setBilling("yearly")}
+              className={`text-sm font-bold transition ${
+                billing === "yearly" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t("plans.yearly")}
+            </button>
+            <span className="inline-flex px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
+              {t("plans.yearly_badge_save")}
+            </span>
+            <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider">
+              {t("plans.yearly_badge_months")}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {billing === "yearly" ? t("plans.helper_yearly") : t("plans.helper_monthly")}
+          </p>
         </div>
+
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
           {planDefs.map((plan, i) => {
@@ -130,6 +139,8 @@ export function Plans() {
             const yearlyMonthly =
               live?.yearly != null ? live.yearly / 12 : monthly * (1 - YEARLY_DISCOUNT);
             const priceBrl = billing === "yearly" ? yearlyMonthly : monthly;
+            const yearlyTotal = yearlyMonthly * 12;
+            const savingsPerYear = Math.max(0, (monthly - yearlyMonthly) * 12);
             const { symbol, int, dec } = parts(priceBrl);
             const accent = accentMap[plan.accent];
             const isFeatured = plan.badge?.variant === "recommended";
@@ -178,11 +189,15 @@ export function Plans() {
                   </div>
 
                   <div className="mb-1">
-                    {plan.oldPrice && billing === "monthly" && (
+                    {billing === "yearly" ? (
+                      <div className="text-muted-foreground line-through text-sm mb-1">
+                        {format(monthly)} /mês
+                      </div>
+                    ) : plan.oldPrice ? (
                       <div className="text-muted-foreground line-through text-sm mb-1">
                         {t("plans.from")} {format(plan.oldPrice, { decimals: 0 })}
                       </div>
-                    )}
+                    ) : null}
                     <div className="flex items-baseline gap-1">
                       <span className="text-muted-foreground text-base font-semibold">{symbol}</span>
                       <span
@@ -197,6 +212,27 @@ export function Plans() {
                     <div className="text-xs text-muted-foreground mt-1">
                       {billing === "yearly" ? t("plans.per_month_yearly") : t("plans.per_month")}
                     </div>
+
+                    {billing === "yearly" ? (
+                      <div className="mt-2 space-y-1">
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[11px] font-bold">
+                          {t("plans.yearly_savings", { amount: format(savingsPerYear) })}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {t("plans.yearly_total", { total: format(yearlyTotal) })}
+                        </div>
+                      </div>
+                    ) : (
+                      savingsPerYear > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setBilling("yearly")}
+                          className="mt-2 text-[11px] font-semibold text-emerald-500 hover:text-emerald-400 text-left"
+                        >
+                          {t("plans.switch_to_yearly", { amount: format(savingsPerYear) })}
+                        </button>
+                      )
+                    )}
                   </div>
 
                   {plan.highlightKey && (
@@ -230,12 +266,17 @@ export function Plans() {
                         : "bg-foreground/5 text-foreground hover:bg-foreground/10 border border-border"
                     }`}
                   >
-                    {isFeatured ? t("plans.cta_featured") : t("plans.cta_select")}
+                    {isFeatured
+                      ? t("plans.cta_featured")
+                      : billing === "yearly"
+                      ? t("plans.cta_yearly")
+                      : t("plans.cta_monthly")}
                   </Link>
                 </div>
               </motion.div>
             );
           })}
+
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">

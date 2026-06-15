@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, RefreshCw, Plus, CreditCard, Mail, Phone, ListChecks, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, Plus, CreditCard, Mail, Phone, ListChecks, X, Ban, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   getCustomerDetail,
@@ -12,7 +12,12 @@ import {
   listAvailableStockForCustomer,
   adminManualAllocateToCustomer,
 } from "@/lib/admin-ops.functions";
+import {
+  adminCancelSubscriptionAtPeriodEnd,
+  adminResumeSubscription,
+} from "@/lib/admin-stripe.functions";
 import { Button } from "@/components/ui/button";
+
 
 export const Route = createFileRoute("/_authenticated/admin/customers/$userId")({
   component: CustomerDetailPage,
@@ -39,8 +44,33 @@ function CustomerDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const cancelFn = useServerFn(adminCancelSubscriptionAtPeriodEnd);
+  const resumeFn = useServerFn(adminResumeSubscription);
+
+  const cancelSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string; reason?: string }) => cancelFn({ data: vars }),
+    onSuccess: (r) => {
+      const when = r.current_period_end
+        ? new Date(r.current_period_end).toLocaleDateString("pt-BR")
+        : "fim do ciclo";
+      toast.success(`Assinatura será cancelada em ${when}. Cliente mantém acesso até lá, sem nova cobrança.`);
+      qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resumeSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string }) => resumeFn({ data: vars }),
+    onSuccess: () => {
+      toast.success("Cancelamento revertido — a assinatura continua ativa.");
+      qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const [pickerOrderId, setPickerOrderId] = useState<string | null>(null);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -203,6 +233,64 @@ function CustomerDetailPage() {
                     Sincronizar com Stripe e alocar
                   </Button>
                 )}
+
+                {o.stripe_subscription_id &&
+                  (o.stripe_status === "active" ||
+                    o.stripe_status === "trialing" ||
+                    o.stripe_status === "past_due") &&
+                  !o.stripe_cancel_at_period_end && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                      disabled={cancelSub.isPending}
+                      onClick={() => {
+                        const when = o.stripe_period_end
+                          ? new Date(o.stripe_period_end).toLocaleDateString("pt-BR")
+                          : "fim do ciclo atual";
+                        if (
+                          !window.confirm(
+                            `Cancelar a assinatura no fim do ciclo (${when})?\n\n` +
+                              `• O cliente NÃO será reembolsado\n` +
+                              `• Mantém acesso aos proxies até ${when}\n` +
+                              `• Não será cobrado de novo`,
+                          )
+                        )
+                          return;
+                        const reason = window.prompt("Motivo (opcional, fica no audit log):") ?? undefined;
+                        cancelSub.mutate({
+                          subscriptionId: o.stripe_subscription_id!,
+                          reason: reason || undefined,
+                        });
+                      }}
+                    >
+                      <Ban className="w-4 h-4" />
+                      {cancelSub.isPending ? "Cancelando…" : "Cancelar (fim do ciclo)"}
+                    </Button>
+                  )}
+
+                {o.stripe_subscription_id && o.stripe_cancel_at_period_end && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-amber-500 self-center font-semibold">
+                      ⏳ Cancela em{" "}
+                      {o.stripe_period_end
+                        ? new Date(o.stripe_period_end).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={resumeSub.isPending}
+                      onClick={() =>
+                        resumeSub.mutate({ subscriptionId: o.stripe_subscription_id! })
+                      }
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Reativar
+                    </Button>
+                  </div>
+                )}
+
                 {o.shortage === 0 && (
                   <span className="text-xs text-muted-foreground self-center">
                     Pedido completo.

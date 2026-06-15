@@ -5,9 +5,19 @@ import { useEffect, useState } from "react";
 import {
   Activity, DollarSign, TrendingUp, Users, AlertTriangle, RefreshCw, CreditCard,
   CheckCircle2, XCircle, Repeat, AlertCircle, ShieldAlert, Clock, ExternalLink,
+  Ban, RotateCcw,
 } from "lucide-react";
-import { getStripeKpis, listStripeEvents, syncStripeBackfill } from "@/lib/admin-stripe.functions";
+import { toast } from "sonner";
+import {
+  getStripeKpis,
+  listStripeEvents,
+  syncStripeBackfill,
+  listActiveStripeSubscriptions,
+  adminCancelSubscriptionAtPeriodEnd,
+  adminResumeSubscription,
+} from "@/lib/admin-stripe.functions";
 import { supabase } from "@/lib/supabase-custom/client";
+
 
 export const Route = createFileRoute("/_authenticated/admin/stripe")({
   component: AdminStripePage,
@@ -88,6 +98,39 @@ function AdminStripePage() {
     },
   });
 
+  const fetchSubs = useServerFn(listActiveStripeSubscriptions);
+  const cancelFn = useServerFn(adminCancelSubscriptionAtPeriodEnd);
+  const resumeFn = useServerFn(adminResumeSubscription);
+
+  const subs = useQuery({
+    queryKey: ["admin-stripe-active-subs"],
+    queryFn: () => fetchSubs({ data: { limit: 50 } }),
+    refetchInterval: 60_000,
+  });
+
+  const cancelSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string; reason?: string }) => cancelFn({ data: vars }),
+    onSuccess: (r) => {
+      const when = r.current_period_end
+        ? new Date(r.current_period_end).toLocaleDateString("pt-BR")
+        : "fim do ciclo";
+      toast.success(`Cancelará em ${when}. Sem reembolso, cliente mantém acesso até lá.`);
+      qc.invalidateQueries({ queryKey: ["admin-stripe-active-subs"] });
+      qc.invalidateQueries({ queryKey: ["admin-stripe-kpis"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resumeSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string }) => resumeFn({ data: vars }),
+    onSuccess: () => {
+      toast.success("Cancelamento revertido.");
+      qc.invalidateQueries({ queryKey: ["admin-stripe-active-subs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   // Realtime: novos eventos chegando → revalida lista e KPIs
   useEffect(() => {
     const channel = supabase
@@ -152,7 +195,112 @@ function AdminStripePage() {
         <Kpi label="Saldo Stripe" value={fmtBRL(k?.balance_available_cents ?? 0, ccy)} hint={`+ ${fmtBRL(k?.balance_pending_cents ?? 0, ccy)} pendente`} icon={DollarSign} />
       </div>
 
+      {/* Assinaturas ativas */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="font-bold">Assinaturas ativas</h3>
+          <p className="text-xs text-muted-foreground">
+            Cancelar aqui agenda o término no fim do ciclo atual — sem reembolso, cliente mantém acesso até a data.
+          </p>
+        </div>
+
+        {subs.isLoading ? (
+          <div className="p-10 text-center text-sm text-muted-foreground">Carregando…</div>
+        ) : (subs.data?.length ?? 0) === 0 ? (
+          <div className="p-10 text-center text-sm text-muted-foreground">
+            Nenhuma assinatura ativa.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase text-muted-foreground bg-foreground/5">
+                <tr>
+                  <th className="text-left px-4 py-2 font-semibold">Cliente</th>
+                  <th className="text-left px-4 py-2 font-semibold">Produto</th>
+                  <th className="text-left px-4 py-2 font-semibold">Valor</th>
+                  <th className="text-left px-4 py-2 font-semibold">Status</th>
+                  <th className="text-left px-4 py-2 font-semibold">Próxima cobrança</th>
+                  <th className="text-right px-4 py-2 font-semibold">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {(subs.data ?? []).map((s) => {
+                  const statusColor =
+                    s.status === "active" || s.status === "trialing"
+                      ? "text-emerald-500"
+                      : s.status === "past_due"
+                        ? "text-amber-500"
+                        : "text-muted-foreground";
+                  return (
+                    <tr key={s.id} className="hover:bg-foreground/5">
+                      <td className="px-4 py-2">
+                        <div className="font-semibold">{s.customer_email ?? "—"}</div>
+                        <div className="text-[11px] font-mono text-muted-foreground">{s.id.slice(0, 18)}…</div>
+                      </td>
+                      <td className="px-4 py-2">{s.product_name ?? "—"}</td>
+                      <td className="px-4 py-2 font-semibold">
+                        {s.amount_cents != null
+                          ? `${fmtBRL(s.amount_cents, (s.currency ?? "brl").toUpperCase())}${s.interval ? `/${s.interval === "month" ? "mês" : s.interval}` : ""}`
+                          : "—"}
+                      </td>
+                      <td className={`px-4 py-2 font-semibold ${statusColor}`}>
+                        {s.status}
+                        {s.cancel_at_period_end && (
+                          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/15 text-amber-500">
+                            cancela
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {s.current_period_end
+                          ? new Date(s.current_period_end).toLocaleDateString("pt-BR")
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {s.cancel_at_period_end ? (
+                          <button
+                            disabled={resumeSub.isPending}
+                            onClick={() => resumeSub.mutate({ subscriptionId: s.id })}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border text-xs font-semibold hover:bg-foreground/5 disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Reativar
+                          </button>
+                        ) : (
+                          <button
+                            disabled={cancelSub.isPending}
+                            onClick={() => {
+                              const when = s.current_period_end
+                                ? new Date(s.current_period_end).toLocaleDateString("pt-BR")
+                                : "fim do ciclo";
+                              if (
+                                !window.confirm(
+                                  `Cancelar a assinatura no fim do ciclo (${when})?\n\n` +
+                                    `• Sem reembolso\n` +
+                                    `• Cliente mantém acesso até ${when}\n` +
+                                    `• Não será cobrado novamente`,
+                                )
+                              )
+                                return;
+                              const reason = window.prompt("Motivo (opcional):") ?? undefined;
+                              cancelSub.mutate({ subscriptionId: s.id, reason: reason || undefined });
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-destructive/40 text-destructive text-xs font-semibold hover:bg-destructive/10 disabled:opacity-50"
+                          >
+                            <Ban className="w-3.5 h-3.5" /> Cancelar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Feed */}
+
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border flex-wrap">
           <div>

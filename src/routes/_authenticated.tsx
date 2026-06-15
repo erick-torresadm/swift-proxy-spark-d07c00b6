@@ -28,6 +28,7 @@ const navItems = [
   { to: "/dashboard/orders", label: "Pedidos", icon: Receipt },
   { to: "/dashboard/notificacoes", label: "Notificações", icon: Bell },
   { to: "/dashboard/settings", label: "Configurações", icon: Settings },
+  { to: "/dashboard/cancelar", label: "Cancelar assinatura", icon: XCircle },
 ] as const;
 
 

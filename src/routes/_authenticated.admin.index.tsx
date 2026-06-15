@@ -129,12 +129,56 @@ function AdminOverview() {
         </div>
       </section>
 
+      {/* MRR por produto */}
+      {s && s.mrr_by_product.length > 0 && (
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+            MRR por produto (ativos)
+          </h3>
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/30 text-left text-[11px] uppercase font-bold text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2">Produto</th>
+                  <th className="px-4 py-2 text-right">Assinaturas</th>
+                  <th className="px-4 py-2 text-right">MRR</th>
+                  <th className="px-4 py-2 text-right">% do total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.mrr_by_product.map((p) => {
+                  const pct = s.mrr_cents > 0 ? (p.mrr_cents / s.mrr_cents) * 100 : 0;
+                  return (
+                    <tr key={p.product_id} className="border-t border-border">
+                      <td className="px-4 py-2 font-semibold">{p.name}</td>
+                      <td className="px-4 py-2 text-right">{p.subs}</td>
+                      <td className="px-4 py-2 text-right font-bold text-emerald-500">
+                        {fmtBRL(p.mrr_cents)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">
+                        {pct.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="border-t border-border bg-muted/20 font-bold">
+                  <td className="px-4 py-2">Total</td>
+                  <td className="px-4 py-2 text-right">{s.active_subs}</td>
+                  <td className="px-4 py-2 text-right text-emerald-500">{fmtBRL(s.mrr_cents)}</td>
+                  <td className="px-4 py-2 text-right">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* Clientes */}
       <section>
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
           Clientes
         </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Clientes Stripe"
             value={s?.customers ?? "—"}
@@ -152,8 +196,17 @@ function AdminOverview() {
             value={data?.active_proxies ?? "—"}
             icon={Activity}
           />
+          <StatCard
+            label="Cancelados"
+            value={s?.canceled_subs ?? "—"}
+            hint="Assinaturas a recuperar"
+            icon={UserCheck}
+            accent={(s?.canceled_subs ?? 0) > 0 ? "warn" : undefined}
+            to="/admin/cancelados"
+          />
         </div>
       </section>
+
 
       {/* Estoque */}
       <section>

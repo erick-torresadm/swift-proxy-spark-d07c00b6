@@ -335,16 +335,19 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
 
         let stripeStatus: string | null = null;
         let stripePeriodEnd: string | null = null;
+        let stripeCancelAtPeriodEnd = false;
         if (stripe && o.stripe_subscription_id) {
           try {
             const sub = await stripe.subscriptions.retrieve(o.stripe_subscription_id);
             stripeStatus = sub.status;
             const ts = (sub as unknown as { current_period_end?: number }).current_period_end;
             if (ts) stripePeriodEnd = new Date(ts * 1000).toISOString();
+            stripeCancelAtPeriodEnd = !!(sub as unknown as { cancel_at_period_end?: boolean }).cancel_at_period_end;
           } catch (e) {
             stripeStatus = `error: ${e instanceof Error ? e.message : "unknown"}`;
           }
         }
+
 
         return {
           id: o.id,

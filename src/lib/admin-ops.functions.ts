@@ -367,9 +367,11 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
           available_stock: availableStock,
           stripe_status: stripeStatus,
           stripe_period_end: stripePeriodEnd,
+          stripe_cancel_at_period_end: stripeCancelAtPeriodEnd,
         };
       }),
     );
+
 
     return {
       profile: profile ?? { user_id: data.userId, full_name: null, phone: null, created_at: null },

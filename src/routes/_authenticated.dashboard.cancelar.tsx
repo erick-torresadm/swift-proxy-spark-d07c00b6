@@ -327,11 +327,11 @@ function CancelPage() {
 
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => mutation.mutate()}
+                  onClick={() => setShowRetention(true)}
                   disabled={!reason || !confirmed || mutation.isPending}
                   className="px-5 py-2.5 rounded-lg bg-destructive text-destructive-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {mutation.isPending ? "Processando…" : immediate ? "Cancelar agora" : "Confirmar cancelamento"}
+                  {immediate ? "Cancelar agora" : "Confirmar cancelamento"}
                 </button>
                 <Link
                   to="/dashboard"
@@ -343,6 +343,52 @@ function CancelPage() {
             </>
           )}
         </>
+      )}
+
+      {/* Modal de oferta de retenção */}
+      {showRetention && selected && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-primary/40 rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Oferta exclusiva
+            </div>
+            <div className="text-center mb-5 mt-2">
+              <Gift className="w-12 h-12 text-primary mx-auto mb-3" />
+              <h2 className="text-2xl font-black mb-2">Espera! Que tal 30% OFF?</h2>
+              <p className="text-sm text-muted-foreground">
+                Sabemos que cada centavo conta. Aplicamos <strong className="text-primary">30% de desconto</strong> automaticamente na sua <strong>próxima fatura</strong> — sem letras miúdas, sem precisar de cupom.
+              </p>
+            </div>
+
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-5 text-sm">
+              <div className="flex justify-between mb-1">
+                <span className="text-muted-foreground">Valor da próxima fatura</span>
+                <span className="line-through text-muted-foreground">{formatBRL(selected.amount_cents)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-primary">
+                <span>Com o desconto</span>
+                <span>{formatBRL(Math.round(selected.amount_cents * 0.7))}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => retentionMutation.mutate()}
+                disabled={retentionMutation.isPending || mutation.isPending}
+                className="w-full px-5 py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition disabled:opacity-40"
+              >
+                {retentionMutation.isPending ? "Aplicando…" : "Quero o desconto de 30%"}
+              </button>
+              <button
+                onClick={() => mutation.mutate()}
+                disabled={retentionMutation.isPending || mutation.isPending}
+                className="w-full px-5 py-2.5 rounded-lg border border-border text-muted-foreground font-medium text-xs hover:text-foreground hover:bg-foreground/5 transition disabled:opacity-40"
+              >
+                {mutation.isPending ? "Cancelando…" : "Não, quero cancelar mesmo assim"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

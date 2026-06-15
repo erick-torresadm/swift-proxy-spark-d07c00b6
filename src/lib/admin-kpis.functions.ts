@@ -158,9 +158,9 @@ export const getAdminKpis = createServerFn({ method: "GET" })
       db_past_due: dbPastDue ?? 0,
       generated_at: new Date().toISOString(),
     };
-    setCache("kpis", result);
     return result;
   });
+
 
 // ============== Inadimplentes ==============
 

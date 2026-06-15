@@ -44,8 +44,33 @@ function CustomerDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const cancelFn = useServerFn(adminCancelSubscriptionAtPeriodEnd);
+  const resumeFn = useServerFn(adminResumeSubscription);
+
+  const cancelSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string; reason?: string }) => cancelFn({ data: vars }),
+    onSuccess: (r) => {
+      const when = r.current_period_end
+        ? new Date(r.current_period_end).toLocaleDateString("pt-BR")
+        : "fim do ciclo";
+      toast.success(`Assinatura será cancelada em ${when}. Cliente mantém acesso até lá, sem nova cobrança.`);
+      qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resumeSub = useMutation({
+    mutationFn: (vars: { subscriptionId: string }) => resumeFn({ data: vars }),
+    onSuccess: () => {
+      toast.success("Cancelamento revertido — a assinatura continua ativa.");
+      qc.invalidateQueries({ queryKey: ["admin-customer-detail", userId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const [pickerOrderId, setPickerOrderId] = useState<string | null>(null);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;

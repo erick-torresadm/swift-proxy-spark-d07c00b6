@@ -106,17 +106,29 @@ function CancelPage() {
     return (
       <div className="max-w-2xl">
         <div className="bg-card border border-border rounded-2xl p-8 text-center">
-          <CheckCircle2 className="w-12 h-12 text-primary mx-auto mb-3" />
-          <h1 className="text-2xl font-black mb-2">Pronto, recebemos seu pedido</h1>
-          <p className="text-muted-foreground mb-6">
-            {done.immediate ? (
-              <>Sua assinatura foi cancelada agora e os proxies foram liberados.</>
-            ) : (
-              <>
-                Você mantém acesso até <strong>{formatDate(done.effective_at)}</strong>. Nada será cobrado depois disso.
-              </>
-            )}
-          </p>
+          {done.retention ? (
+            <>
+              <Gift className="w-12 h-12 text-primary mx-auto mb-3" />
+              <h1 className="text-2xl font-black mb-2">Que ótimo! Desconto aplicado 🎉</h1>
+              <p className="text-muted-foreground mb-6">
+                <strong>30% OFF</strong> foram aplicados na sua próxima fatura automaticamente. Você não precisa fazer mais nada — a cobrança do próximo ciclo já vem com o desconto.
+              </p>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-12 h-12 text-primary mx-auto mb-3" />
+              <h1 className="text-2xl font-black mb-2">Pronto, recebemos seu pedido</h1>
+              <p className="text-muted-foreground mb-6">
+                {done.immediate ? (
+                  <>Sua assinatura foi cancelada agora e os proxies foram liberados.</>
+                ) : (
+                  <>
+                    Você mantém acesso até <strong>{formatDate(done.effective_at)}</strong>. Nada será cobrado depois disso.
+                  </>
+                )}
+              </p>
+            </>
+          )}
           <Link
             to="/dashboard"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition"

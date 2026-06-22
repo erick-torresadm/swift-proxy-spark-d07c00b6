@@ -131,19 +131,11 @@ function AdminStripePage() {
   });
 
 
-  // Realtime: novos eventos chegando → revalida lista e KPIs
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-stripe-events")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "stripe_events" }, () => {
-        qc.invalidateQueries({ queryKey: ["admin-stripe-events"] });
-        qc.invalidateQueries({ queryKey: ["admin-stripe-kpis"] });
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
+  // Live updates come from the 30s polling above (refetchInterval on the
+  // events/KPIs queries). The stripe_events table is no longer broadcast via
+  // Realtime — it carried sensitive Stripe payloads — so we don't subscribe
+  // to postgres_changes here.
+
 
   const k = kpis.data;
   const ccy = k?.balance_currency ?? "BRL";

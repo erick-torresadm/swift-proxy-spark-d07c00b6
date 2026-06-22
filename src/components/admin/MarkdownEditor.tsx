@@ -1,8 +1,8 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import {
   Bold, Italic, Link as LinkIcon, Heading2, Heading3, List, ListOrdered,
   Quote, Code, Image as ImageIcon, Minus, Strikethrough, Table as TableIcon,
-  CheckSquare,
+  CheckSquare, ExternalLink, X,
 } from "lucide-react";
 
 type Props = {
@@ -30,6 +30,14 @@ type EditorAPI = {
 
 export function MarkdownEditor({ value, onChange, placeholder, minHeight = 420 }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [dialog, setDialog] = useState<{
+    open: boolean;
+    url: string;
+    text: string;
+    newTab: boolean;
+    selectionStart: number;
+    selectionEnd: number;
+  }>({ open: false, url: "https://", text: "", newTab: true, selectionStart: 0, selectionEnd: 0 });
 
   const setValueWithSelection = (next: string, selStart: number, selEnd: number) => {
     onChange(next);
@@ -88,12 +96,14 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 420 }
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
       const selected = value.slice(start, end);
-      const url = window.prompt("URL do link:", "https://");
-      if (!url) return;
-      const text = selected || window.prompt("Texto do link:", "") || url;
-      const md = `[${text}](${url})`;
-      const next = value.slice(0, start) + md + value.slice(end);
-      setValueWithSelection(next, start + md.length, start + md.length);
+      setDialog({
+        open: true,
+        url: "https://",
+        text: selected,
+        newTab: true,
+        selectionStart: start,
+        selectionEnd: end,
+      });
     },
     image: () => {
       const url = window.prompt("URL da imagem:", "https://");
@@ -107,6 +117,23 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 420 }
       );
     },
   };
+
+  const applyLink = () => {
+    if (!dialog.open) return;
+    const { selectionStart, selectionEnd, url, text, newTab } = dialog;
+    const linkText = text.trim() || url;
+    let insert = "";
+    if (newTab) {
+      insert = `<a href="${url}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+    } else {
+      insert = `[${linkText}](${url})`;
+    }
+    const next = value.slice(0, selectionStart) + insert + value.slice(selectionEnd);
+    setValueWithSelection(next, selectionStart + insert.length, selectionStart + insert.length);
+    setDialog((d) => ({ ...d, open: false }));
+  };
+
+  const closeDialog = () => setDialog((d) => ({ ...d, open: false }));
 
   const actions: Action[] = [
     { icon: Heading2, label: "Título H2", shortcut: "Ctrl+2", run: (a) => a.linePrefix("## ") },
@@ -157,16 +184,24 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 420 }
       if (/^https?:\/\/\S+$/i.test(text.trim())) {
         e.preventDefault();
         const selected = value.slice(start, end);
-        const md = `[${selected}](${text.trim()})`;
-        const next = value.slice(0, start) + md + value.slice(end);
-        setValueWithSelection(next, start + md.length, start + md.length);
+        const url = text.trim();
+        const isExternal = !url.includes(window.location.hostname);
+        if (isExternal) {
+          const insert = `<a href="${url}" target="_blank" rel="noopener noreferrer">${selected}</a>`;
+          const next = value.slice(0, start) + insert + value.slice(end);
+          setValueWithSelection(next, start + insert.length, start + insert.length);
+        } else {
+          const md = `[${selected}](${url})`;
+          const next = value.slice(0, start) + md + value.slice(end);
+          setValueWithSelection(next, start + md.length, start + md.length);
+        }
       }
     },
     [value],
   );
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden bg-background">
+    <div className="border border-border rounded-lg overflow-hidden bg-background relative">
       <div className="flex flex-wrap items-center gap-0.5 px-1.5 py-1.5 border-b border-border bg-card/50">
         {actions.map((a, i) => (
           <button
@@ -183,6 +218,7 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 420 }
           Markdown · Ctrl+B/I/K · cole URL sobre texto p/ virar link
         </span>
       </div>
+
       <textarea
         ref={ref}
         value={value}
@@ -193,6 +229,85 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 420 }
         style={{ minHeight }}
         className="w-full bg-background px-3 py-2 text-sm font-mono outline-none resize-y"
       />
+
+      {dialog.open && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <LinkIcon className="w-4 h-4 text-primary" />
+                Inserir link
+              </h3>
+              <button
+                type="button"
+                onClick={closeDialog}
+                className="p-1 rounded-md hover:bg-foreground/10 text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">URL</label>
+                <input
+                  type="text"
+                  value={dialog.url}
+                  onChange={(e) => setDialog((d) => ({ ...d, url: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === "Enter") applyLink(); }}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                  placeholder="https://"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Texto do link</label>
+                <input
+                  type="text"
+                  value={dialog.text}
+                  onChange={(e) => setDialog((d) => ({ ...d, text: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === "Enter") applyLink(); }}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                  placeholder="Clique aqui"
+                />
+              </div>
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={dialog.newTab}
+                  onChange={(e) => setDialog((d) => ({ ...d, newTab: e.target.checked }))}
+                  className="rounded border-border"
+                />
+                <span className="flex items-center gap-1.5">
+                  Abrir em nova aba
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                </span>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Dica: links externos (Dolphin, Facebook etc.) ficam no blog; CTAs internos (checkout, venda) podem permanecer na mesma aba.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={closeDialog}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:bg-foreground/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={applyLink}
+                disabled={!dialog.url.trim()}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                Inserir link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

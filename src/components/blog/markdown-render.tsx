@@ -5,6 +5,25 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeRaw from "rehype-raw";
 
+const INTERNAL_HOSTS = new Set([
+  "fastproxy.com.br",
+  "www.fastproxy.com.br",
+  "swift-proxy-spark.lovable.app",
+  "id-preview--22278c7a-6a44-4eed-8709-90b11bbbb809.lovable.app",
+  "localhost",
+]);
+
+function isExternalHref(href: string | undefined): boolean {
+  if (!href) return false;
+  if (!/^https?:\/\//i.test(href)) return false;
+  try {
+    const url = new URL(href);
+    return !INTERNAL_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Sanitize schema extension: permite IDs em headings (necessário p/ TOC e
  * deep-links), a classe `anchor` que o autolink injeta, e target/rel nos

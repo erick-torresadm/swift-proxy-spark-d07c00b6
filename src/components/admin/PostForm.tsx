@@ -14,6 +14,7 @@ import {
   aiGenerateBlog,
 } from "@/lib/blog.functions";
 import { MarkdownRender } from "@/components/blog/markdown-render";
+import { MarkdownEditor } from "@/components/admin/MarkdownEditor";
 
 type Category = { id: string; slug: string; name: string };
 type Tag = { id: string; slug: string; name: string };
@@ -289,10 +290,9 @@ export function PostForm({
                   </div>
                 }
               >
-                <textarea
+                <MarkdownEditor
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono min-h-[420px]"
+                  onChange={setContent}
                   placeholder={"# Título\n\nSeu conteúdo em **markdown**..."}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">

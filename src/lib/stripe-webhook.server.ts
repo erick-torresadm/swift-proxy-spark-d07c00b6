@@ -310,6 +310,31 @@ async function handlePaidInvoice(inv: Stripe.Invoice) {
     dedupeKey: `renewal:${inv.id}`,
   });
 
+  // Meta CAPI: count renewal as a Purchase (server-only, no Pixel pair)
+  try {
+    const { sendCapiEvent } = await import("@/lib/meta-capi.server");
+    await sendCapiEvent({
+      event_name: "Purchase",
+      event_id: `renewal_${inv.id}`,
+      action_source: "system_generated",
+      user_data: { email: before.customer_email ?? null },
+      custom_data: {
+        value: amountCents / 100,
+        currency: (inv.currency ?? "brl").toUpperCase(),
+        content_ids: [prod?.slug ?? "order"],
+        content_name: prod?.name,
+        content_type: "product",
+        contents: [{ id: prod?.slug ?? "order", quantity: before.quantity ?? 1, item_price: amountCents / Math.max(1, before.quantity ?? 1) / 100 }],
+        num_items: before.quantity ?? 1,
+        order_id: before.id,
+        renewal: true,
+      },
+    });
+  } catch (err) {
+    await logAudit("meta_capi_renewal", "error", { invoiceId: inv.id }, err instanceof Error ? err.message : String(err));
+  }
+
+
   try {
     const result = await renewProxyBlocksForOrder(before.id);
     if (result.renewed_proxies > 0) {

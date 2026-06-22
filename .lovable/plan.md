@@ -1,97 +1,69 @@
-# Painel admin com dados reais do Stripe — tempo real
+# Públicos recomendados para FastProxy (Meta Ads)
 
-## O que você vai ver
+Nota: isso é estratégia de mídia, não mudança de código. O Pixel `1916111822410804` e o CAPI já estão rastreando `PageView`, `ViewContent`, `InitiateCheckout` e `Purchase` (com dedupe). Use `test_event_code=TEST12152` no Events Manager → Test Events para validar.
 
-Uma nova página **`/admin/stripe`** mostrando, ao vivo, tudo que acontece na sua conta Stripe — sem precisar abrir o dashboard deles.
+## 1. Públicos personalizados (Custom Audiences) — criar primeiro
 
-### Cards de KPI (período: hoje / 7d / 30d, com seletor)
-- **Receita líquida** — somatório de pagamentos confirmados
-- **MRR** (receita recorrente mensal) — soma de assinaturas ativas normalizadas para mês
-- **Assinaturas ativas** / **trial** / **past_due** / **canceladas no período**
-- **Churn %** (no período)
-- **Ticket médio**
-- **Reembolsos** (qtd + valor)
-- **Disputas/chargebacks** abertos (qtd + valor)
-- **Saldo Stripe disponível** + **a caminho** (payout pendente)
-- **Cupons** mais usados no período
+Crie no Events Manager → Públicos:
 
-### Feed "Tudo que acontece" (tempo real)
-Lista cronológica das últimas 50 atividades, com filtro por tipo e badge colorida:
-- ✅ Venda nova (`checkout.session.completed`)
-- 🔁 Renovação paga (`invoice.payment_succeeded` recorrente)
-- ⚠️ Falha de pagamento (`invoice.payment_failed`)
-- 💸 Reembolso (`charge.refunded`)
-- ⛔ Cancelamento (`customer.subscription.deleted`)
-- 🚨 Disputa aberta (`charge.dispute.created`)
-- 🔄 Plano alterado (`customer.subscription.updated`)
-- 🧾 Recibo emitido
+- **Visitantes do site (180 dias)** — todos do Pixel
+- **ViewContent 30/60/90 dias** — interessados quentes
+- **InitiateCheckout 30/60/90 dias** — alta intenção, não compraram (excluir Purchase)
+- **Compradores 180 dias** — base para Lookalike e exclusão em prospecção
+- **Lista de clientes (CSV)** — exportar e-mails/telefones do banco e subir (hash automático)
 
-Cada item: data/hora, cliente (e-mail), produto, valor, link pro pedido interno + link "Ver no Stripe".
+## 2. Lookalikes (LAL) — escalar
 
-### Tabela de pedidos enriquecida
-Na tabela admin já existente: colunas novas com **última fatura**, **próxima cobrança**, **método de pagamento** (Visa •••• 4242), **link direto pra fatura/recibo no Stripe**.
+A partir das custom audiences acima, no Brasil:
 
-## Como funciona (parte técnica)
+- LAL 1% de **Compradores** (melhor sinal — priorizar quando tiver 100+ compradores)
+- LAL 1% de **InitiateCheckout**
+- LAL 1-3% de **ViewContent 90d** (volume enquanto a base de compra é pequena)
 
-### 1. Tabela nova `stripe_events`
-Migration cria:
+## 3. Prospecção fria (Direcionamento detalhado)
+
+Idade **22–55**, todos os gêneros, Brasil. Interesses/comportamentos sugeridos (testar em ad sets separados):
+
+**Tech / proxy / dev**
+- Desenvolvimento web, Python (linguagem), Web scraping, API, GitHub, Stack Overflow, Linux, VPN, Cibersegurança
+
+**Marketing digital / automação**
+- Marketing de afiliados, Tráfego pago, SEO, Growth hacking, Dropshipping, E-commerce, Shopify, Mercado Livre
+
+**Crypto / trading / sneakers (casos de uso comuns de proxy)**
+- Criptomoeda, Bitcoin, Binance, Day trading, Sneakers, Hype
+
+**Social media managers / bots**
+- Instagram marketing, TikTok marketing, Gestão de redes sociais, Automação
+
+**Cargos (B2B)**
+- Desenvolvedor de software, Engenheiro de dados, Analista de marketing, Growth, SEO specialist, Afiliado
+
+## 4. Estrutura de campanha recomendada
+
+```text
+Campanha PURCHASE (CBO ou Advantage+)
+├── Ad set: Retargeting quente
+│    público: IC 30d + VC 30d, EXCLUI Compradores 180d
+├── Ad set: LAL 1% Compradores BR
+│    EXCLUI Visitantes 30d
+├── Ad set: LAL 1% IC BR
+│    EXCLUI Visitantes 30d
+├── Ad set: Interesses tech/dev BR
+└── Ad set: Interesses marketing/afiliados BR
 ```
-stripe_events (
-  id text PK,              -- evt_xxx (idempotência)
-  type text,
-  created_at timestamptz,
-  customer_email text,
-  amount_cents int,
-  currency text,
-  order_id uuid,
-  subscription_id text,
-  invoice_id text,
-  charge_id text,
-  raw jsonb,
-  processed_at timestamptz
-)
-```
-+ RLS (só admin lê via `is_staff`), GRANTs, índice por `created_at desc` e por `type`.
-+ Realtime habilitado nessa tabela (`ALTER PUBLICATION supabase_realtime ADD TABLE`).
 
-### 2. Webhook ampliado (`src/lib/stripe-webhook.server.ts`)
-Adiciono handlers que faltam:
-- `charge.refunded` → grava evento + notifica admin + marca order
-- `charge.dispute.created` / `dispute.closed` → notifica admin (alta prioridade)
-- `customer.subscription.updated` → detecta troca de plano, upgrade/downgrade
-- `customer.subscription.trial_will_end` → aviso 3 dias antes
-- `invoice.upcoming` → próxima cobrança
-- `payment_intent.succeeded` / `payment_intent.payment_failed` → cobre pagamentos avulsos (futuro EFI/pix one-off via Stripe também)
+Otimização: **Compra** (com CAPI ativo, o sinal é forte mesmo com pouco volume). Atribuição padrão 7d-click / 1d-view.
 
-Todo evento processado é **gravado em `stripe_events`** (upsert por `id` → idempotente) e dispara `notifyAllAdmins` quando relevante.
+## 5. Exclusões obrigatórias em prospecção
+- Compradores 180d
+- Visitantes 30d (em LAL, para não canibalizar retarget)
 
-### 3. Server functions novas (`src/lib/admin-stripe.functions.ts`)
-- `getStripeKpis({ period })` — usa Stripe API: `balance.retrieve`, `subscriptions.list`, `charges.list`, `refunds.list`, `disputes.list`, agregando localmente. Cache de 60s em memória pra não estourar rate-limit.
-- `listStripeEvents({ limit, type })` — lê `stripe_events` da nossa base (rápido).
-- `getStripeMrr()` — soma de `subscriptions` ativas, normalizando ciclos (anual / 12, semestral / 6).
-- `syncStripeBackfill()` — botão "Sincronizar últimos 90 dias" que puxa eventos via `stripe.events.list` pra preencher histórico inicial.
+## 6. Sobre os campos da tela atual
 
-Todas com `requireSupabaseAuth` + checagem `has_role(admin)`.
+- **Idade 18–50** sugerida pelo Meta → ajuste para **22–55** (público B2B/tech compra mais nessa faixa).
+- **Gênero**: manter todos.
+- **Direcionamento detalhado**: NÃO deixar aberto no início; use 1–2 interesses por ad set para o algoritmo aprender. Depois de 50 compras/semana, pode testar Advantage+ sem interesses.
 
-### 4. Página `/admin/stripe`
-- Loader prima KPIs e feed
-- `useQuery` com `refetchInterval: 30000`
-- **Realtime channel** assinando `stripe_events` → quando chega um INSERT, faz `queryClient.invalidateQueries(['admin-stripe'])` → painel atualiza sozinho
-- Push notification via VAPID já está pronto no projeto, então admin recebe no celular/desktop mesmo com aba fechada
-
-### 5. Link no menu admin
-Adiciono "Stripe" no nav admin entre "Pedidos" e "Cupons", com badge mostrando eventos não lidos das últimas 24h.
-
-## Arquivos tocados
-- `supabase/migrations/<novo>.sql` — tabela `stripe_events` + RLS + realtime
-- `src/lib/stripe-webhook.server.ts` — novos eventos + gravação em `stripe_events`
-- `src/lib/admin-stripe.functions.ts` — **novo**
-- `src/routes/_authenticated.admin.stripe.tsx` — **novo**
-- `src/components/admin/StripeEventFeed.tsx` — **novo**
-- `src/components/admin/StripeKpiCards.tsx` — **novo**
-- nav admin existente (1 link)
-
-## Fora do escopo (faço depois se pedir)
-- Gráficos históricos (linha de receita por dia) — começa com cards e feed, gráfico vem na v2
-- Painel do cliente — você pediu só o admin agora
-- Conexão com EFI — fica em standby como combinado
+## Próximo passo
+Quer que eu crie um endpoint server-side para exportar a lista de clientes (CSV com e-mail + telefone hasheados em SHA-256) pronta para subir como Custom Audience no Meta?

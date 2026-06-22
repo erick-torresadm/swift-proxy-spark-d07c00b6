@@ -121,6 +121,32 @@ function SuccessPage() {
   const isPaid = order?.status === "paid";
   const isLoggedIn = !!user && !authLoading;
 
+  // Fire Pixel Purchase exactly once per order, deduped against CAPI by event_id
+  useEffect(() => {
+    if (!isPaid || !order || !orderId) return;
+    const key = `fbq_purchase_sent_${orderId}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* ignore */
+    }
+    pixelTrack(
+      "Purchase",
+      {
+        value: order.amount_cents / 100,
+        currency: "BRL",
+        content_ids: [order.product_slug ?? "order"],
+        content_type: "product",
+        contents: [{ id: order.product_slug ?? "order", quantity: order.quantity, item_price: order.amount_cents / order.quantity / 100 }],
+        num_items: order.quantity,
+        order_id: orderId,
+      },
+      { eventID: purchaseEventId(orderId) },
+    );
+  }, [isPaid, order, orderId]);
+
+
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-5 py-14">
       <motion.div

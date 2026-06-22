@@ -18,6 +18,7 @@ import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { validateCouponPublic } from "@/lib/coupons.functions";
 import { getPublicCatalog } from "@/lib/catalog.functions";
+import { pixelTrack } from "@/lib/meta-pixel";
 
 type Slug =
   | "ipv6-br" | "ipv6-us"
@@ -303,6 +304,15 @@ function CheckoutPage() {
     }
     setSubmitting(true);
     try {
+      pixelTrack("InitiateCheckout", {
+        content_ids: [slug],
+        content_name: item.name,
+        content_type: "product",
+        contents: [{ id: slug, quantity: qty, item_price: unitCents / 100 }],
+        num_items: qty,
+        value: total / 100,
+        currency: "BRL",
+      });
       const res = await startCheckout({
         data: {
           productSlug: slug,

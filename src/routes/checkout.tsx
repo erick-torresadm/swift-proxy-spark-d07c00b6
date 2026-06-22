@@ -213,6 +213,20 @@ function CheckoutPage() {
   const total = Math.max(0, subtotal - discount);
   const ipsTotal = qty * item.blockSize;
 
+  // Fire ViewContent when the user lands on /checkout with a chosen plan
+  useEffect(() => {
+    pixelTrack("ViewContent", {
+      content_ids: [slug],
+      content_name: item.name,
+      content_type: "product",
+      value: unitCents / 100,
+      currency: "BRL",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, billing]);
+
+
+
 
   // Re-validate coupon whenever the total changes
   async function applyCoupon() {

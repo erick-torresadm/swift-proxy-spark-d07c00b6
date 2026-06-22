@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import { getOrderPublicStatus, syncMyAllocations, reconcileOrderPublic } from "@/lib/dashboard.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { pixelTrack, purchaseEventId } from "@/lib/meta-pixel";
 
 const searchSchema = z.object({
   order: z.string().uuid().optional(),

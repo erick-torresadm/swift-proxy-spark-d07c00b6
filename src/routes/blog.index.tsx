@@ -2,8 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search, Clock, Eye } from "lucide-react";
+import { Search, Clock, Eye, ArrowRight } from "lucide-react";
 import { listPublishedPosts, listCategories } from "@/lib/blog.functions";
+
+const SITE = "https://www.fastproxy.com.br";
 
 export const Route = createFileRoute("/blog/")({
   component: BlogIndex,
@@ -20,9 +22,24 @@ export const Route = createFileRoute("/blog/")({
         property: "og:description",
         content: "Conteúdo técnico sobre proxies, scraping, automação e anonimato.",
       },
-      { property: "og:url", content: "https://www.fastproxy.com.br/blog" },
+      { property: "og:url", content: `${SITE}/blog` },
+      { property: "og:locale", content: "pt_BR" },
+      { property: "og:site_name", content: "FastProxy" },
     ],
-    links: [{ rel: "canonical", href: "https://www.fastproxy.com.br/blog" }],
+    links: [{ rel: "canonical", href: `${SITE}/blog` }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Blog",
+          name: "Blog FastProxy",
+          url: `${SITE}/blog`,
+          inLanguage: "pt-BR",
+          publisher: { "@type": "Organization", name: "FastProxy" },
+        }),
+      },
+    ],
   }),
 });
 
@@ -42,17 +59,28 @@ function BlogIndex() {
   });
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 12));
+  const posts = data?.posts ?? [];
+  const featured = page === 1 && !search ? posts[0] : null;
+  const rest = featured ? posts.slice(1) : posts;
 
   return (
     <div>
-      <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
-        Conteúdo que ajuda você a usar proxies do jeito certo
-      </h1>
-      <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
-        Guias, comparativos, tutoriais de scraping e dicas de anti-detecção — sem enrolação.
-      </p>
+      {/* HERO */}
+      <header className="mb-12">
+        <p className="text-xs uppercase tracking-widest text-primary font-black mb-4">
+          Blog FastProxy
+        </p>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.05] mb-5 max-w-3xl">
+          Conteúdo que ajuda você a usar proxies do jeito certo
+        </h1>
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+          Guias, comparativos, tutoriais de scraping e dicas de anti-detecção —
+          sem enrolação.
+        </p>
+      </header>
 
-      <div className="flex flex-wrap gap-3 mb-8 items-center">
+      {/* SEARCH + CATEGORIES */}
+      <div className="flex flex-wrap gap-3 mb-10 items-center">
         <div className="relative flex-1 min-w-[240px] max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -81,14 +109,63 @@ function BlogIndex() {
 
       {isLoading ? (
         <p className="text-muted-foreground">Carregando…</p>
-      ) : (data?.posts.length ?? 0) === 0 ? (
+      ) : posts.length === 0 ? (
         <div className="bg-card border border-border rounded-2xl p-10 text-center text-sm text-muted-foreground">
           Nenhum artigo encontrado.
         </div>
       ) : (
         <>
+          {/* FEATURED */}
+          {featured && (
+            <Link
+              to="/blog/$slug"
+              params={{ slug: featured.slug }}
+              className="group grid md:grid-cols-2 gap-6 lg:gap-10 bg-card border border-border rounded-3xl overflow-hidden hover:border-primary/60 transition mb-12"
+            >
+              {featured.cover_image_url && (
+                <div className="aspect-[16/10] md:aspect-auto overflow-hidden bg-background">
+                  <img
+                    src={featured.cover_image_url}
+                    alt={featured.title}
+                    loading="eager"
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                  />
+                </div>
+              )}
+              <div className="p-6 md:p-10 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-[10px] uppercase tracking-widest text-primary font-black px-2.5 py-1 rounded-full bg-primary/10">
+                    Em destaque
+                  </span>
+                  {featured.category && (
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      {featured.category.name}
+                    </span>
+                  )}
+                </div>
+                <h2 className="font-black text-2xl sm:text-3xl lg:text-4xl tracking-tight leading-tight mb-4 group-hover:text-primary transition">
+                  {featured.title}
+                </h2>
+                {featured.excerpt && (
+                  <p className="text-muted-foreground mb-6 leading-relaxed">
+                    {featured.excerpt}
+                  </p>
+                )}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> {featured.reading_time_minutes} min
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-primary font-bold ml-auto">
+                    Ler artigo <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          )}
+
+          {/* GRID */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data?.posts.map((p) => (
+            {rest.map((p) => (
               <Link
                 key={p.id}
                 to="/blog/$slug"
@@ -105,21 +182,21 @@ function BlogIndex() {
                     />
                   </div>
                 )}
-                <div className="p-5 flex flex-col flex-1">
+                <div className="p-6 flex flex-col flex-1">
                   {p.category && (
-                    <span className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-primary font-black mb-3">
                       {p.category.name}
                     </span>
                   )}
-                  <h2 className="font-black text-lg leading-tight mb-2 group-hover:text-primary transition">
+                  <h2 className="font-black text-lg leading-snug tracking-tight mb-3 group-hover:text-primary transition">
                     {p.title}
                   </h2>
                   {p.excerpt && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3 flex-1">
+                    <p className="text-sm text-muted-foreground mb-5 line-clamp-3 flex-1 leading-relaxed">
                       {p.excerpt}
                     </p>
                   )}
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground pt-3 border-t border-border">
                     <span className="inline-flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {p.reading_time_minutes} min
                     </span>
@@ -133,7 +210,7 @@ function BlogIndex() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-10">
+            <div className="flex justify-center gap-2 mt-12">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}

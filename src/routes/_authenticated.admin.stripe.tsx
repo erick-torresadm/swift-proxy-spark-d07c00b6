@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Activity, DollarSign, TrendingUp, Users, AlertTriangle, RefreshCw, CreditCard,
   CheckCircle2, XCircle, Repeat, AlertCircle, ShieldAlert, Clock, ExternalLink,
@@ -16,7 +16,7 @@ import {
   adminCancelSubscriptionAtPeriodEnd,
   adminResumeSubscription,
 } from "@/lib/admin-stripe.functions";
-import { supabase } from "@/lib/supabase-custom/client";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/stripe")({
@@ -131,19 +131,11 @@ function AdminStripePage() {
   });
 
 
-  // Realtime: novos eventos chegando → revalida lista e KPIs
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-stripe-events")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "stripe_events" }, () => {
-        qc.invalidateQueries({ queryKey: ["admin-stripe-events"] });
-        qc.invalidateQueries({ queryKey: ["admin-stripe-kpis"] });
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
+  // Live updates come from the 30s polling above (refetchInterval on the
+  // events/KPIs queries). The stripe_events table is no longer broadcast via
+  // Realtime — it carried sensitive Stripe payloads — so we don't subscribe
+  // to postgres_changes here.
+
 
   const k = kpis.data;
   const ccy = k?.balance_currency ?? "BRL";

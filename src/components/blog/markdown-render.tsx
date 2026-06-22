@@ -3,10 +3,12 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeRaw from "rehype-raw";
 
 /**
  * Sanitize schema extension: permite IDs em headings (necessário p/ TOC e
- * deep-links) e a classe `anchor` que o autolink injeta.
+ * deep-links), a classe `anchor` que o autolink injeta, e target/rel nos
+ * links para abertura em nova aba.
  */
 const schema = {
   ...defaultSchema,
@@ -20,6 +22,8 @@ const schema = {
       ...(defaultSchema.attributes?.a ?? []),
       ["className", "anchor"],
       "ariaLabel",
+      "target",
+      "rel",
     ],
     img: [
       ...(defaultSchema.attributes?.img ?? []),
@@ -86,6 +90,7 @@ export function MarkdownRender({ source }: { source: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
+          rehypeRaw,
           [rehypeSanitize, schema],
           rehypeSlug,
           [
@@ -100,6 +105,24 @@ export function MarkdownRender({ source }: { source: string }) {
           img: ({ node: _node, ...props }) => (
             <img loading="lazy" decoding="async" {...props} />
           ),
+          a: ({ node: _node, children, href, target, rel, ...props }) => {
+            const isBlank = target === "_blank";
+            return (
+              <a
+                href={href}
+                target={target}
+                rel={isBlank ? "noopener noreferrer" : rel}
+                {...props}
+              >
+                {children}
+                {isBlank && (
+                  <span className="inline-block align-middle ml-0.5 opacity-60" aria-hidden="true">
+                    ↗
+                  </span>
+                )}
+              </a>
+            );
+          },
         }}
       >
         {source}

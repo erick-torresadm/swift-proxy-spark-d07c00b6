@@ -313,7 +313,7 @@ export const clientListMyConversation = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const { data } = await context.supabase
       .from("chat_conversations")
-      .select("*")
+      .select("id, user_id, guest_token, guest_name, subject, status, last_message_at, last_message_preview, unread_client, unread_admin, assigned_admin_id, created_at, updated_at")
       .eq("user_id", context.userId)
       .in("status", ["waiting", "active"])
       .order("last_message_at", { ascending: false })

@@ -106,11 +106,11 @@ export function MarkdownRender({ source }: { source: string }) {
             <img loading="lazy" decoding="async" {...props} />
           ),
           a: ({ node: _node, children, href, target, rel, ...props }) => {
-            const isBlank = target === "_blank";
+            const isBlank = target === "_blank" || (!target && isExternalHref(href));
             return (
               <a
                 href={href}
-                target={target}
+                target={isBlank ? "_blank" : target}
                 rel={isBlank ? "noopener noreferrer" : rel}
                 {...props}
               >

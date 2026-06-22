@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Activity, DollarSign, TrendingUp, Users, AlertTriangle, RefreshCw, CreditCard,
   CheckCircle2, XCircle, Repeat, AlertCircle, ShieldAlert, Clock, ExternalLink,
@@ -16,7 +16,7 @@ import {
   adminCancelSubscriptionAtPeriodEnd,
   adminResumeSubscription,
 } from "@/lib/admin-stripe.functions";
-import { supabase } from "@/lib/supabase-custom/client";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/stripe")({

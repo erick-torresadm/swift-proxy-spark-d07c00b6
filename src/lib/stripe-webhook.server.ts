@@ -215,6 +215,52 @@ async function handleCheckoutSession(s: Stripe.Checkout.Session, eventType: stri
   for (const id of paidOrderIds) {
     await allocateOrder(id);
     await notifySale(id, eventType);
+    await sendPurchaseCapi(id, customerEmail, customerName);
+  }
+}
+
+async function sendPurchaseCapi(
+  orderId: string,
+  email: string | null,
+  name: string | null,
+) {
+  try {
+    const { data: ord } = await supabaseAdmin
+      .from("orders")
+      .select("amount_cents, quantity, customer_email, customer_name, products(slug, name)")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (!ord) return;
+    const prod = (ord as unknown as { products?: { slug?: string; name?: string } }).products ?? {};
+    const { sendCapiEvent } = await import("@/lib/meta-capi.server");
+    await sendCapiEvent({
+      event_name: "Purchase",
+      event_id: `purchase_${orderId}`,
+      action_source: "website",
+      event_source_url: "https://www.fastproxy.com.br/checkout/success",
+      user_data: {
+        email: email ?? ord.customer_email ?? null,
+        name: name ?? ord.customer_name ?? null,
+      },
+      custom_data: {
+        value: (ord.amount_cents ?? 0) / 100,
+        currency: "BRL",
+        content_ids: [prod.slug ?? "order"],
+        content_name: prod.name,
+        content_type: "product",
+        contents: [
+          {
+            id: prod.slug ?? "order",
+            quantity: ord.quantity ?? 1,
+            item_price: (ord.amount_cents ?? 0) / Math.max(1, ord.quantity ?? 1) / 100,
+          },
+        ],
+        num_items: ord.quantity ?? 1,
+        order_id: orderId,
+      },
+    });
+  } catch (err) {
+    await logAudit("meta_capi_purchase", "error", { orderId }, err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -263,6 +309,31 @@ async function handlePaidInvoice(inv: Stripe.Invoice) {
     metadata: { invoiceId: inv.id, subscriptionId, orderId: before.id, productSlug: prod?.slug },
     dedupeKey: `renewal:${inv.id}`,
   });
+
+  // Meta CAPI: count renewal as a Purchase (server-only, no Pixel pair)
+  try {
+    const { sendCapiEvent } = await import("@/lib/meta-capi.server");
+    await sendCapiEvent({
+      event_name: "Purchase",
+      event_id: `renewal_${inv.id}`,
+      action_source: "system_generated",
+      user_data: { email: before.customer_email ?? null },
+      custom_data: {
+        value: amountCents / 100,
+        currency: (inv.currency ?? "brl").toUpperCase(),
+        content_ids: [prod?.slug ?? "order"],
+        content_name: prod?.name,
+        content_type: "product",
+        contents: [{ id: prod?.slug ?? "order", quantity: before.quantity ?? 1, item_price: amountCents / Math.max(1, before.quantity ?? 1) / 100 }],
+        num_items: before.quantity ?? 1,
+        order_id: before.id,
+        renewal: true,
+      },
+    });
+  } catch (err) {
+    await logAudit("meta_capi_renewal", "error", { invoiceId: inv.id }, err instanceof Error ? err.message : String(err));
+  }
+
 
   try {
     const result = await renewProxyBlocksForOrder(before.id);

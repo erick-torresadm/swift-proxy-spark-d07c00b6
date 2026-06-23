@@ -26,7 +26,12 @@ function extract(md: string): Heading[] {
     const m = /^(#{2,3})\s+(.+?)\s*#*\s*$/.exec(line);
     if (!m) continue;
     const level = m[1].length as 2 | 3;
-    const text = m[2].replace(/[*_`]/g, "").trim();
+    const text = m[2]
+      .replace(/<[^>]+>/g, "") // strip HTML tags (e.g. <a href...>)
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1") // images -> alt
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // md links -> text
+      .replace(/[*_`]/g, "")
+      .trim();
     out.push({ id: slugify(text), text, level });
   }
   return out;

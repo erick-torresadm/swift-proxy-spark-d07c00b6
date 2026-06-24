@@ -96,3 +96,40 @@ Depois de alocar, se o estoque do produto cair **abaixo do `restock_threshold`**
 - [ ] `/proxy/list` foi sincronizado antes da compra?
 - [ ] `purchase_lock` impede duplicação?
 - [ ] Compra nova foi logada em `provider_orders` + `notifyAllAdmins`?
+
+---
+
+## 8. Consolidação de blocos (anti-desperdício)
+
+ProxySeller cobra o bloco inteiro de 10 IPs IPv6, mesmo que só 1 cliente esteja usando.
+Pra evitar pagar bloco vazio, o sistema segue duas regras:
+
+**Alocação consolidada (RPC `pick_consolidated_stock`)**
+
+Quando um novo cliente compra IPv6 BR ou US, o estoque livre é ordenado por
+**ocupação do bloco DESC** + `expires_at ASC`. Resultado:
+
+- IPs livres em blocos já parcialmente cheios são entregues primeiro.
+- Blocos completamente vazios continuam vazios → ficam prontos para abandono.
+- Resolve o caso "10 clientes compraram, 4 viraram inadimplentes, agora tenho 4 IPs livres
+  espalhados em 4 blocos diferentes": os próximos 4 clientes vão preencher esses buracos
+  em vez de criar um 5º bloco.
+
+**Renovação seletiva (`runRenewalSweep`, cron diário 09:00 UTC)**
+
+Para cada bloco IPv6 (BR ou US) expirando nos próximos 3 dias:
+
+| Ocupação | Ação |
+|----------|------|
+| `≥ 1` cliente ativo/grace | `prolong/make` no bloco inteiro · `+30 dias` |
+| `0` clientes | Abandona · marca stock como `expired` · notifica admin com US$ economizado |
+
+A função roda em **dry-run** quando `provider_settings.dry_run = true`.
+Admin pode rodar manualmente em `/admin/inventory` → "Prever renovação (3d)".
+
+**Sync completo (`runFullProviderSync`, cron horário)**
+
+Chama `/proxy/list/{kind}` para `ipv4`, `ipv6`, `isp` e ingere todo IP que o
+provedor expõe e ainda não estamos rastreando. Reconcilia `expires_at` quando o
+provedor reporta data mais nova. Botão manual em `/admin/inventory`.
+

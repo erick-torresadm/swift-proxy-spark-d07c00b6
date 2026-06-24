@@ -1023,7 +1023,7 @@ export async function runRenewalSweep(opts: {
     .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
     .lte("expires_at", cutoff)
     .gte("expires_at", nowIso)
-    .neq("status", "cancelled");
+    .in("status", ["active", "pending"]);
 
   for (const block of blocks ?? []) {
     const prod = (block as { products?: { slug: string; category: string | null; provider_tariff_id: string | null } | null }).products;

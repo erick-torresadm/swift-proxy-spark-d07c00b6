@@ -652,57 +652,63 @@ async function pickAvailableStockWithSiblings(
 ): Promise<StockPick[]> {
   if (remaining <= 0) return [];
 
-  // 1) Own product first
-  const { data: own } = await supabaseAdmin
-    .from("proxy_stock")
-    .select("id")
-    .eq("product_id", product.id)
-    .eq("status", "available")
-    .limit(remaining);
-  const picks: StockPick[] = (own ?? []).map((r) => ({ id: r.id as string }));
-  if (picks.length >= remaining) return picks.slice(0, remaining);
-
-  // 2) Sibling products in the same family + same country
+  // Build the pool: own product + siblings of the SAME family/country.
+  // For non-IPv6 families there are no siblings → pool = [product.id].
   const family = SIBLING_CATEGORIES[product.category ?? ""] ?? [];
-  if (family.length === 0 || !product.country_code) return picks;
+  let poolIds: string[] = [product.id];
+  if (family.length > 0 && product.country_code) {
+    const { data: siblings } = await supabaseAdmin
+      .from("products")
+      .select("id")
+      .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
+      .eq("country_code", product.country_code);
+    poolIds = Array.from(new Set([product.id, ...((siblings ?? []).map((s) => s.id as string))]));
+  }
 
-  const { data: siblings } = await supabaseAdmin
-    .from("products")
-    .select("id")
-    .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
-    .eq("country_code", product.country_code)
-    .neq("id", product.id);
-  const siblingIds = (siblings ?? []).map((s) => s.id as string);
-  if (siblingIds.length === 0) return picks;
+  // Consolidation RPC: returns available IPs ordered by block-occupancy DESC,
+  // then expires_at ASC. Fills partially-used blocks first so empty blocks
+  // stay empty and can be abandoned at renewal time.
+  const { data: ranked, error: rankErr } = await supabaseAdmin.rpc(
+    "pick_consolidated_stock",
+    { _product_ids: poolIds, _limit: remaining },
+  );
 
-  const need = remaining - picks.length;
-  const { data: borrowed } = await supabaseAdmin
-    .from("proxy_stock")
-    .select("id")
-    .in("product_id", siblingIds)
-    .eq("status", "available")
-    .limit(need);
+  if (rankErr) {
+    console.error("[allocation] pick_consolidated_stock failed, fallback:", rankErr);
+    const { data: fb } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, product_id")
+      .in("product_id", poolIds)
+      .eq("status", "available")
+      .limit(remaining);
+    const ids = (fb ?? []).map((r) => r.id as string);
+    const borrowed = (fb ?? [])
+      .filter((r) => r.product_id !== product.id)
+      .map((r) => r.id as string);
+    if (borrowed.length > 0) {
+      await supabaseAdmin.from("proxy_stock").update({ product_id: product.id }).in("id", borrowed);
+    }
+    return ids.map((id) => ({ id }));
+  }
 
-  const borrowedIds = (borrowed ?? []).map((r) => r.id as string);
-  if (borrowedIds.length === 0) return picks;
+  const rows = (ranked ?? []) as Array<{ stock_id: string }>;
+  if (rows.length === 0) return [];
+  const pickedIds = rows.map((r) => r.stock_id);
 
-  // Transfer ownership to current product so future accounting is correct
+  // Transfer ownership of any sibling-borrowed IPs to current product.
   const { error: mvErr } = await supabaseAdmin
     .from("proxy_stock")
     .update({ product_id: product.id })
-    .in("id", borrowedIds);
-  if (mvErr) {
-    console.error("[allocation] sibling transfer failed:", mvErr);
-    return picks;
-  }
+    .in("id", pickedIds)
+    .neq("product_id", product.id);
+  if (mvErr) console.error("[allocation] consolidation transfer failed:", mvErr);
 
   console.log(
-    `[allocation] order=${orderId} reused ${borrowedIds.length} sibling IPv6 IPs ` +
-      `(${product.category}/${product.country_code}) — avoided buying a new block`,
+    `[allocation] order=${orderId} consolidated pick ${pickedIds.length} IPs ` +
+      `(${product.category}/${product.country_code}) — prioritized occupied blocks`,
   );
 
-  for (const id of borrowedIds) picks.push({ id });
-  return picks.slice(0, remaining);
+  return pickedIds.map((id) => ({ id }));
 }
 
 /**

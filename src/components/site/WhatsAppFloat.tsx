@@ -75,7 +75,7 @@ export function WhatsAppFloat() {
         className="relative w-14 h-14 rounded-full bg-[#25D366] text-white shadow-[0_8px_28px_-6px_rgba(37,211,102,0.6)] flex items-center justify-center"
       >
         <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-30" />
-        <MessageCircle className="w-7 h-7 relative" strokeWidth={2.2} fill="currentColor" />
+        <WhatsAppIcon className="w-7 h-7 relative" />
       </motion.a>
     </div>
   );

@@ -97,16 +97,9 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
   const remaining = totalNeeded - (existing ?? 0);
 
   // ───────── 1) Pick available stock first (reuse freed IPs) ─────────
-  const { data: pool } = await supabaseAdmin
-    .from("proxy_stock")
-    .select("id")
-    .eq("product_id", product.id)
-    .eq("status", "available")
-    .limit(remaining);
+  let picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
 
-  let picks = pool ?? [];
-
-  // ───────── 2) If short → try reuse pending, then auto-purchase from provider ─────────
+  // ───────── 2) If short → reuse pending, sync provider, then auto-purchase ─────────
   // Works for any product with a provider_tariff_id (IPv6/IPv6-FB → stock,
   // IPv4/ISP → direct on-demand. Direct products typically have no stock, so
   // every paid order triggers a provider purchase here.)
@@ -119,14 +112,22 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     // 2a) Reuse recent pending provider_orders before spending more money
     const reused = await tryFulfillFromPendingOrders(product, order.id);
     if (reused > 0) {
-      const { data: pool2 } = await supabaseAdmin
-        .from("proxy_stock")
-        .select("id")
-        .eq("product_id", product.id)
-        .eq("status", "available")
-        .limit(remaining);
-      picks = pool2 ?? [];
+      picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
     }
+
+    // 2b) Sync provider's /proxy/list — pull any IPs that already exist
+    // at ProxySeller into our stock before deciding to buy a new block.
+    // This is the #1 protection against double-spending.
+    if (remaining - picks.length > 0) {
+      const synced = await syncProviderInventoryIntoStock(product).catch((e) => {
+        console.error("[allocation] provider sync failed:", e);
+        return 0;
+      });
+      if (synced > 0) {
+        picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
+      }
+    }
+
 
     const stillShortAfterReuse = remaining - picks.length;
     if (stillShortAfterReuse > 0) {

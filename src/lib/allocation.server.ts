@@ -779,7 +779,11 @@ async function syncProviderInventoryIntoStock(product: {
       `[allocation] synced ${added} pre-existing IPs from ProxySeller into stock ` +
         `for ${product.category}/${product.country_code} — avoided new block purchase`,
     );
+  }
+  return added;
 }
+
+
 
 // ─────────────────────── Full provider sync ───────────────────────
 

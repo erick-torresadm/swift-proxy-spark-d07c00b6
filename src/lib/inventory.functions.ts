@@ -77,7 +77,7 @@ export const getInventoryByProduct = createServerFn({ method: "GET" })
 
     const rows = await Promise.all(
       (products ?? []).map(async (p) => {
-        const [{ count: avail }, { count: alloc }, { data: rule }] = await Promise.all([
+        const [{ count: avail }, { count: alloc }, { data: rule }, blocksRes] = await Promise.all([
           supabaseAdmin
             .from("proxy_stock")
             .select("*", { count: "exact", head: true })
@@ -93,17 +93,78 @@ export const getInventoryByProduct = createServerFn({ method: "GET" })
             .select("min_stock, batch_quantity, enabled")
             .eq("product_id", p.id)
             .maybeSingle(),
+          supabaseAdmin
+            .from("proxy_stock")
+            .select("provider_order_id")
+            .eq("product_id", p.id)
+            .not("provider_order_id", "is", null),
         ]);
+
+        // Block occupancy: count distinct blocks, empty (0 active customers)
+        const blockIds = Array.from(
+          new Set((blocksRes.data ?? []).map((r) => r.provider_order_id as string).filter(Boolean)),
+        );
+        let total_blocks = 0;
+        let empty_blocks = 0;
+        if (blockIds.length > 0) {
+          total_blocks = blockIds.length;
+          const { data: stockInBlocks } = await supabaseAdmin
+            .from("proxy_stock")
+            .select("id, provider_order_id")
+            .in("provider_order_id", blockIds);
+          const stockIds = (stockInBlocks ?? []).map((s) => s.id);
+          const { data: allocs } = await supabaseAdmin
+            .from("customer_proxies")
+            .select("stock_id")
+            .in("stock_id", stockIds)
+            .in("status", ["active", "grace"]);
+          const occupiedStockIds = new Set((allocs ?? []).map((a) => a.stock_id));
+          const occupiedBlocks = new Set<string>();
+          for (const s of stockInBlocks ?? []) {
+            if (occupiedStockIds.has(s.id) && s.provider_order_id) {
+              occupiedBlocks.add(s.provider_order_id);
+            }
+          }
+          empty_blocks = total_blocks - occupiedBlocks.size;
+        }
+
         return {
           ...p,
           available: avail ?? 0,
           allocated: alloc ?? 0,
           rule: rule ?? null,
+          total_blocks,
+          empty_blocks,
         };
       }),
     );
     return rows;
   });
+
+// ============== ProxySeller maintenance from admin UI ==============
+
+export const triggerProviderSync = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { runFullProviderSync } = await import("./allocation.server");
+    return await runFullProviderSync();
+  });
+
+const previewRenewalInput = z.object({
+  window_days: z.number().int().min(1).max(30).optional(),
+});
+
+export const previewRenewalSweep = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => previewRenewalInput.parse(d ?? {}))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { runRenewalSweep } = await import("./allocation.server");
+    return await runRenewalSweep({ dryRun: true, windowDays: data.window_days ?? 3 });
+  });
+
+
 
 export const getProviderStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

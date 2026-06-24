@@ -652,57 +652,63 @@ async function pickAvailableStockWithSiblings(
 ): Promise<StockPick[]> {
   if (remaining <= 0) return [];
 
-  // 1) Own product first
-  const { data: own } = await supabaseAdmin
-    .from("proxy_stock")
-    .select("id")
-    .eq("product_id", product.id)
-    .eq("status", "available")
-    .limit(remaining);
-  const picks: StockPick[] = (own ?? []).map((r) => ({ id: r.id as string }));
-  if (picks.length >= remaining) return picks.slice(0, remaining);
-
-  // 2) Sibling products in the same family + same country
+  // Build the pool: own product + siblings of the SAME family/country.
+  // For non-IPv6 families there are no siblings → pool = [product.id].
   const family = SIBLING_CATEGORIES[product.category ?? ""] ?? [];
-  if (family.length === 0 || !product.country_code) return picks;
+  let poolIds: string[] = [product.id];
+  if (family.length > 0 && product.country_code) {
+    const { data: siblings } = await supabaseAdmin
+      .from("products")
+      .select("id")
+      .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
+      .eq("country_code", product.country_code);
+    poolIds = Array.from(new Set([product.id, ...((siblings ?? []).map((s) => s.id as string))]));
+  }
 
-  const { data: siblings } = await supabaseAdmin
-    .from("products")
-    .select("id")
-    .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
-    .eq("country_code", product.country_code)
-    .neq("id", product.id);
-  const siblingIds = (siblings ?? []).map((s) => s.id as string);
-  if (siblingIds.length === 0) return picks;
+  // Consolidation RPC: returns available IPs ordered by block-occupancy DESC,
+  // then expires_at ASC. Fills partially-used blocks first so empty blocks
+  // stay empty and can be abandoned at renewal time.
+  const { data: ranked, error: rankErr } = await supabaseAdmin.rpc(
+    "pick_consolidated_stock",
+    { _product_ids: poolIds, _limit: remaining },
+  );
 
-  const need = remaining - picks.length;
-  const { data: borrowed } = await supabaseAdmin
-    .from("proxy_stock")
-    .select("id")
-    .in("product_id", siblingIds)
-    .eq("status", "available")
-    .limit(need);
+  if (rankErr) {
+    console.error("[allocation] pick_consolidated_stock failed, fallback:", rankErr);
+    const { data: fb } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, product_id")
+      .in("product_id", poolIds)
+      .eq("status", "available")
+      .limit(remaining);
+    const ids = (fb ?? []).map((r) => r.id as string);
+    const borrowed = (fb ?? [])
+      .filter((r) => r.product_id !== product.id)
+      .map((r) => r.id as string);
+    if (borrowed.length > 0) {
+      await supabaseAdmin.from("proxy_stock").update({ product_id: product.id }).in("id", borrowed);
+    }
+    return ids.map((id) => ({ id }));
+  }
 
-  const borrowedIds = (borrowed ?? []).map((r) => r.id as string);
-  if (borrowedIds.length === 0) return picks;
+  const rows = (ranked ?? []) as Array<{ stock_id: string }>;
+  if (rows.length === 0) return [];
+  const pickedIds = rows.map((r) => r.stock_id);
 
-  // Transfer ownership to current product so future accounting is correct
+  // Transfer ownership of any sibling-borrowed IPs to current product.
   const { error: mvErr } = await supabaseAdmin
     .from("proxy_stock")
     .update({ product_id: product.id })
-    .in("id", borrowedIds);
-  if (mvErr) {
-    console.error("[allocation] sibling transfer failed:", mvErr);
-    return picks;
-  }
+    .in("id", pickedIds)
+    .neq("product_id", product.id);
+  if (mvErr) console.error("[allocation] consolidation transfer failed:", mvErr);
 
   console.log(
-    `[allocation] order=${orderId} reused ${borrowedIds.length} sibling IPv6 IPs ` +
-      `(${product.category}/${product.country_code}) — avoided buying a new block`,
+    `[allocation] order=${orderId} consolidated pick ${pickedIds.length} IPs ` +
+      `(${product.category}/${product.country_code}) — prioritized occupied blocks`,
   );
 
-  for (const id of borrowedIds) picks.push({ id });
-  return picks.slice(0, remaining);
+  return pickedIds.map((id) => ({ id }));
 }
 
 /**
@@ -775,4 +781,386 @@ async function syncProviderInventoryIntoStock(product: {
     );
   }
   return added;
+}
+
+
+
+// ─────────────────────── Full provider sync ───────────────────────
+
+/**
+ * Iterates every product with a `provider_tariff_id` and ingests every IP
+ * the ProxySeller account exposes that we don't already track. Reconciles
+ * `expires_at` when the provider reports a fresher date. Never re-allocates
+ * IPs that are already linked to a customer.
+ *
+ * Designed to be safe to call hourly. Skipped entirely in dry_run mode.
+ */
+export async function runFullProviderSync(): Promise<{
+  scanned_products: number;
+  new_ips: number;
+  expiry_updates: number;
+  per_product: Array<{
+    product: string;
+    kind: PsProxyKind;
+    fetched: number;
+    inserted: number;
+    expiry_updates: number;
+  }>;
+  errors: string[];
+  dry_run: boolean;
+}> {
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "proxyseller")
+    .maybeSingle();
+  const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
+
+  const summary = {
+    scanned_products: 0,
+    new_ips: 0,
+    expiry_updates: 0,
+    per_product: [] as Array<{
+      product: string;
+      kind: PsProxyKind;
+      fetched: number;
+      inserted: number;
+      expiry_updates: number;
+    }>,
+    errors: [] as string[],
+    dry_run: dryRun,
+  };
+
+  if (dryRun) return summary;
+
+  const { data: products } = await supabaseAdmin
+    .from("products")
+    .select("id, slug, category, country_code, provider_tariff_id")
+    .not("provider_tariff_id", "is", null);
+
+  // Cache provider list per kind — listProxies returns ALL IPs of that kind,
+  // not filtered by country. We then filter per product.countryId.
+  const cache = new Map<PsProxyKind, PsProxyItem[]>();
+
+  for (const p of products ?? []) {
+    summary.scanned_products++;
+    const kind = categoryToKind(p.category);
+
+    let cfg: { countryId?: number };
+    try {
+      cfg = JSON.parse(p.provider_tariff_id as string);
+    } catch {
+      summary.errors.push(`${p.slug}: invalid provider_tariff_id`);
+      continue;
+    }
+
+    let items: PsProxyItem[];
+    try {
+      if (!cache.has(kind)) {
+        cache.set(kind, await listProxies(kind));
+      }
+      items = cache.get(kind) ?? [];
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      summary.errors.push(`${p.slug} listProxies: ${msg}`);
+      continue;
+    }
+
+    const filtered = cfg.countryId
+      ? items.filter((it) => {
+          const c = (it as unknown as { country?: number | string }).country;
+          return c === undefined || String(c) === String(cfg.countryId);
+        })
+      : items;
+
+    if (filtered.length === 0) {
+      summary.per_product.push({
+        product: p.slug,
+        kind,
+        fetched: 0,
+        inserted: 0,
+        expiry_updates: 0,
+      });
+      continue;
+    }
+
+    // De-dup against ALL existing rows by external_proxy_id (any product).
+    const externalIds = filtered.map((it) => it.id).filter(Boolean);
+    const { data: known } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, external_proxy_id, expires_at")
+      .in("external_proxy_id", externalIds);
+    const knownMap = new Map<string, { id: string; expires_at: string | null }>();
+    for (const k of known ?? []) {
+      if (k.external_proxy_id) {
+        knownMap.set(k.external_proxy_id, { id: k.id, expires_at: k.expires_at });
+      }
+    }
+
+    const fresh = filtered.filter((it) => !knownMap.has(it.id));
+    let inserted = 0;
+    if (fresh.length > 0) {
+      inserted = await insertProxiesToStock(p, null, fresh);
+    }
+
+    // Reconcile expires_at when provider reports newer date.
+    let expiryUpdates = 0;
+    for (const it of filtered) {
+      const known = knownMap.get(it.id);
+      if (!known) continue;
+      const newIso = psDateToIso(it.date_end);
+      if (!newIso) continue;
+      if (!known.expires_at || new Date(newIso) > new Date(known.expires_at)) {
+        const { error } = await supabaseAdmin
+          .from("proxy_stock")
+          .update({ expires_at: newIso })
+          .eq("id", known.id);
+        if (!error) expiryUpdates++;
+      }
+    }
+
+    summary.new_ips += inserted;
+    summary.expiry_updates += expiryUpdates;
+    summary.per_product.push({
+      product: p.slug,
+      kind,
+      fetched: filtered.length,
+      inserted,
+      expiry_updates: expiryUpdates,
+    });
+  }
+
+  await supabaseAdmin.from("audit_log").insert({
+    action: "proxyseller.full_sync",
+    source: "cron",
+    status: summary.errors.length ? "error" : "ok",
+    response: summary as never,
+  });
+
+  if (summary.new_ips > 0 || summary.expiry_updates > 0) {
+    void notifyAllAdmins({
+      title: "🔄 Sync ProxySeller concluído",
+      body: `+${summary.new_ips} IPs novos · ${summary.expiry_updates} validades atualizadas em ${summary.scanned_products} produtos.`,
+      link: "/admin/inventory",
+      metadata: { summary } as never,
+      dedupeKey: `full-sync:${new Date().toISOString().slice(0, 13)}`,
+    });
+  }
+
+  return summary;
+}
+
+// ─────────────────────── Renewal sweep ───────────────────────
+
+/**
+ * Walks every IPv6 provider_orders (block) expiring within `windowDays`.
+ * If the block has at least one paying customer (active|grace), it renews
+ * all IPs in the block via `prolong/make`. Empty blocks are skipped so they
+ * naturally expire — that's the cost-saver.
+ *
+ * Works for BR and US blocks symmetrically (uses block.country_code).
+ *
+ * Set `dryRun=true` (or rely on provider_settings.dry_run) to preview only.
+ */
+export async function runRenewalSweep(opts: {
+  windowDays?: number;
+  dryRun?: boolean;
+} = {}): Promise<{
+  window_days: number;
+  blocks_seen: number;
+  blocks_renewed: number;
+  blocks_abandoned: number;
+  ips_renewed: number;
+  cost_usd: number;
+  cost_saved_usd_estimate: number;
+  dry_run: boolean;
+  errors: string[];
+  details: Array<{
+    block: string;
+    country: string | null;
+    occupancy: number;
+    block_size: number;
+    action: "renewed" | "abandoned" | "skipped";
+    cost_usd?: number;
+    reason?: string;
+  }>;
+}> {
+  const windowDays = opts.windowDays ?? 3;
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "proxyseller")
+    .maybeSingle();
+  const dryRun = !!opts.dryRun || !!(settings as { dry_run?: boolean } | null)?.dry_run;
+
+  const out = {
+    window_days: windowDays,
+    blocks_seen: 0,
+    blocks_renewed: 0,
+    blocks_abandoned: 0,
+    ips_renewed: 0,
+    cost_usd: 0,
+    cost_saved_usd_estimate: 0,
+    dry_run: dryRun,
+    errors: [] as string[],
+    details: [] as Array<{
+      block: string;
+      country: string | null;
+      occupancy: number;
+      block_size: number;
+      action: "renewed" | "abandoned" | "skipped";
+      cost_usd?: number;
+      reason?: string;
+    }>,
+  };
+
+  const cutoff = new Date(Date.now() + windowDays * 86400 * 1000).toISOString();
+  const nowIso = new Date().toISOString();
+
+  // Only IPv6/IPv6-FB blocks are renewable through prolong/make today.
+  const { data: blocks } = await supabaseAdmin
+    .from("provider_orders")
+    .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
+    .lte("expires_at", cutoff)
+    .gte("expires_at", nowIso)
+    .in("status", ["active", "pending"]);
+
+  for (const block of blocks ?? []) {
+    const prod = (block as { products?: { slug: string; category: string | null; provider_tariff_id: string | null } | null }).products;
+    if (!prod || !prod.category?.startsWith("ipv6")) continue;
+    out.blocks_seen++;
+
+    // All stock rows in this block
+    const { data: stockRows } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, external_proxy_id")
+      .eq("provider_order_id", block.id);
+    const stockIds = (stockRows ?? []).map((s) => s.id);
+    const externalIds = (stockRows ?? []).map((s) => s.external_proxy_id).filter((x): x is string => !!x);
+    const blockSize = stockIds.length;
+
+    if (blockSize === 0) {
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy: 0,
+        block_size: 0,
+        action: "skipped",
+        reason: "no stock rows tied to block",
+      });
+      continue;
+    }
+
+    // Occupancy: how many of this block's IPs are tied to a paying customer
+    const { count: occ } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("*", { count: "exact", head: true })
+      .in("stock_id", stockIds)
+      .in("status", ["active", "grace"]);
+    const occupancy = occ ?? 0;
+
+    if (occupancy === 0) {
+      // ABANDON — let the block expire. Mark stock as expired so it's not
+      // picked by future allocations.
+      if (!dryRun) {
+        await supabaseAdmin
+          .from("proxy_stock")
+          .update({ status: "expired" as never })
+          .in("id", stockIds)
+          .neq("status", "allocated");
+      }
+      out.blocks_abandoned++;
+      // Estimate savings: typical IPv6 block ~ US$0.40/IP/mo × blockSize.
+      out.cost_saved_usd_estimate += 0.4 * blockSize;
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy: 0,
+        block_size: blockSize,
+        action: "abandoned",
+      });
+      continue;
+    }
+
+    // RENEW the whole block
+    if (!prod.provider_tariff_id || externalIds.length === 0) {
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy,
+        block_size: blockSize,
+        action: "skipped",
+        reason: "missing provider_tariff_id or external_proxy_id",
+      });
+      continue;
+    }
+    let cfg: { periodId?: string };
+    try {
+      cfg = JSON.parse(prod.provider_tariff_id);
+    } catch {
+      out.errors.push(`${block.id}: invalid provider_tariff_id`);
+      continue;
+    }
+    if (!cfg.periodId) {
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy,
+        block_size: blockSize,
+        action: "skipped",
+        reason: "no periodId",
+      });
+      continue;
+    }
+
+    try {
+      let costUsd = 0;
+      if (dryRun) {
+        const calc = await prolongCalc("ipv6", { ids: externalIds, periodId: cfg.periodId });
+        costUsd = Number(calc.total) || 0;
+      } else {
+        const res = await prolongMake("ipv6", { ids: externalIds, periodId: cfg.periodId });
+        costUsd = Number(res.total) || 0;
+        const newExpiry = new Date(Date.now() + 30 * 86400 * 1000).toISOString();
+        await supabaseAdmin.from("proxy_stock").update({ expires_at: newExpiry }).in("id", stockIds);
+        await supabaseAdmin
+          .from("provider_orders")
+          .update({ expires_at: newExpiry, purchased_at: new Date().toISOString() })
+          .eq("id", block.id);
+      }
+      out.blocks_renewed++;
+      out.ips_renewed += externalIds.length;
+      out.cost_usd += costUsd;
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy,
+        block_size: blockSize,
+        action: "renewed",
+        cost_usd: costUsd,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      out.errors.push(`${block.id}: ${msg}`);
+    }
+  }
+
+  await supabaseAdmin.from("audit_log").insert({
+    action: dryRun ? "proxyseller.renewal_sweep.dry_run" : "proxyseller.renewal_sweep",
+    source: "cron",
+    status: out.errors.length ? "error" : "ok",
+    response: out as never,
+  });
+
+  if (!dryRun && (out.blocks_renewed > 0 || out.blocks_abandoned > 0)) {
+    void notifyAllAdmins({
+      title: "♻️ Renovação de blocos",
+      body: `${out.blocks_renewed} bloco(s) renovado(s) (US$ ${out.cost_usd.toFixed(2)}) · ${out.blocks_abandoned} abandonado(s) (~US$ ${out.cost_saved_usd_estimate.toFixed(2)} economizados).`,
+      link: "/admin/inventory",
+      metadata: out as never,
+      dedupeKey: `renewal-sweep:${new Date().toISOString().slice(0, 10)}`,
+    });
+  }
+
+  return out;
 }

@@ -67,7 +67,9 @@ import { Route as AuthenticatedAdminCustomersIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksStripeRouteImport } from './routes/api/public/hooks/stripe'
+import { Route as ApiPublicHooksRenewalSweepRouteImport } from './routes/api/public/hooks/renewal-sweep'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
+import { Route as ApiPublicHooksProxysellerFullSyncRouteImport } from './routes/api/public/hooks/proxyseller-full-sync'
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
@@ -392,10 +394,22 @@ const ApiPublicHooksStripeRoute = ApiPublicHooksStripeRouteImport.update({
   path: '/api/public/hooks/stripe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksRenewalSweepRoute =
+  ApiPublicHooksRenewalSweepRouteImport.update({
+    id: '/api/public/hooks/renewal-sweep',
+    path: '/api/public/hooks/renewal-sweep',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProxysellerSyncRoute =
   ApiPublicHooksProxysellerSyncRouteImport.update({
     id: '/api/public/hooks/proxyseller-sync',
     path: '/api/public/hooks/proxyseller-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksProxysellerFullSyncRoute =
+  ApiPublicHooksProxysellerFullSyncRouteImport.update({
+    id: '/api/public/hooks/proxyseller-full-sync',
+    path: '/api/public/hooks/proxyseller-full-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksProxysellerBackfillRoute =
@@ -542,7 +556,9 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
+  '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
@@ -612,7 +628,9 @@ export interface FileRoutesByTo {
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
+  '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog': typeof AuthenticatedAdminBlogIndexRoute
@@ -687,7 +705,9 @@ export interface FileRoutesById {
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
+  '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/_authenticated/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
@@ -762,7 +782,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
+    | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/renewal-sweep'
     | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog/'
@@ -832,7 +854,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
+    | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/renewal-sweep'
     | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog'
@@ -906,7 +930,9 @@ export interface FileRouteTypes {
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
+    | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/renewal-sweep'
     | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/_authenticated/admin/blog/'
@@ -946,7 +972,9 @@ export interface RootRouteChildren {
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
+  ApiPublicHooksProxysellerFullSyncRoute: typeof ApiPublicHooksProxysellerFullSyncRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
+  ApiPublicHooksRenewalSweepRoute: typeof ApiPublicHooksRenewalSweepRoute
   ApiPublicHooksStripeRoute: typeof ApiPublicHooksStripeRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
@@ -1359,11 +1387,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/renewal-sweep': {
+      id: '/api/public/hooks/renewal-sweep'
+      path: '/api/public/hooks/renewal-sweep'
+      fullPath: '/api/public/hooks/renewal-sweep'
+      preLoaderRoute: typeof ApiPublicHooksRenewalSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/proxyseller-sync': {
       id: '/api/public/hooks/proxyseller-sync'
       path: '/api/public/hooks/proxyseller-sync'
       fullPath: '/api/public/hooks/proxyseller-sync'
       preLoaderRoute: typeof ApiPublicHooksProxysellerSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/proxyseller-full-sync': {
+      id: '/api/public/hooks/proxyseller-full-sync'
+      path: '/api/public/hooks/proxyseller-full-sync'
+      fullPath: '/api/public/hooks/proxyseller-full-sync'
+      preLoaderRoute: typeof ApiPublicHooksProxysellerFullSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/proxyseller-backfill': {
@@ -1627,7 +1669,10 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksNotificationsDispatchRoute,
   ApiPublicHooksProxysellerBackfillRoute:
     ApiPublicHooksProxysellerBackfillRoute,
+  ApiPublicHooksProxysellerFullSyncRoute:
+    ApiPublicHooksProxysellerFullSyncRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
+  ApiPublicHooksRenewalSweepRoute: ApiPublicHooksRenewalSweepRoute,
   ApiPublicHooksStripeRoute: ApiPublicHooksStripeRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }

@@ -1164,6 +1164,3 @@ export async function runRenewalSweep(opts: {
 
   return out;
 }
-
-  return added;
-}

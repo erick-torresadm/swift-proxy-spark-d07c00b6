@@ -1348,6 +1348,14 @@ export type Database = {
         Returns: undefined
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      pick_consolidated_stock: {
+        Args: { _limit: number; _product_ids: string[] }
+        Returns: {
+          occupancy: number
+          provider_order_id: string
+          stock_id: string
+        }[]
+      }
       prune_proxy_metrics: { Args: never; Returns: undefined }
       release_expired_grace_proxies: {
         Args: never

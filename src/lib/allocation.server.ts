@@ -167,13 +167,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
                 metadata: { productId: product.id, added: bought },
                 dedupeKey: `restock-auto:${order.id}`,
               });
-              const { data: pool3 } = await supabaseAdmin
-                .from("proxy_stock")
-                .select("id")
-                .eq("product_id", product.id)
-                .eq("status", "available")
-                .limit(remaining);
-              picks = pool3 ?? [];
+              picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
             } else {
               // bought=0 means provider order placed but IPs not yet ready → backfill will finish
               pendingInFlight = true;

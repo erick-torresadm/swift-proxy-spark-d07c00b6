@@ -669,7 +669,7 @@ async function pickAvailableStockWithSiblings(
   const { data: siblings } = await supabaseAdmin
     .from("products")
     .select("id")
-    .in("category", family)
+    .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
     .eq("country_code", product.country_code)
     .neq("id", product.id);
   const siblingIds = (siblings ?? []).map((s) => s.id as string);

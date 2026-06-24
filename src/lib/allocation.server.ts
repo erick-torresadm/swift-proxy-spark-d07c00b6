@@ -7,9 +7,21 @@ import {
   generateSimulatedProxies,
   prolongMake,
   prolongCalc,
+  listProxies,
 } from "./proxyseller.server";
 import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
+
+/**
+ * IPv6 families that share the SAME upstream pool when country matches.
+ * IPv6 BR and IPv6-FB BR are literally the same IPs at the provider — only
+ * differ by how the platform exposes them. Never buy a new block if a sibling
+ * has stock available. See docs/PROXY-CATALOG.md.
+ */
+const SIBLING_CATEGORIES: Record<string, string[]> = {
+  ipv6: ["ipv6", "ipv6_fb"],
+  ipv6_fb: ["ipv6", "ipv6_fb"],
+};
 
 /** Map our product.category → ProxySeller "kind" used in /order/* and /proxy/list/{kind}. */
 function categoryToKind(category: string | null | undefined): PsProxyKind {

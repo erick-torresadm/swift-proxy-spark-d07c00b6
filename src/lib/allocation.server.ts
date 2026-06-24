@@ -7,9 +7,21 @@ import {
   generateSimulatedProxies,
   prolongMake,
   prolongCalc,
+  listProxies,
 } from "./proxyseller.server";
 import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
+
+/**
+ * IPv6 families that share the SAME upstream pool when country matches.
+ * IPv6 BR and IPv6-FB BR are literally the same IPs at the provider — only
+ * differ by how the platform exposes them. Never buy a new block if a sibling
+ * has stock available. See docs/PROXY-CATALOG.md.
+ */
+const SIBLING_CATEGORIES: Record<string, string[]> = {
+  ipv6: ["ipv6", "ipv6_fb"],
+  ipv6_fb: ["ipv6", "ipv6_fb"],
+};
 
 /** Map our product.category → ProxySeller "kind" used in /order/* and /proxy/list/{kind}. */
 function categoryToKind(category: string | null | undefined): PsProxyKind {
@@ -85,16 +97,9 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
   const remaining = totalNeeded - (existing ?? 0);
 
   // ───────── 1) Pick available stock first (reuse freed IPs) ─────────
-  const { data: pool } = await supabaseAdmin
-    .from("proxy_stock")
-    .select("id")
-    .eq("product_id", product.id)
-    .eq("status", "available")
-    .limit(remaining);
+  let picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
 
-  let picks = pool ?? [];
-
-  // ───────── 2) If short → try reuse pending, then auto-purchase from provider ─────────
+  // ───────── 2) If short → reuse pending, sync provider, then auto-purchase ─────────
   // Works for any product with a provider_tariff_id (IPv6/IPv6-FB → stock,
   // IPv4/ISP → direct on-demand. Direct products typically have no stock, so
   // every paid order triggers a provider purchase here.)
@@ -107,14 +112,22 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     // 2a) Reuse recent pending provider_orders before spending more money
     const reused = await tryFulfillFromPendingOrders(product, order.id);
     if (reused > 0) {
-      const { data: pool2 } = await supabaseAdmin
-        .from("proxy_stock")
-        .select("id")
-        .eq("product_id", product.id)
-        .eq("status", "available")
-        .limit(remaining);
-      picks = pool2 ?? [];
+      picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
     }
+
+    // 2b) Sync provider's /proxy/list — pull any IPs that already exist
+    // at ProxySeller into our stock before deciding to buy a new block.
+    // This is the #1 protection against double-spending.
+    if (remaining - picks.length > 0) {
+      const synced = await syncProviderInventoryIntoStock(product).catch((e) => {
+        console.error("[allocation] provider sync failed:", e);
+        return 0;
+      });
+      if (synced > 0) {
+        picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
+      }
+    }
+
 
     const stillShortAfterReuse = remaining - picks.length;
     if (stillShortAfterReuse > 0) {
@@ -154,13 +167,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
                 metadata: { productId: product.id, added: bought },
                 dedupeKey: `restock-auto:${order.id}`,
               });
-              const { data: pool3 } = await supabaseAdmin
-                .from("proxy_stock")
-                .select("id")
-                .eq("product_id", product.id)
-                .eq("status", "available")
-                .limit(remaining);
-              picks = pool3 ?? [];
+              picks = await pickAvailableStockWithSiblings(product, remaining, order.id);
             } else {
               // bought=0 means provider order placed but IPs not yet ready → backfill will finish
               pendingInFlight = true;
@@ -625,4 +632,147 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     cost_usd: costUsd,
     dry_run: dryRun,
   };
+}
+
+// ─────────────────────────── Stock-picking helpers ───────────────────────────
+
+type StockPick = { id: string };
+
+/**
+ * Pick available stock for a product. If the product belongs to an IPv6
+ * family (ipv6 / ipv6_fb), it also pulls from sibling products of the SAME
+ * country (they share the same upstream pool at ProxySeller). When a sibling's
+ * IP is picked, its product_id is rewritten to the current product so the
+ * accounting stays clean. See docs/PROXY-CATALOG.md.
+ */
+async function pickAvailableStockWithSiblings(
+  product: { id: string; category?: string | null; country_code: string | null },
+  remaining: number,
+  orderId: string,
+): Promise<StockPick[]> {
+  if (remaining <= 0) return [];
+
+  // 1) Own product first
+  const { data: own } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("id")
+    .eq("product_id", product.id)
+    .eq("status", "available")
+    .limit(remaining);
+  const picks: StockPick[] = (own ?? []).map((r) => ({ id: r.id as string }));
+  if (picks.length >= remaining) return picks.slice(0, remaining);
+
+  // 2) Sibling products in the same family + same country
+  const family = SIBLING_CATEGORIES[product.category ?? ""] ?? [];
+  if (family.length === 0 || !product.country_code) return picks;
+
+  const { data: siblings } = await supabaseAdmin
+    .from("products")
+    .select("id")
+    .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
+    .eq("country_code", product.country_code)
+    .neq("id", product.id);
+  const siblingIds = (siblings ?? []).map((s) => s.id as string);
+  if (siblingIds.length === 0) return picks;
+
+  const need = remaining - picks.length;
+  const { data: borrowed } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("id")
+    .in("product_id", siblingIds)
+    .eq("status", "available")
+    .limit(need);
+
+  const borrowedIds = (borrowed ?? []).map((r) => r.id as string);
+  if (borrowedIds.length === 0) return picks;
+
+  // Transfer ownership to current product so future accounting is correct
+  const { error: mvErr } = await supabaseAdmin
+    .from("proxy_stock")
+    .update({ product_id: product.id })
+    .in("id", borrowedIds);
+  if (mvErr) {
+    console.error("[allocation] sibling transfer failed:", mvErr);
+    return picks;
+  }
+
+  console.log(
+    `[allocation] order=${orderId} reused ${borrowedIds.length} sibling IPv6 IPs ` +
+      `(${product.category}/${product.country_code}) — avoided buying a new block`,
+  );
+
+  for (const id of borrowedIds) picks.push({ id });
+  return picks.slice(0, remaining);
+}
+
+/**
+ * Calls ProxySeller `/proxy/list/{kind}` and ingests any IP that is NOT yet
+ * tracked in `proxy_stock`. Defensive step BEFORE buying a new block — if a
+ * previous run already paid for IPs (manual purchase, missed webhook, etc.),
+ * we recover them instead of paying again.
+ *
+ * Returns the number of IPs newly inserted into stock.
+ */
+async function syncProviderInventoryIntoStock(product: {
+  id: string;
+  category?: string | null;
+  country_code: string | null;
+  provider_tariff_id: string | null;
+}): Promise<number> {
+  if (!product.provider_tariff_id) return 0;
+
+  // Skip in dry-run mode (no real provider state to sync)
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "proxyseller")
+    .maybeSingle();
+  if ((settings as { dry_run?: boolean } | null)?.dry_run) return 0;
+
+  const kind = categoryToKind(product.category);
+
+  let cfg: { countryId?: number };
+  try {
+    cfg = JSON.parse(product.provider_tariff_id);
+  } catch {
+    return 0;
+  }
+
+  let items: PsProxyItem[];
+  try {
+    items = await listProxies(kind);
+  } catch (e) {
+    console.error("[allocation] listProxies failed:", e);
+    return 0;
+  }
+  if (!items.length) return 0;
+
+  // Filter by country when ProxySeller returns it. Otherwise accept all and
+  // rely on de-dup by external_proxy_id.
+  const filtered = cfg.countryId
+    ? items.filter((p) => {
+        const c = (p as unknown as { country?: number | string }).country;
+        return c === undefined || String(c) === String(cfg.countryId);
+      })
+    : items;
+  if (!filtered.length) return 0;
+
+  // Skip IPs we already track anywhere
+  const externalIds = filtered.map((p) => p.id).filter(Boolean);
+  const { data: known } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("external_proxy_id")
+    .in("external_proxy_id", externalIds);
+  const knownSet = new Set((known ?? []).map((r) => r.external_proxy_id as string));
+  const fresh = filtered.filter((p) => !knownSet.has(p.id));
+  if (!fresh.length) return 0;
+
+  const added = await insertProxiesToStock(product, null, fresh);
+  if (added > 0) {
+    console.log(
+      `[allocation] synced ${added} pre-existing IPs from ProxySeller into stock ` +
+        `for ${product.category}/${product.country_code} — avoided new block purchase`,
+    );
+  }
+  return added;
 }

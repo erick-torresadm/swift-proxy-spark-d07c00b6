@@ -5,30 +5,34 @@ import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 /* ---------- Validation ---------- */
 
 const slugRe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const faqItem = z.object({
-  question: z.string().min(3).max(300),
-  answer: z.string().min(3).max(2000),
+  question: z.string().min(3).max(500),
+  answer: z.string().min(3).max(3000),
 });
 
 const postSchema = z.object({
-  title: z.string().min(5).max(200),
-  slug: z.string().min(3).max(160).regex(slugRe).optional(),
-  excerpt: z.string().max(500).optional(),
-  body_md: z.string().min(200).max(50_000),
-  cover_image_url: z.string().url().max(2000).optional(),
-  category_slug: z.string().max(160).regex(slugRe).optional(),
-  tags: z.array(z.string().min(1).max(60)).max(10).default([]),
-  seo_title: z.string().max(70).optional(),
-  meta_description: z.string().max(180).optional(),
-  keyword_primary: z.string().max(80).optional(),
-  keywords_secondary: z.array(z.string().max(80)).max(20).default([]),
-  faq: z.array(faqItem).max(15).default([]),
-  status: z.enum(["draft", "scheduled"]).default("scheduled"),
-  publish_at: z.string().datetime().optional(),
-  source: z.string().min(1).max(80).default("external-agent"),
-  display_author_name: z.string().min(1).max(80).optional(),
-  noindex: z.boolean().optional(),
+  title: z.string().min(3).max(120),
+  slug: z.string().min(3).max(160).regex(slugRe),
+  content_md: z.string().min(200).max(80_000),
+  meta_title: z.string().max(70).optional(),
+  meta_description: z.string().max(200).optional(),
+  excerpt: z.string().max(300).optional(),
+  keyword_primary: z.string().max(255).optional(),
+  keywords_secondary: z.array(z.string().max(120)).max(30).optional(),
+  cover_image_url: z.string().max(500).optional(),
+  category_id: z.string().regex(uuidRe).optional(),
+  published_at: z.string().datetime().optional(),
+  display_author_name: z.string().max(100).default("Equipe FastProxy"),
+  reading_time_minutes: z.number().int().positive().max(240).optional(),
+  faq: z.array(faqItem).max(20).optional(),
+  canonical_url: z.string().max(500).optional(),
+  noindex: z.boolean().default(false),
+  auto_publish_at: z.string().datetime().optional(),
+  source: z.string().max(50).default("ai-generated"),
+  tags: z.array(z.string().min(1).max(60)).max(15).optional(),
+  status: z.enum(["draft", "published", "scheduled"]).default("draft"),
 });
 
 export const ingestPayloadSchema = z.object({
@@ -84,6 +88,25 @@ export function markdownLooksSafe(md: string): boolean {
   return !FORBIDDEN_RE.test(md);
 }
 
+function computeReadingMinutes(md: string): number {
+  const words = md.replace(/[#*`_>\-]/g, " ").split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / 230));
+}
+
+/* ---------- Persistence ---------- */
+
+export type IngestOutcome =
+  | {
+      action: "created" | "updated";
+      id: string;
+      slug: string;
+      status: string;
+      published_at: string | null;
+      auto_publish_at: string | null;
+      admin_url: string;
+    }
+  | { action: "error"; slug: string | null; error: string };
+
 function slugify(s: string): string {
   return s
     .normalize("NFD")
@@ -93,17 +116,6 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 160);
 }
-
-function readingMinutes(md: string): number {
-  const words = md.replace(/[#*`_>\-]/g, " ").split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 220));
-}
-
-/* ---------- Persistence ---------- */
-
-export type IngestOutcome =
-  | { action: "created" | "updated"; id: string; slug: string; status: string; publish_at: string | null; admin_url: string }
-  | { action: "error"; slug: string | null; error: string };
 
 async function getOrCreateTagIds(names: string[]): Promise<string[]> {
   const ids: string[] = [];
@@ -131,74 +143,57 @@ async function getOrCreateTagIds(names: string[]): Promise<string[]> {
   return ids;
 }
 
-async function resolveCategoryId(slug?: string): Promise<string | null> {
-  if (!slug) return null;
-  const { data } = await supabaseAdmin
-    .from("post_categories")
-    .select("id")
-    .eq("slug", slug)
-    .maybeSingle();
-  return data?.id ?? null;
-}
-
 export async function persistIngestedPost(p: IngestPost): Promise<IngestOutcome> {
   try {
-    if (!markdownLooksSafe(p.body_md)) {
-      return { action: "error", slug: p.slug ?? null, error: "body_md contains forbidden tags" };
+    if (!markdownLooksSafe(p.content_md)) {
+      return { action: "error", slug: p.slug, error: "content_md contains forbidden tags" };
     }
 
-    const slug = p.slug ?? slugify(p.title);
-    if (!slugRe.test(slug)) {
-      return { action: "error", slug, error: "invalid slug" };
-    }
-
-    // status + publish_at logic (min 1h in the future for scheduled)
-    const minFuture = new Date(Date.now() + 60 * 60 * 1000);
-    let autoPublishAt: Date | null = null;
-    if (p.status === "scheduled") {
-      const requested = p.publish_at ? new Date(p.publish_at) : minFuture;
-      autoPublishAt = requested < minFuture ? minFuture : requested;
-    }
-
-    const category_id = await resolveCategoryId(p.category_slug);
-    const tagIds = await getOrCreateTagIds(p.tags);
+    // post_status enum: draft | published | archived. "scheduled" is modeled as
+    // draft + auto_publish_at (a cron promotes it).
+    const requested = p.status;
+    const dbStatus: "draft" | "published" = requested === "published" ? "published" : "draft";
+    const publishedAt =
+      dbStatus === "published"
+        ? (p.published_at ?? new Date().toISOString())
+        : (p.published_at ?? null);
+    const autoPublishAt =
+      requested === "scheduled" ? (p.auto_publish_at ?? p.published_at ?? null) : (p.auto_publish_at ?? null);
 
     const payload = {
-      slug,
+      slug: p.slug,
       title: p.title,
+      content_md: p.content_md,
       excerpt: p.excerpt ?? null,
-      content_md: p.body_md,
-      cover_image_url: p.cover_image_url ?? null,
-      status: "draft" as const, // always draft; cron promotes scheduled
-      category_id,
-      meta_title: p.seo_title ?? null,
+      meta_title: p.meta_title ?? null,
       meta_description: p.meta_description ?? null,
       keyword_primary: p.keyword_primary ?? null,
-      keywords_secondary: p.keywords_secondary,
-      faq: p.faq,
-      reading_time_minutes: readingMinutes(p.body_md),
-      display_author_name: p.display_author_name ?? "FastProxy",
-      noindex: p.noindex ?? false,
+      keywords_secondary: p.keywords_secondary ?? [],
+      cover_image_url: p.cover_image_url ?? null,
+      category_id: p.category_id ?? null,
+      published_at: publishedAt,
+      display_author_name: p.display_author_name,
+      reading_time_minutes: p.reading_time_minutes ?? computeReadingMinutes(p.content_md),
+      faq: (p.faq ?? []) as never,
+      canonical_url: p.canonical_url ?? null,
+      noindex: p.noindex,
+      auto_publish_at: autoPublishAt,
       source: p.source,
-      auto_publish_at: autoPublishAt ? autoPublishAt.toISOString() : null,
+      status: dbStatus,
     };
 
-    // Idempotent by slug
     const { data: existing } = await supabaseAdmin
       .from("posts")
-      .select("id, status")
-      .eq("slug", slug)
+      .select("id")
+      .eq("slug", p.slug)
       .maybeSingle();
 
     let id: string;
     let action: "created" | "updated";
 
     if (existing) {
-      if (existing.status === "published") {
-        return { action: "error", slug, error: "post already published; refusing to overwrite" };
-      }
       const { error } = await supabaseAdmin.from("posts").update(payload).eq("id", existing.id);
-      if (error) return { action: "error", slug, error: error.message };
+      if (error) return { action: "error", slug: p.slug, error: error.message };
       id = existing.id;
       action = "updated";
     } else {
@@ -207,29 +202,33 @@ export async function persistIngestedPost(p: IngestPost): Promise<IngestOutcome>
         .insert(payload)
         .select("id")
         .single();
-      if (error || !ins) return { action: "error", slug, error: error?.message ?? "insert failed" };
+      if (error || !ins) return { action: "error", slug: p.slug, error: error?.message ?? "insert failed" };
       id = ins.id;
       action = "created";
     }
 
     // Sync tags
-    await supabaseAdmin.from("post_tag_map").delete().eq("post_id", id);
-    if (tagIds.length) {
-      await supabaseAdmin
-        .from("post_tag_map")
-        .insert(tagIds.map((tag_id) => ({ post_id: id, tag_id })));
+    if (p.tags) {
+      const tagIds = await getOrCreateTagIds(p.tags);
+      await supabaseAdmin.from("post_tag_map").delete().eq("post_id", id);
+      if (tagIds.length) {
+        await supabaseAdmin
+          .from("post_tag_map")
+          .insert(tagIds.map((tag_id) => ({ post_id: id, tag_id })));
+      }
     }
 
     return {
       action,
       id,
-      slug,
-      status: autoPublishAt ? "scheduled" : "draft",
-      publish_at: autoPublishAt ? autoPublishAt.toISOString() : null,
-      admin_url: `/admin/blog/posts/${id}`,
+      slug: p.slug,
+      status: requested,
+      published_at: publishedAt,
+      auto_publish_at: autoPublishAt,
+      admin_url: `/admin/blog/${id}`,
     };
   } catch (e) {
-    return { action: "error", slug: p.slug ?? null, error: e instanceof Error ? e.message : "unknown error" };
+    return { action: "error", slug: p.slug, error: e instanceof Error ? e.message : "unknown error" };
   }
 }
 

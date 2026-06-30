@@ -74,6 +74,7 @@ import { Route as ApiPublicHooksProxysellerFullSyncRouteImport } from './routes/
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
+import { Route as ApiPublicHooksEmailQueueWorkerRouteImport } from './routes/api/public/hooks/email-queue-worker'
 import { Route as ApiPublicHooksDunningSweepRouteImport } from './routes/api/public/hooks/dunning-sweep'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
 import { Route as ApiPublicBlogIngestRouteImport } from './routes/api/public/blog/ingest'
@@ -439,6 +440,12 @@ const ApiPublicHooksEngagementNudgesRoute =
     path: '/api/public/hooks/engagement-nudges',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksEmailQueueWorkerRoute =
+  ApiPublicHooksEmailQueueWorkerRouteImport.update({
+    id: '/api/public/hooks/email-queue-worker',
+    path: '/api/public/hooks/email-queue-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDunningSweepRoute =
   ApiPublicHooksDunningSweepRouteImport.update({
     id: '/api/public/hooks/dunning-sweep',
@@ -575,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
+  '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
@@ -650,6 +658,7 @@ export interface FileRoutesByTo {
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
+  '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
@@ -730,6 +739,7 @@ export interface FileRoutesById {
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
+  '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
@@ -810,6 +820,7 @@ export interface FileRouteTypes {
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/dunning-sweep'
+    | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
@@ -885,6 +896,7 @@ export interface FileRouteTypes {
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/dunning-sweep'
+    | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
@@ -964,6 +976,7 @@ export interface FileRouteTypes {
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/dunning-sweep'
+    | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
@@ -1009,6 +1022,7 @@ export interface RootRouteChildren {
   ApiPublicBlogIngestRoute: typeof ApiPublicBlogIngestRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksDunningSweepRoute: typeof ApiPublicHooksDunningSweepRoute
+  ApiPublicHooksEmailQueueWorkerRoute: typeof ApiPublicHooksEmailQueueWorkerRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
@@ -1477,6 +1491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksEngagementNudgesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/email-queue-worker': {
+      id: '/api/public/hooks/email-queue-worker'
+      path: '/api/public/hooks/email-queue-worker'
+      fullPath: '/api/public/hooks/email-queue-worker'
+      preLoaderRoute: typeof ApiPublicHooksEmailQueueWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/dunning-sweep': {
       id: '/api/public/hooks/dunning-sweep'
       path: '/api/public/hooks/dunning-sweep'
@@ -1728,6 +1749,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicBlogIngestRoute: ApiPublicBlogIngestRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksDunningSweepRoute: ApiPublicHooksDunningSweepRoute,
+  ApiPublicHooksEmailQueueWorkerRoute: ApiPublicHooksEmailQueueWorkerRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
   ApiPublicHooksNotificationsDispatchRoute:
     ApiPublicHooksNotificationsDispatchRoute,

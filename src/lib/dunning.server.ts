@@ -143,7 +143,7 @@ export async function runDunningSweep(opts: { dryRun?: boolean } = {}): Promise<
         ],
       });
       if (send.ok && o.user_id) {
-        await logSent({ orderId: o.id, userId: o.user_id, campaign: "overdue", stage, email: r.email, resendId: send.id });
+        await logSent({ orderId: o.id, userId: o.user_id, campaign: "overdue", stage, email: r.email, queueId: send.id });
         result.overdueSent++;
       } else if (!send.ok) {
         result.errors.push({ orderId: o.id, error: send.error ?? "send failed" });
@@ -214,7 +214,7 @@ export async function runDunningSweep(opts: { dryRun?: boolean } = {}): Promise<
         ],
       });
       if (send.ok) {
-        await logSent({ orderId: o.id, userId: o.user_id, campaign: "winback", stage, email: r.email, resendId: send.id });
+        await logSent({ orderId: o.id, userId: o.user_id, campaign: "winback", stage, email: r.email, queueId: send.id });
         result.winbackSent++;
       } else {
         result.errors.push({ orderId: o.id, error: send.error ?? "send failed" });

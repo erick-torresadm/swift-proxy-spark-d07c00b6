@@ -1,22 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { enqueueNotification } from "@/lib/notifications.server";
+import { checkCronAuth } from "@/lib/cron-auth.server";
 
 /**
  * Mensagens automáticas de engajamento.
  * Chamado por pg_cron com body { kind: "reminder" | "promo" | "motivational" }.
  *
- * - reminder    (a cada 3 dias): lembra o usuário de checar o painel / status dos proxies
- * - promo       (a cada 7 dias): oferece desconto pra renovar ou comprar mais
- * - motivational (a cada 4 dias): mensagem motivacional curta
- *
- * Só envia pra usuários com pelo menos 1 pedido (ativos ou expirados),
- * pra não spammar quem só criou conta.
+ * Protegido por checkCronAuth — só pg_cron (ou admin com CRON_SECRET) pode disparar.
  */
 export const Route = createFileRoute("/api/public/hooks/engagement-nudges")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
         const body = (await request.json().catch(() => ({}))) as {
           kind?: "reminder" | "promo" | "motivational";
         };
@@ -24,6 +22,8 @@ export const Route = createFileRoute("/api/public/hooks/engagement-nudges")({
         return Response.json(await run(kind));
       },
       GET: async ({ request }) => {
+        const unauth = checkCronAuth(request);
+        if (unauth) return unauth;
         const url = new URL(request.url);
         const kind =
           (url.searchParams.get("kind") as "reminder" | "promo" | "motivational") ??

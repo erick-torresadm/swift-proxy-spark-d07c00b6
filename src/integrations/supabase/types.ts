@@ -799,6 +799,74 @@ export type Database = {
         }
         Relationships: []
       }
+      post_translations: {
+        Row: {
+          content_md: string
+          cover_image_url: string | null
+          created_at: string
+          display_author_name: string | null
+          excerpt: string | null
+          faq: Json
+          id: string
+          keyword_primary: string | null
+          keywords_secondary: Json
+          locale: string
+          meta_description: string | null
+          meta_title: string | null
+          post_id: string
+          reading_time_minutes: number | null
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_md: string
+          cover_image_url?: string | null
+          created_at?: string
+          display_author_name?: string | null
+          excerpt?: string | null
+          faq?: Json
+          id?: string
+          keyword_primary?: string | null
+          keywords_secondary?: Json
+          locale: string
+          meta_description?: string | null
+          meta_title?: string | null
+          post_id: string
+          reading_time_minutes?: number | null
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_md?: string
+          cover_image_url?: string | null
+          created_at?: string
+          display_author_name?: string | null
+          excerpt?: string | null
+          faq?: Json
+          id?: string
+          keyword_primary?: string | null
+          keywords_secondary?: Json
+          locale?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          post_id?: string
+          reading_time_minutes?: number | null
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_translations_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           author_id: string | null

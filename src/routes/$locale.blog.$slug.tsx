@@ -202,7 +202,7 @@ function TranslatedPostPage() {
                   <section className="mt-16 pt-10 border-t border-border">
                     <h2 className="text-3xl font-black tracking-tight mb-6">{cfg.faqTitle}</h2>
                     <div className="space-y-3">
-                      {post.faq.map((f, i) => (
+                      {post.faq.map((f: { question: string; answer: string }, i: number) => (
                         <details key={i} className="bg-card border border-border rounded-2xl p-5 group">
                           <summary className="font-bold cursor-pointer list-none flex items-center justify-between gap-4 text-base">
                             {f.question}
@@ -219,7 +219,7 @@ function TranslatedPostPage() {
 
                 {post.tags.length > 0 && (
                   <div className="mt-12 flex flex-wrap gap-2">
-                    {post.tags.map((t) => (
+                    {post.tags.map((t: { slug: string; name: string }) => (
                       <span
                         key={t.slug}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-semibold"

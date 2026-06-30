@@ -144,7 +144,7 @@ export async function processEmailQueue(): Promise<ProcessResult> {
           last_error: null,
         })
         .eq("id", row.id);
-      await updateDunningResendId(row.metadata, send.id);
+      await updateDunningResendId(row.id, send.id);
       result.sent++;
       dailyCount++;
       monthlyCount++;

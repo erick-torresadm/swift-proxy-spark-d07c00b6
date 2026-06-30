@@ -209,7 +209,7 @@ export const getPostBySlug = createServerFn({ method: "POST" })
 /* ---------------- TRADUÇÕES (multi-idioma) ---------------- */
 
 const LOCALES = ["en", "es", "de", "fr", "it", "nl", "ja"] as const;
-type Locale = (typeof LOCALES)[number];
+
 
 export const getTranslatedPostBySlug = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>

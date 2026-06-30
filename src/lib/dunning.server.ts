@@ -57,7 +57,7 @@ async function logSent(opts: {
   campaign: string;
   stage: string;
   email: string;
-  resendId?: string;
+  queueId?: string;
 }) {
   await supabaseAdmin.from("dunning_emails").insert({
     order_id: opts.orderId,
@@ -65,7 +65,8 @@ async function logSent(opts: {
     campaign: opts.campaign,
     stage: opts.stage,
     email: opts.email,
-    resend_id: opts.resendId ?? null,
+    queue_id: opts.queueId ?? null,
+    resend_id: null,
   });
 }
 
@@ -142,7 +143,7 @@ export async function runDunningSweep(opts: { dryRun?: boolean } = {}): Promise<
         ],
       });
       if (send.ok && o.user_id) {
-        await logSent({ orderId: o.id, userId: o.user_id, campaign: "overdue", stage, email: r.email, resendId: send.id });
+        await logSent({ orderId: o.id, userId: o.user_id, campaign: "overdue", stage, email: r.email, queueId: send.id });
         result.overdueSent++;
       } else if (!send.ok) {
         result.errors.push({ orderId: o.id, error: send.error ?? "send failed" });
@@ -213,7 +214,7 @@ export async function runDunningSweep(opts: { dryRun?: boolean } = {}): Promise<
         ],
       });
       if (send.ok) {
-        await logSent({ orderId: o.id, userId: o.user_id, campaign: "winback", stage, email: r.email, resendId: send.id });
+        await logSent({ orderId: o.id, userId: o.user_id, campaign: "winback", stage, email: r.email, queueId: send.id });
         result.winbackSent++;
       } else {
         result.errors.push({ orderId: o.id, error: send.error ?? "send failed" });

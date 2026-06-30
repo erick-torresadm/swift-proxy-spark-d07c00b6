@@ -1,13 +1,21 @@
-// Server-only: envio de emails via Resend.
+// Server-only: envio de emails via Resend, sempre via fila (email_queue)
+// para respeitar o limite do plano gratuito (3000/mês, 100/dia, 2 req/s).
 // Lê RESEND_API_KEY de process.env dentro de cada chamada.
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
 const RESEND_URL = "https://api.resend.com/emails";
 
 // Remetente padrão. Pode ser sobrescrito via env EMAIL_FROM.
-// onboarding@resend.dev funciona sem domínio verificado, mas só envia para o
-// dono da conta Resend. Para produção, configure EMAIL_FROM com seu domínio.
 const DEFAULT_FROM = "Fast Proxy <onboarding@resend.dev>";
+
+// Limites conservadores do plano gratuito do Resend.
+// Reais: 100/dia, 3000/mês, 2 req/s. Usamos margem de segurança.
+export const RESEND_FREE_LIMITS = {
+  daily: 95,
+  monthly: 2900,
+  minIntervalMs: 700, // ~1.4 req/s, abaixo do limite de 2 req/s
+  batchPerRun: 6,     // worker roda a cada minuto; 6 × ~700ms ≈ 4,2s
+};
 
 export interface SendEmailParams {
   to: string | string[];
@@ -17,16 +25,68 @@ export interface SendEmailParams {
   from?: string;
   replyTo?: string;
   tags?: Array<{ name: string; value: string }>;
+  // Quando true, o envio NÃO passa pela fila — chama Resend direto.
+  // Usar só em ações manuais críticas (ex.: teste do admin). Padrão: false.
+  immediate?: boolean;
+  priority?: number; // 1 = mais alto, 10 = mais baixo (default 5)
+  metadata?: Record<string, unknown>;
+  scheduledAt?: Date;
 }
 
 export interface SendEmailResult {
   ok: boolean;
-  id?: string;
+  id?: string;          // id da fila (ou id do Resend quando immediate=true)
   status: number;
   error?: string;
+  queued?: boolean;
 }
 
+/**
+ * Enfileira (ou envia direto) um email. Por padrão sempre enfileira para
+ * respeitar limites do Resend free. O worker `processEmailQueue()` drena
+ * a fila respeitando rate limit e caps diários/mensais.
+ */
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
+  const to = Array.isArray(params.to) ? params.to[0] : params.to;
+  if (!to) return { ok: false, status: 400, error: "destinatário ausente" };
+
+  if (params.immediate) {
+    return sendNow({ ...params, to });
+  }
+
+  // Enfileira
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("email_queue")
+      .insert({
+        to_email: to,
+        subject: params.subject,
+        html: params.html,
+        text_body: params.text ?? null,
+        from_email: params.from ?? null,
+        reply_to: params.replyTo ?? null,
+        tags: params.tags ?? null,
+        metadata: (params.metadata ?? null) as never,
+        priority: params.priority ?? 5,
+        scheduled_at: (params.scheduledAt ?? new Date()).toISOString(),
+        status: "pending",
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      return { ok: false, status: 500, error: error?.message ?? "falha ao enfileirar" };
+    }
+    return { ok: true, id: data.id, status: 202, queued: true };
+  } catch (e) {
+    return { ok: false, status: 500, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Envia DIRETO via Resend (usado pelo worker e por chamadas immediate).
+ * Não respeita fila/rate-limit — chame apenas em contexto controlado.
+ */
+export async function sendNow(params: SendEmailParams & { to: string | string[] }): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return { ok: false, status: 0, error: "RESEND_API_KEY ausente" };
@@ -68,24 +128,20 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
     error = e instanceof Error ? e.message : String(e);
   }
 
-  // Audit log (best-effort, não bloqueia)
+  // Audit log
   try {
     await supabaseAdmin.from("audit_log").insert({
       source: "resend",
       action: "send_email",
       status: status >= 200 && status < 300 ? "ok" : "error",
-      request: {
-        to: body.to,
-        subject: body.subject,
-        from,
-        tags: body.tags ?? null,
-      },
+      request: { to: body.to, subject: body.subject, from, tags: body.tags ?? null },
       response: { status, id, error: error ?? null },
     });
   } catch { /* ignore */ }
 
   return { ok: status >= 200 && status < 300, id, status, error };
 }
+
 
 // ============================================================
 // Templates

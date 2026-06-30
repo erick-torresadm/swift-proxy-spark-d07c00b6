@@ -160,25 +160,43 @@ function CanceladosPage() {
         </p>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-4 flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1 mb-1">
-            <Tag className="w-3 h-3" /> Cupom de winback (opcional)
-          </label>
-          <input
-            value={coupon}
-            onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-            placeholder="Ex.: VOLTA20"
-            className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm"
-          />
+      <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-[11px] font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1 mb-1">
+              <Tag className="w-3 h-3" /> Cupom de winback (opcional)
+            </label>
+            <input
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+              placeholder="Ex.: VOLTA20"
+              className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm"
+            />
+          </div>
+          <Button
+            onClick={() => {
+              if (recipients.length === 0) { toast.error("Nenhum email válido"); return; }
+              if (confirm(`Enviar winback para ${recipients.length} cancelados? Estágio (D+7/D+20/D+45) escolhido automaticamente.`)) {
+                bulk.mutate();
+              }
+            }}
+            disabled={bulk.isPending || recipients.length === 0}
+            className="gap-2"
+          >
+            <Send className="w-4 h-4" />
+            {bulk.isPending ? "Enviando…" : `Enviar pra todos (${recipients.length})`}
+          </Button>
         </div>
-        <p className="text-xs text-muted-foreground max-w-md">
-          Se preencher, o cupom é incluído no email enviado. Crie o cupom em{" "}
-          <Link to="/admin/cupons" className="text-primary hover:underline">
-            Admin → Cupons
-          </Link>{" "}
-          antes.
-        </p>
+        {rows.length > 0 && (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-center text-xs pt-2 border-t border-border">
+            <div><div className="text-base font-bold">{rows.length}</div><div className="text-muted-foreground">Total</div></div>
+            <div><div className="text-base font-bold text-amber-600">{stats.pending}</div><div className="text-muted-foreground">A enviar</div></div>
+            <div><div className="text-base font-bold text-sky-600">{stats.sent}</div><div className="text-muted-foreground">Enviados</div></div>
+            <div><div className="text-base font-bold text-blue-600">{stats.opened}</div><div className="text-muted-foreground">Abriram</div></div>
+            <div><div className="text-base font-bold text-emerald-600">{stats.back}</div><div className="text-muted-foreground">Voltaram</div></div>
+            <div><div className="text-base font-bold text-destructive">{stats.errors}</div><div className="text-muted-foreground">Erros</div></div>
+          </div>
+        )}
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Carregando do Stripe…</p>}
@@ -196,7 +214,7 @@ function CanceladosPage() {
               <tr className="text-left">
                 <th className="px-4 py-3 font-bold">Cliente</th>
                 <th className="px-4 py-3 font-bold">Plano</th>
-                <th className="px-4 py-3 font-bold">Motivo</th>
+                <th className="px-4 py-3 font-bold">Status email</th>
                 <th className="px-4 py-3 font-bold text-right">Cancelou há</th>
                 <th className="px-4 py-3 font-bold text-right">Valor</th>
                 <th className="px-4 py-3 font-bold text-right">Ações</th>

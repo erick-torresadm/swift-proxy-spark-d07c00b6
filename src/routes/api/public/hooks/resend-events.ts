@@ -65,7 +65,10 @@ export const Route = createFileRoute("/api/public/hooks/resend-events")({
         if (!emailId || !type) return Response.json({ ok: true, ignored: true });
 
         const now = new Date().toISOString();
-        const updates: Record<string, string | null> = {};
+        const updates: {
+          delivered_at?: string; opened_at?: string; clicked_at?: string;
+          bounced_at?: string; complained_at?: string;
+        } = {};
         if (type === "email.delivered") updates.delivered_at = now;
         else if (type === "email.opened") updates.opened_at = now;
         else if (type === "email.clicked") updates.clicked_at = now;

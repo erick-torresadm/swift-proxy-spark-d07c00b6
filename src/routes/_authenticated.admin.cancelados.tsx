@@ -303,10 +303,6 @@ function CanceladosPage() {
                             </Button>
                           );
                         })()}
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                          {send.isPending && busy === r.email ? "Enviando…" : "Winback"}
-                        </Button>
                       </div>
                     </td>
                   </tr>

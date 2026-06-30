@@ -222,7 +222,7 @@ export async function persistIngestedPost(p: IngestPost): Promise<IngestOutcome>
       action,
       id,
       slug: p.slug,
-      status,
+      status: requested,
       published_at: publishedAt,
       auto_publish_at: autoPublishAt,
       admin_url: `/admin/blog/${id}`,

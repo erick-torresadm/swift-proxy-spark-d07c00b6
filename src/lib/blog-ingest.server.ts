@@ -149,12 +149,16 @@ export async function persistIngestedPost(p: IngestPost): Promise<IngestOutcome>
       return { action: "error", slug: p.slug, error: "content_md contains forbidden tags" };
     }
 
-    const status = p.status;
+    // post_status enum: draft | published | archived. "scheduled" is modeled as
+    // draft + auto_publish_at (a cron promotes it).
+    const requested = p.status;
+    const dbStatus: "draft" | "published" = requested === "published" ? "published" : "draft";
     const publishedAt =
-      status === "published"
+      dbStatus === "published"
         ? (p.published_at ?? new Date().toISOString())
         : (p.published_at ?? null);
-    const autoPublishAt = status === "scheduled" ? (p.auto_publish_at ?? p.published_at ?? null) : null;
+    const autoPublishAt =
+      requested === "scheduled" ? (p.auto_publish_at ?? p.published_at ?? null) : (p.auto_publish_at ?? null);
 
     const payload = {
       slug: p.slug,
@@ -175,7 +179,7 @@ export async function persistIngestedPost(p: IngestPost): Promise<IngestOutcome>
       noindex: p.noindex,
       auto_publish_at: autoPublishAt,
       source: p.source,
-      status,
+      status: dbStatus,
     };
 
     const { data: existing } = await supabaseAdmin

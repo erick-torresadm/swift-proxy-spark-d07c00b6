@@ -229,3 +229,151 @@ export function tplGracePeriod(opts: { customerName?: string; daysLeft: number }
     `,
   });
 }
+
+// ============================================================
+// Dunning / Win-back templates (escalating cadence)
+// ============================================================
+
+export type OverdueStage = "d1" | "d5" | "d15";
+export type WinbackStage = "d7" | "d20" | "d45";
+
+export function tplOverdue(opts: {
+  customerName?: string;
+  productName: string;
+  amountBRL: string;
+  daysOverdue: number;
+  stage: OverdueStage;
+  payUrl?: string;
+}) {
+  const name = escapeHtml(opts.customerName || "cliente");
+  const product = escapeHtml(opts.productName);
+  const pay = opts.payUrl || (BRAND.url + "/dashboard/orders");
+
+  const variants: Record<OverdueStage, { preview: string; title: string; emoji: string; color: string; headline: string; body: string; cta: string }> = {
+    d1: {
+      preview: `Lembrete amigável: seu pagamento ficou pendente`,
+      title: "Pagamento pendente",
+      emoji: "👋",
+      color: BRAND.primary,
+      headline: "Identificamos uma falha no seu pagamento",
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, tudo bem? Tentamos cobrar sua assinatura do <b>${product}</b> mas o pagamento não foi concluído.</p>
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Pode ser só um detalhe do cartão. Atualize agora e seus proxies continuam funcionando normalmente, sem interrupção.</p>`,
+      cta: "Atualizar pagamento",
+    },
+    d5: {
+      preview: `Atenção: sua assinatura está prestes a ser desativada`,
+      title: "Aviso importante",
+      emoji: "⚠️",
+      color: "#f59e0b",
+      headline: "Sua assinatura está em risco",
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, já se passaram <b>${opts.daysOverdue} dias</b> desde a falha no pagamento de <b>${product}</b>.</p>
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se você não regularizar nos próximos dias, vamos <b>desativar seus proxies</b> e cancelar a assinatura automaticamente. Não queremos que isso aconteça.</p>`,
+      cta: "Regularizar agora",
+    },
+    d15: {
+      preview: `Último aviso antes do cancelamento da sua conta`,
+      title: "Último aviso",
+      emoji: "🚨",
+      color: "#dc2626",
+      headline: "Último aviso: sua conta será cancelada",
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, este é o <b>último aviso</b>. Sua assinatura de <b>${product}</b> está com pagamento pendente há <b>${opts.daysOverdue} dias</b>.</p>
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se não recebermos o pagamento, sua conta será cancelada e seus proxies desativados permanentemente. Resolva agora em menos de 2 minutos:</p>`,
+      cta: "Pagar agora e manter conta",
+    },
+  };
+
+  const v = variants[opts.stage];
+
+  return layout({
+    preview: v.preview,
+    title: v.title,
+    bodyHtml: `
+      <div style="background:${v.color};color:#fff;padding:14px 18px;border-radius:8px;margin:0 0 22px;font-weight:700;font-size:14px;">
+        ${v.emoji}&nbsp; ${escapeHtml(v.title)}
+      </div>
+      <h1 style="margin:0 0 14px;font-size:22px;color:${v.color};line-height:1.3;">${escapeHtml(v.headline)}</h1>
+      ${v.body}
+      <table cellpadding="0" cellspacing="0" style="margin:18px 0;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
+        <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;">Plano</td><td style="padding:10px 14px;text-align:right;font-weight:600;">${product}</td></tr>
+        <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;border-top:1px solid ${BRAND.border};">Valor pendente</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:${v.color};border-top:1px solid ${BRAND.border};">R$ ${escapeHtml(opts.amountBRL)}</td></tr>
+        <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;border-top:1px solid ${BRAND.border};">Dias em atraso</td><td style="padding:10px 14px;text-align:right;font-weight:600;border-top:1px solid ${BRAND.border};">${opts.daysOverdue}</td></tr>
+      </table>
+      <p style="margin:24px 0 8px;">
+        <a href="${pay}" style="display:inline-block;background:${v.color};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">${escapeHtml(v.cta)}</a>
+      </p>
+      <p style="margin:18px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;">
+        Dúvidas? Responda este email ou fale com a gente no painel.
+      </p>
+    `,
+  });
+}
+
+export function tplWinback(opts: {
+  customerName?: string;
+  productName: string;
+  couponCode: string;
+  couponPct: number;
+  stage: WinbackStage;
+  daysSinceCancel: number;
+}) {
+  const name = escapeHtml(opts.customerName || "");
+  const product = escapeHtml(opts.productName);
+  const code = escapeHtml(opts.couponCode);
+  const backUrl = `${BRAND.url}/checkout?coupon=${encodeURIComponent(opts.couponCode)}`;
+
+  const variants: Record<WinbackStage, { preview: string; title: string; emoji: string; headline: string; body: string; cta: string; urgency?: string }> = {
+    d7: {
+      preview: `Sentimos sua falta · ${opts.couponPct}% off para voltar`,
+      title: "A gente sente sua falta",
+      emoji: "💙",
+      headline: `Que tal voltar com ${opts.couponPct}% off?`,
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Oi ${name || "tudo bem"}? Notamos que você cancelou seu plano <b>${product}</b> faz pouco tempo.</p>
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se foi pelo preço, pela qualidade ou só por uma pausa — queremos te ter de volta. Preparamos um cupom exclusivo de <b>${opts.couponPct}% de desconto</b> só pra você.</p>`,
+      cta: "Voltar com desconto",
+    },
+    d20: {
+      preview: `Última semana do seu cupom de ${opts.couponPct}% off`,
+      title: "Seu cupom está acabando",
+      emoji: "⏰",
+      headline: `Seus ${opts.couponPct}% de desconto estão expirando`,
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Oi ${name || "tudo bem"}, faz <b>${opts.daysSinceCancel} dias</b> que você não usa o Fast Proxy.</p>
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Seu cupom de <b>${opts.couponPct}% off</b> ainda está valendo, mas não por muito tempo. Aproveite enquanto dá — proxies BR/US estáveis, suporte rápido, sem fidelidade.</p>`,
+      cta: "Usar meu cupom agora",
+      urgency: "Cupom por tempo limitado",
+    },
+    d45: {
+      preview: `Uma última oferta especial pra você voltar`,
+      title: "Última chance",
+      emoji: "🎁",
+      headline: "Uma oferta final só pra você",
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Oi ${name || "tudo bem"}, essa é a última vez que vamos te incomodar — prometido.</p>
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se você quiser voltar, o cupom <b>${code}</b> com <b>${opts.couponPct}% off</b> está reservado. Caso contrário, não enviaremos mais ofertas. Boa sorte com seus projetos!</p>`,
+      cta: "Ativar oferta final",
+      urgency: "Última chance",
+    },
+  };
+
+  const v = variants[opts.stage];
+
+  return layout({
+    preview: v.preview,
+    title: v.title,
+    bodyHtml: `
+      ${v.urgency ? `<div style="background:#fef3c7;color:#92400e;padding:10px 14px;border-radius:6px;margin:0 0 18px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">⏰ ${escapeHtml(v.urgency)}</div>` : ""}
+      <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;">${v.emoji} ${escapeHtml(v.headline)}</h1>
+      ${v.body}
+      <div style="background:linear-gradient(135deg, ${BRAND.primary} 0%, #6366f1 100%);color:#fff;padding:22px;border-radius:12px;margin:22px 0;text-align:center;">
+        <div style="font-size:12px;opacity:0.85;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Seu cupom exclusivo</div>
+        <div style="font-size:32px;font-weight:800;letter-spacing:0.05em;font-family:monospace;margin-bottom:4px;">${code}</div>
+        <div style="font-size:14px;opacity:0.9;">${opts.couponPct}% de desconto na sua próxima assinatura</div>
+      </div>
+      <p style="margin:24px 0 8px;text-align:center;">
+        <a href="${backUrl}" style="display:inline-block;background:${BRAND.primary};color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:15px;">${escapeHtml(v.cta)}</a>
+      </p>
+      <p style="margin:18px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;text-align:center;">
+        Sem fidelidade · Cancele quando quiser · Suporte em português
+      </p>
+    `,
+  });
+}
+

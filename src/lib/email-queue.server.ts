@@ -51,14 +51,12 @@ async function countSent(sinceIso: string): Promise<number> {
   return count ?? 0;
 }
 
-async function updateDunningResendId(metadata: Record<string, unknown> | null, realResendId: string | undefined) {
-  if (!realResendId || !metadata) return;
-  const dunningId = typeof metadata.dunning_id === "string" ? metadata.dunning_id : null;
-  if (!dunningId) return;
+async function updateDunningResendId(queueId: string, realResendId: string | undefined) {
+  if (!realResendId) return;
   await supabaseAdmin
     .from("dunning_emails")
     .update({ resend_id: realResendId })
-    .eq("id", dunningId);
+    .eq("queue_id", queueId);
 }
 
 export async function processEmailQueue(): Promise<ProcessResult> {

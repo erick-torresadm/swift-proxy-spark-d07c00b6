@@ -240,6 +240,37 @@ export async function persistIngestedPost(p: IngestPost): Promise<IngestOutcome>
       }
     }
 
+    // Sync translations (one row per locale; upsert per locale)
+    if (p.translations) {
+      for (const [locale, t] of Object.entries(p.translations)) {
+        if (!markdownLooksSafe(t.content_md)) {
+          return { action: "error", slug: p.slug, error: `translation ${locale}: forbidden tags in content_md` };
+        }
+        const trPayload = {
+          post_id: id,
+          locale,
+          slug: t.slug,
+          title: t.title,
+          content_md: t.content_md,
+          meta_title: t.meta_title ?? null,
+          meta_description: t.meta_description ?? null,
+          excerpt: t.excerpt ?? null,
+          keyword_primary: t.keyword_primary ?? null,
+          keywords_secondary: (t.keywords_secondary ?? []) as never,
+          faq: (t.faq ?? []) as never,
+          cover_image_url: t.cover_image_url ?? null,
+          reading_time_minutes: t.reading_time_minutes ?? computeReadingMinutes(t.content_md),
+          display_author_name: t.display_author_name ?? null,
+        };
+        const { error: trErr } = await supabaseAdmin
+          .from("post_translations")
+          .upsert(trPayload, { onConflict: "post_id,locale" });
+        if (trErr) {
+          return { action: "error", slug: p.slug, error: `translation ${locale}: ${trErr.message}` };
+        }
+      }
+    }
+
     return {
       action,
       id,

@@ -74,6 +74,7 @@ import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
+import { Route as ApiPublicBlogIngestRouteImport } from './routes/api/public/blog/ingest'
 import { Route as AuthenticatedAdminInventoryProductIdRouteImport } from './routes/_authenticated.admin.inventory.$productId'
 import { Route as AuthenticatedAdminCustomersUserIdRouteImport } from './routes/_authenticated.admin.customers.$userId'
 import { Route as AuthenticatedAdminBlogTagsRouteImport } from './routes/_authenticated.admin.blog.tags'
@@ -436,6 +437,11 @@ const ApiPublicCronHealthcheckRoute =
     path: '/api/public/cron/healthcheck',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicBlogIngestRoute = ApiPublicBlogIngestRouteImport.update({
+  id: '/api/public/blog/ingest',
+  path: '/api/public/blog/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminInventoryProductIdRoute =
   AuthenticatedAdminInventoryProductIdRouteImport.update({
     id: '/inventory/$productId',
@@ -552,6 +558,7 @@ export interface FileRoutesByFullPath {
   '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
+  '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
@@ -624,6 +631,7 @@ export interface FileRoutesByTo {
   '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
+  '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
@@ -701,6 +709,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/_authenticated/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/_authenticated/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
+  '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
@@ -778,6 +787,7 @@ export interface FileRouteTypes {
     | '/admin/blog/tags'
     | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
+    | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
@@ -850,6 +860,7 @@ export interface FileRouteTypes {
     | '/admin/blog/tags'
     | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
+    | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
@@ -926,6 +937,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/blog/tags'
     | '/_authenticated/admin/customers/$userId'
     | '/_authenticated/admin/inventory/$productId'
+    | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/engagement-nudges'
     | '/api/public/hooks/notifications-dispatch'
@@ -968,6 +980,7 @@ export interface RootRouteChildren {
   CategorySplatRoute: typeof CategorySplatRoute
   CommentsSplatRoute: typeof CommentsSplatRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicBlogIngestRoute: typeof ApiPublicBlogIngestRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
@@ -1436,6 +1449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronHealthcheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/blog/ingest': {
+      id: '/api/public/blog/ingest'
+      path: '/api/public/blog/ingest'
+      fullPath: '/api/public/blog/ingest'
+      preLoaderRoute: typeof ApiPublicBlogIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/inventory/$productId': {
       id: '/_authenticated/admin/inventory/$productId'
       path: '/inventory/$productId'
@@ -1663,6 +1683,7 @@ const rootRouteChildren: RootRouteChildren = {
   CategorySplatRoute: CategorySplatRoute,
   CommentsSplatRoute: CommentsSplatRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicBlogIngestRoute: ApiPublicBlogIngestRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
   ApiPublicHooksNotificationsDispatchRoute:

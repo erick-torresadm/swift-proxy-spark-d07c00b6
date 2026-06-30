@@ -1,53 +1,121 @@
-# Plano — Sync ProxySeller + Renovação Inteligente
+## Endpoint público seguro pra ingestão do agente Python
 
-## Catálogo confirmado (BR e EUA)
-| Categoria  | BR | EUA |
-|------------|----|-----|
-| IPv4       | ✅ ipv4-br | ✅ ipv4-us |
-| IPv6       | ✅ ipv6-br | ✅ ipv6-us |
-| IPv6 FB    | ✅ ipv6-fb-br | ✅ ipv6-fb-us |
-| ISP        | ✅ isp-br | ❌ (não tenho) |
+### O que vou criar
 
-Todo o pipeline trata BR e EUA simetricamente. ISP-US fica fora do sync/renewal pois não há produto.
+**1. Rota TanStack: `POST /api/public/blog/ingest`** (`src/routes/api/public/blog/ingest.ts`)
 
-## Já feito nesta sessão
-1. **Migration** `pick_consolidated_stock(product_ids uuid[], limit int)` (SECURITY DEFINER, só service_role) — devolve estoque livre ordenado por **ocupação do bloco DESC** + `expires_at ASC`. Garante que blocos parcialmente cheios sejam preenchidos primeiro, deixando blocos vazios prontos para expirar.
-2. Índice parcial `idx_customer_proxies_status_stock` para acelerar a contagem de ocupação.
+Camadas de proteção (defesa em profundidade — sem nenhuma o endpoint cai; com as 4 fica praticamente intocável pra ataque casual):
 
-## A fazer (quando sair do plan mode)
+1. **Bearer + HMAC obrigatórios.** Headers exigidos:
+   - `Authorization: Bearer <BLOG_INGEST_TOKEN>` — segredo de 64 chars (gerado via `generate_secret`, fica no Lovable Backend, nunca no código). Comparação `timingSafeEqual`.
+   - `x-signature: sha256=<hmac>` — HMAC-SHA256 do **corpo cru** usando `BLOG_INGEST_HMAC_SECRET` (outro segredo de 64 chars). Garante que o body não foi alterado em trânsito mesmo se o token vazar em log.
+   - `x-timestamp: <unix>` — rejeita request com mais de **5 min de diferença** do `now()` (anti-replay).
+   - `x-nonce: <uuid>` — gravado em tabela `blog_ingest_nonces` com TTL 10 min; nonce repetido = 409 (anti-replay duplo).
 
-### 1. `src/lib/allocation.server.ts`
-- Reescrever `pickAvailableStockWithSiblings` para usar a RPC `pick_consolidated_stock` (pool = produto + irmãos da MESMA família e MESMO país — funciona tanto para BR quanto US IPv6/IPv6-FB). Mantém fallback in-process se a RPC falhar.
-- Adicionar e exportar:
-  - `runFullProviderSync()`: itera todos os produtos com `provider_tariff_id` (todas as 4 categorias × 2 países = 7 produtos), chama `listProxies(kind)`, e insere no `proxy_stock` qualquer IP que ainda não esteja rastreado. Não toca em IPs já alocados a cliente. Reconcilia `expires_at` quando o provedor reporta data nova.
-  - `runRenewalSweep()`: para cada `provider_orders` (bloco) IPv6 com `expires_at` entre agora e +3 dias:
-    - conta `customer_proxies` em status `active|grace` cujos `stock_id` pertencem ao bloco;
-    - **ocupação 0** → não renova, marca stock como `expired` no vencimento e dispara notificação "bloco abandonado, economia de US$ X";
-    - **ocupação ≥ 1** → `prolongMake` em **todos** os IPs do bloco (paga os 10) e estende `expires_at` por 30 dias. Loga economia teórica vs renovar tudo.
-  - Considera BR e US separadamente (provider_orders já tem `country_code`).
+2. **Rate limit por IP.** Máximo 30 req / 10 min, gravado em `blog_ingest_rate` (key = IP + janela). Excedeu = 429.
 
-### 2. Endpoints cron
-- `src/routes/api/public/hooks/proxyseller-full-sync.ts` — POST, valida via `checkCronAuth`, chama `runFullProviderSync`, retorna sumário.
-- `src/routes/api/public/hooks/renewal-sweep.ts` — POST, idem, chama `runRenewalSweep`.
+3. **Allowlist opcional de IP.** Coluna `BLOG_INGEST_ALLOWED_IPS` (CSV). Se vazia, libera qualquer IP (só você sabe o token). Se preenchida, só esses IPs passam. Você pode adicionar o IP fixo da sua máquina depois.
 
-### 3. Cron jobs (migration `pg_cron`)
-- `proxyseller-full-sync`: a cada 1 h.
-- `renewal-sweep`: 1×/dia às 09:00 UTC.
+4. **Validação Zod estrita.** Body limitado a:
+   - Máx **20 posts por request**, máx **500 KB de payload total**.
+   - `title` 5-200 chars, `body_md` 200-50000 chars, `slug` regex `^[a-z0-9-]+$`, `tags` máx 10, `faq` máx 15.
+   - `status` ∈ `["draft","scheduled"]` — **`published` é proibido pelo endpoint** (sua decisão).
+   - Se `status="scheduled"` e `publish_at` < `now() + 1h`, força pra `now() + 1h` (janela mínima).
+   - Default: `status="scheduled"`, `publish_at = now() + 1h`.
 
-### 4. `src/lib/inventory.functions.ts`
-- Novo server-fn `triggerProviderSync()` (admin-only) que chama `runFullProviderSync` direto.
-- Novo server-fn `previewRenewalSweep()` (dry-run) listando blocos que seriam renovados/abandonados nos próximos 3 dias.
-- Estender `getInventory()` para retornar **ocupação por bloco** (X/10) — agrupa por `provider_order_id`.
+5. **Sanitização markdown.** Já temos `isomorphic-dompurify` no projeto. Renderizo o `body_md` pra HTML server-side e sanitizo antes de qualquer preview; o que salva no banco é só markdown puro (sem `<script>`, sem `javascript:`, sem `on*=`).
 
-### 5. `src/routes/_authenticated.admin.inventory.index.tsx`
-- Botão **"Sincronizar agora com ProxySeller"** (chama `triggerProviderSync`).
-- Coluna **Ocupação** (e.g. `7/10`) nas listagens, com badge vermelho para `0/10` (bloco abandonado).
-- Filtro "Apenas blocos vazios" + total de US$ economizado em renovação.
+6. **Idempotência por slug.** Mesmo `slug` enviado 2x = update do rascunho existente, não duplica. Resposta diz `"action": "created" | "updated" | "skipped"`.
 
-### 6. `docs/PROXY-CATALOG.md`
-- Documentar a nova ordem de prioridade (consolidação por ocupação) e a regra de abandono.
-- Tabela explícita BR vs US, com observação ISP-US indisponível.
+7. **Logs auditáveis.** Cada ingestão grava em `audit_log` (ator: `system:blog-ingest`, IP, qtd posts, source).
 
-## Notas de segurança
-- A RPC já é `SECURITY DEFINER` + `EXECUTE` revogado de anon/authenticated (apenas service_role). Linter limpo.
-- Nenhum cliente é re-alocado neste plano — apenas IPs livres são realocados, conforme pedido.
+### Segredos novos (criados via `generate_secret`, 64 chars cada)
+
+- `BLOG_INGEST_TOKEN` — bearer do agente.
+- `BLOG_INGEST_HMAC_SECRET` — chave HMAC.
+
+Você copia ambos do painel Backend → Segredos pra dentro do `.env` do seu script Python. Nunca chegam no bundle do frontend (só rodam no Worker).
+
+### Schema novo (migração)
+
+```sql
+-- Anti-replay
+CREATE TABLE public.blog_ingest_nonces (
+  nonce text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+-- Rate limit
+CREATE TABLE public.blog_ingest_rate (
+  ip text NOT NULL,
+  window_start timestamptz NOT NULL,
+  count int NOT NULL DEFAULT 0,
+  PRIMARY KEY (ip, window_start)
+);
+-- ambas com GRANT só pro service_role + RLS bloqueando tudo
+-- pg_cron diário limpa registros > 1h
+```
+
+### Contrato final do endpoint
+
+```python
+# Lado Python — pseudocódigo
+import hmac, hashlib, time, uuid, json, httpx
+
+body = json.dumps({"posts": [...]}, separators=(",",":"))
+ts = str(int(time.time()))
+nonce = str(uuid.uuid4())
+sig = "sha256=" + hmac.new(HMAC_SECRET.encode(), (ts + "." + body).encode(), hashlib.sha256).hexdigest()
+
+httpx.post(
+  "https://project--22278c7a-6a44-4eed-8709-90b11bbbb809.lovable.app/api/public/blog/ingest",
+  content=body,
+  headers={
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {BLOG_INGEST_TOKEN}",
+    "x-signature": sig,
+    "x-timestamp": ts,
+    "x-nonce": nonce,
+  },
+  timeout=30,
+)
+```
+
+Resposta sempre JSON:
+```json
+{
+  "ok": true,
+  "created": [{"id":"uuid","slug":"...","status":"scheduled","publish_at":"...","admin_url":"/admin/blog/posts/uuid"}],
+  "updated": [],
+  "errors": []
+}
+```
+
+Erros genéricos (401 / 403 / 429) **não** dizem qual camada falhou — atacante não consegue distinguir "token errado" de "HMAC errado" de "IP bloqueado". Você vê o motivo real só em `audit_log`.
+
+### UI admin (pequeno ajuste)
+
+Adiciono um filtro "Origem: agente" em `/admin/blog/posts` (lendo a coluna `source` que já vou popular). Você abre, revisa, clica publicar. Posts scheduled aparecem com badge "Vai ao ar em 58 min" e botão "Cancelar agendamento".
+
+### Documentação
+
+Crio `docs/BLOG-INGEST.md` com:
+- Como gerar os headers (snippet Python pronto pra copiar).
+- Schema completo do body.
+- Códigos de erro e o que cada um significa.
+- Como rotacionar os segredos se vazar.
+
+### Arquivos criados/editados
+
+- `src/routes/api/public/blog/ingest.ts` (novo) — endpoint + verificação HMAC + rate limit
+- `src/lib/blog-ingest.server.ts` (novo) — sanitização, idempotência, persistência
+- `supabase/migrations/<ts>_blog_ingest.sql` (novo) — tabelas nonce + rate, cleanup cron
+- `src/routes/_authenticated.admin.blog.posts.index.tsx` (edit) — filtro "Origem"
+- `docs/BLOG-INGEST.md` (novo) — guia pro lado Python
+- Segredos: `BLOG_INGEST_TOKEN` e `BLOG_INGEST_HMAC_SECRET` via `generate_secret`
+
+### O que **não** vou fazer
+
+- Não exponho UI pública pra disparar geração (você disse local).
+- Não chamo o Ollama do lado Lovable.
+- Não permito `status=published` direto (mínimo scheduled +1h).
+- Não toco em `posts.functions.ts` que já existe — endpoint usa caminho próprio.

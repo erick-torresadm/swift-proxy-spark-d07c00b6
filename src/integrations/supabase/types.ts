@@ -391,33 +391,57 @@ export type Database = {
       }
       dunning_emails: {
         Row: {
+          bounced_at: string | null
           campaign: string
+          clicked_at: string | null
+          complained_at: string | null
+          converted_at: string | null
+          delivered_at: string | null
           email: string | null
+          error_message: string | null
           id: string
+          opened_at: string | null
           order_id: string
           resend_id: string | null
           sent_at: string
           stage: string
+          trigger: string
           user_id: string
         }
         Insert: {
+          bounced_at?: string | null
           campaign: string
+          clicked_at?: string | null
+          complained_at?: string | null
+          converted_at?: string | null
+          delivered_at?: string | null
           email?: string | null
+          error_message?: string | null
           id?: string
+          opened_at?: string | null
           order_id: string
           resend_id?: string | null
           sent_at?: string
           stage: string
+          trigger?: string
           user_id: string
         }
         Update: {
+          bounced_at?: string | null
           campaign?: string
+          clicked_at?: string | null
+          complained_at?: string | null
+          converted_at?: string | null
+          delivered_at?: string | null
           email?: string | null
+          error_message?: string | null
           id?: string
+          opened_at?: string | null
           order_id?: string
           resend_id?: string | null
           sent_at?: string
           stage?: string
+          trigger?: string
           user_id?: string
         }
         Relationships: [

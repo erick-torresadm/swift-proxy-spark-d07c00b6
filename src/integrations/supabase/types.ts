@@ -402,6 +402,7 @@ export type Database = {
           id: string
           opened_at: string | null
           order_id: string
+          queue_id: string | null
           resend_id: string | null
           sent_at: string
           stage: string
@@ -420,6 +421,7 @@ export type Database = {
           id?: string
           opened_at?: string | null
           order_id: string
+          queue_id?: string | null
           resend_id?: string | null
           sent_at?: string
           stage: string
@@ -438,6 +440,7 @@ export type Database = {
           id?: string
           opened_at?: string | null
           order_id?: string
+          queue_id?: string | null
           resend_id?: string | null
           sent_at?: string
           stage?: string

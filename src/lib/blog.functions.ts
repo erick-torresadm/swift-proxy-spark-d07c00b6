@@ -206,6 +206,127 @@ export const getPostBySlug = createServerFn({ method: "POST" })
     return null;
   });
 
+/* ---------------- TRADUÇÕES (multi-idioma) ---------------- */
+
+const LOCALES = ["en", "es", "de", "fr", "it", "nl", "ja"] as const;
+type Locale = (typeof LOCALES)[number];
+
+export const getTranslatedPostBySlug = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      locale: z.enum(LOCALES),
+      slug: z.string().min(1).max(160),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { data: tr } = await supabaseAdmin
+      .from("post_translations" as never)
+      .select("*")
+      .eq("locale", data.locale)
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (!tr) return null;
+    const t = tr as Record<string, unknown> & { post_id: string };
+
+    // Parent post must be published
+    const { data: parent } = await supabaseAdmin
+      .from("posts")
+      .select("id, slug, status, published_at, cover_image_url, display_author_name, post_categories(slug, name), post_tag_map(post_tags(slug, name))")
+      .eq("id", t.post_id)
+      .eq("status", "published")
+      .lte("published_at", new Date().toISOString())
+      .maybeSingle();
+    if (!parent) return null;
+
+    // All available translations + PT for hreflang
+    const { data: alts } = await supabaseAdmin
+      .from("post_translations" as never)
+      .select("locale, slug")
+      .eq("post_id", t.post_id);
+    const alternates: Array<{ locale: string; slug: string }> = [
+      { locale: "pt", slug: parent.slug },
+      ...(((alts as Array<{ locale: string; slug: string }> | null) ?? [])),
+    ];
+
+    return {
+      id: parent.id,
+      post_id: parent.id,
+      locale: data.locale,
+      slug: t.slug as string,
+      title: t.title as string,
+      content_md: t.content_md as string,
+      excerpt: (t.excerpt as string | null) ?? null,
+      meta_title: (t.meta_title as string | null) ?? null,
+      meta_description: (t.meta_description as string | null) ?? null,
+      keyword_primary: (t.keyword_primary as string | null) ?? null,
+      keywords_secondary: ((t.keywords_secondary as string[] | null) ?? []),
+      faq: ((t.faq as Array<{ question: string; answer: string }> | null) ?? []),
+      cover_image_url: (t.cover_image_url as string | null) ?? parent.cover_image_url ?? null,
+      reading_time_minutes: (t.reading_time_minutes as number | null) ?? 5,
+      author_name: (t.display_author_name as string | null) ?? parent.display_author_name ?? "FastProxy",
+      published_at: parent.published_at,
+      pt_slug: parent.slug,
+      category: parent.post_categories
+        ? { slug: parent.post_categories.slug, name: parent.post_categories.name }
+        : null,
+      tags: (parent.post_tag_map ?? [])
+        .map((m: { post_tags: { slug: string; name: string } | null }) => m.post_tags)
+        .filter(Boolean) as { slug: string; name: string }[],
+      alternates,
+    };
+  });
+
+export const getPostAlternates = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ postId: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: alts } = await supabaseAdmin
+      .from("post_translations" as never)
+      .select("locale, slug")
+      .eq("post_id", data.postId);
+    return ((alts as Array<{ locale: string; slug: string }> | null) ?? []);
+  });
+
+export const listTranslatedPublishedPosts = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      locale: z.enum(LOCALES),
+      page: z.number().int().min(1).max(500).default(1),
+      pageSize: z.number().int().min(1).max(50).default(12),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const from = (data.page - 1) * data.pageSize;
+    const to = from + data.pageSize - 1;
+    const { data: rows, count } = await supabaseAdmin
+      .from("post_translations" as never)
+      .select("slug, title, excerpt, cover_image_url, post_id, posts!inner(status, published_at, cover_image_url, reading_time_minutes)", { count: "exact" })
+      .eq("locale", data.locale)
+      .eq("posts.status", "published")
+      .lte("posts.published_at", new Date().toISOString())
+      .order("posts(published_at)", { ascending: false })
+      .range(from, to);
+    type Row = {
+      slug: string;
+      title: string;
+      excerpt: string | null;
+      cover_image_url: string | null;
+      post_id: string;
+      posts: { published_at: string | null; cover_image_url: string | null; reading_time_minutes: number | null };
+    };
+    return {
+      posts: ((rows as unknown as Row[] | null) ?? []).map((r) => ({
+        slug: r.slug,
+        title: r.title,
+        excerpt: r.excerpt,
+        cover_image_url: r.cover_image_url ?? r.posts.cover_image_url,
+        published_at: r.posts.published_at,
+        reading_time_minutes: r.posts.reading_time_minutes,
+      })),
+      total: count ?? 0,
+    };
+  });
+
+
 export const listCategories = createServerFn({ method: "GET" }).handler(async () => {
   const { data } = await supabaseAdmin
     .from("post_categories")

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Clock, Calendar, ArrowLeft, Tag, User } from "lucide-react";
-import { getPostBySlug } from "@/lib/blog.functions";
+import { getPostBySlug, getPostAlternates } from "@/lib/blog.functions";
 import { MarkdownRender } from "@/components/blog/markdown-render";
 import { CommentThread } from "@/components/blog/comment-thread";
 import { TableOfContents } from "@/components/blog/toc";
@@ -14,7 +14,11 @@ export const Route = createFileRoute("/blog/$slug")({
   loader: async ({ params }) => {
     const post = await getPostBySlug({ data: { slug: params.slug } });
     if (!post) throw notFound();
-    return { post };
+    const alternates =
+      post.kind === "post"
+        ? await getPostAlternates({ data: { postId: post.id } })
+        : [];
+    return { post, alternates };
   },
   head: ({ loaderData, params }) => {
     if (!loaderData) return { meta: [{ title: "Artigo" }] };

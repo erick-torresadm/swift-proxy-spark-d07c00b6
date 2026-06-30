@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, UserX, Mail, MessageCircle, Tag, ExternalLink, Copy } from "lucide-react";
+import { ArrowLeft, UserX, Mail, MessageCircle, Tag, ExternalLink, Copy, Send, CheckCircle2, Eye, MousePointerClick, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { listCanceled, sendWinbackEmail } from "@/lib/admin-kpis.functions";
+import { getWinbackStatusByEmails, sendWinbackToAll, type EmailStatus } from "@/lib/dunning-status.functions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/cancelados")({
@@ -22,9 +23,65 @@ function normalizeBrPhone(raw: string | null): string | null {
   return digits.startsWith("55") ? digits : `55${digits}`;
 }
 
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const d = Math.floor(diff / 86_400_000);
+  if (d >= 1) return `há ${d}d`;
+  const h = Math.floor(diff / 3_600_000);
+  if (h >= 1) return `há ${h}h`;
+  const m = Math.floor(diff / 60_000);
+  return `há ${m}min`;
+}
+
+function EmailStatusCell({ s }: { s: EmailStatus | undefined }) {
+  if (!s || s.total_sent === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-muted-foreground">
+        <Clock className="w-3 h-3" /> Não enviado
+      </span>
+    );
+  }
+  const stageLabels: Record<string, string> = { d7: "D+7", d20: "D+20", d45: "D+45" };
+  const badges: React.ReactNode[] = [];
+  if (s.stage) {
+    badges.push(
+      <span key="stage" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-primary/15 text-primary">
+        {stageLabels[s.stage] ?? s.stage}
+      </span>,
+    );
+  }
+  if (s.converted_at) {
+    badges.push(<span key="conv" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Voltou</span>);
+  } else if (s.error) {
+    badges.push(<span key="err" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-destructive/15 text-destructive" title={s.error}><XCircle className="w-3 h-3" /> Erro</span>);
+  } else if (s.bounced_at) {
+    badges.push(<span key="bnc" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-destructive/15 text-destructive"><XCircle className="w-3 h-3" /> Bounce</span>);
+  } else if (s.clicked_at) {
+    badges.push(<span key="clk" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-700"><MousePointerClick className="w-3 h-3" /> Clicou</span>);
+  } else if (s.opened_at) {
+    badges.push(<span key="opn" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-500/15 text-blue-600"><Eye className="w-3 h-3" /> Abriu</span>);
+  } else if (s.delivered_at) {
+    badges.push(<span key="dlv" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-sky-500/15 text-sky-700"><CheckCircle2 className="w-3 h-3" /> Entregue</span>);
+  } else {
+    badges.push(<span key="snt" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/15 text-amber-700"><Send className="w-3 h-3" /> Enviado</span>);
+  }
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap gap-1">{badges}</div>
+      <div className="text-[10px] text-muted-foreground">
+        {timeAgo(s.sent_at)} · {s.trigger === "manual" ? "manual" : "auto"}
+        {s.total_sent > 1 && ` · ${s.total_sent}x`}
+      </div>
+    </div>
+  );
+}
+
 function CanceladosPage() {
   const fetchFn = useServerFn(listCanceled);
   const sendFn = useServerFn(sendWinbackEmail);
+  const statusFn = useServerFn(getWinbackStatusByEmails);
+  const bulkFn = useServerFn(sendWinbackToAll);
   const [coupon, setCoupon] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -34,21 +91,57 @@ function CanceladosPage() {
     refetchInterval: 5 * 60_000,
   });
 
+  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const emails = useMemo(() => rows.map((r) => r.email).filter((e): e is string => !!e), [rows]);
+
+  const { data: statusData, refetch: refetchStatus } = useQuery({
+    queryKey: ["admin-canceled-status", emails.join(",")],
+    queryFn: () => statusFn({ data: { emails } }),
+    enabled: emails.length > 0,
+    refetchInterval: 30_000,
+  });
+  const statusMap = statusData?.map ?? {};
+
   const send = useMutation({
-    mutationFn: (vars: {
-      email: string;
-      name: string | null;
-      productName: string | null;
-      couponCode?: string;
-    }) => sendFn({ data: vars }),
+    mutationFn: (vars: { email: string; name: string | null; productName: string | null; couponCode?: string }) => sendFn({ data: vars }),
     onMutate: (v) => setBusy(v.email),
-    onSettled: () => setBusy(null),
+    onSettled: () => { setBusy(null); void refetchStatus(); },
     onSuccess: (r) => toast.success(`Email enviado para ${r.sent_to}`),
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const rows = data?.rows ?? [];
+  const recipients = useMemo(() =>
+    rows.filter((r) => !!r.email).map((r) => ({
+      email: r.email as string,
+      name: r.name,
+      productName: r.product_name,
+      daysSinceCancel: r.days_since_cancel,
+    })), [rows]);
+
+  const bulk = useMutation({
+    mutationFn: () => bulkFn({ data: { recipients, couponCode: coupon || undefined } }),
+    onSuccess: (r) => {
+      toast.success(`Enviados: ${r.sent} · Falhas: ${r.failed} · Pulados: ${r.skipped}`);
+      void refetchStatus();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const totalMrrLost = rows.reduce((s, r) => s + (r.interval === "month" ? r.amount_cents : 0), 0);
+  const stats = useMemo(() => {
+    const s = { sent: 0, opened: 0, clicked: 0, back: 0, errors: 0, pending: 0 };
+    for (const r of rows) {
+      const st = r.email ? statusMap[r.email] : undefined;
+      if (!st || st.total_sent === 0) { s.pending++; continue; }
+      s.sent++;
+      if (st.opened_at) s.opened++;
+      if (st.clicked_at) s.clicked++;
+      if (st.converted_at) s.back++;
+      if (st.error || st.bounced_at) s.errors++;
+    }
+    return s;
+  }, [rows, statusMap]);
+
 
   return (
     <div className="space-y-6">

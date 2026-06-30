@@ -253,9 +253,14 @@ function CanceladosPage() {
                         <div className="text-[11px] text-muted-foreground">{r.phone}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs">{r.product_name ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {r.cancel_reason ?? "—"}
+                    <td className="px-4 py-3 text-xs">
+                      {r.product_name ?? "—"}
+                      {r.cancel_reason && (
+                        <div className="text-[10px] text-muted-foreground mt-1">{r.cancel_reason}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <EmailStatusCell s={r.email ? statusMap[r.email] : undefined} />
                     </td>
                     <td className="px-4 py-3 text-right font-bold">{r.days_since_cancel}d</td>
                     <td className="px-4 py-3 text-right">
@@ -275,19 +280,29 @@ function CanceladosPage() {
                             <ExternalLink className="w-3 h-3 opacity-60" />
                           </a>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!r.email || (send.isPending && busy === r.email)}
-                          onClick={() =>
-                            r.email &&
-                            send.mutate({
-                              email: r.email,
-                              name: r.name,
-                              productName: r.product_name,
-                              couponCode: coupon || undefined,
-                            })
-                          }
+                        {(() => {
+                          const st = r.email ? statusMap[r.email] : undefined;
+                          const hasErr = !!(st?.error || st?.bounced_at);
+                          return (
+                            <Button
+                              size="sm"
+                              variant={hasErr ? "destructive" : "outline"}
+                              disabled={!r.email || (send.isPending && busy === r.email)}
+                              onClick={() =>
+                                r.email &&
+                                send.mutate({
+                                  email: r.email,
+                                  name: r.name,
+                                  productName: r.product_name,
+                                  couponCode: coupon || undefined,
+                                })
+                              }
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                              {send.isPending && busy === r.email ? "Enviando…" : hasErr ? "Reenviar" : st && st.total_sent > 0 ? "Reenviar" : "Winback"}
+                            </Button>
+                          );
+                        })()}
                         >
                           <Mail className="w-3.5 h-3.5" />
                           {send.isPending && busy === r.email ? "Enviando…" : "Winback"}

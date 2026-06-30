@@ -104,6 +104,39 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_ingest_nonces: {
+        Row: {
+          created_at: string
+          nonce: string
+        }
+        Insert: {
+          created_at?: string
+          nonce: string
+        }
+        Update: {
+          created_at?: string
+          nonce?: string
+        }
+        Relationships: []
+      }
+      blog_ingest_rate: {
+        Row: {
+          count: number
+          ip: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          ip: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          ip?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           assigned_admin_id: string | null
@@ -628,6 +661,7 @@ export type Database = {
       posts: {
         Row: {
           author_id: string | null
+          auto_publish_at: string | null
           canonical_url: string | null
           category_id: string | null
           content_md: string
@@ -645,6 +679,7 @@ export type Database = {
           published_at: string | null
           reading_time_minutes: number
           slug: string
+          source: string | null
           status: Database["public"]["Enums"]["post_status"]
           title: string
           updated_at: string
@@ -652,6 +687,7 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
+          auto_publish_at?: string | null
           canonical_url?: string | null
           category_id?: string | null
           content_md?: string
@@ -669,6 +705,7 @@ export type Database = {
           published_at?: string | null
           reading_time_minutes?: number
           slug: string
+          source?: string | null
           status?: Database["public"]["Enums"]["post_status"]
           title: string
           updated_at?: string
@@ -676,6 +713,7 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
+          auto_publish_at?: string | null
           canonical_url?: string | null
           category_id?: string | null
           content_md?: string
@@ -693,6 +731,7 @@ export type Database = {
           published_at?: string | null
           reading_time_minutes?: number
           slug?: string
+          source?: string | null
           status?: Database["public"]["Enums"]["post_status"]
           title?: string
           updated_at?: string
@@ -1323,6 +1362,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bump_blog_ingest_rate: {
+        Args: { _ip: string; _window_minutes?: number }
+        Returns: number
+      }
       can_manage_blog: { Args: { _user_id: string }; Returns: boolean }
       can_moderate_comments: { Args: { _user_id: string }; Returns: boolean }
       get_db_total_size: { Args: never; Returns: number }

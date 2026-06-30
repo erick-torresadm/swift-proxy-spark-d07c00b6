@@ -82,10 +82,74 @@ def ingest(posts: list[dict]) -> dict:
 }
 ```
 
+### 🌍 Multi-idioma (hreflang automático no Google)
+
+Para indexar o mesmo post em outros idiomas, adicione `translations` no objeto do post.
+Cada idioma vira uma URL `/{locale}/blog/{slug}` com canonical próprio, e o sitemap
+publica o cluster hreflang completo (PT + todos os idiomas) automaticamente.
+
+Locais suportados: `en`, `es`, `de`, `fr`, `it`, `nl`, `ja`.
+
+```json
+{
+  "posts": [
+    {
+      "title": "Proxies para Facebook Ads — guia definitivo 2026",
+      "slug": "proxies-facebook-ads-guia-2026",
+      "content_md": "## Intro PT...",
+      "meta_title": "Proxies para Facebook Ads 2026 | FastProxy",
+      "meta_description": "...",
+      "translations": {
+        "en": {
+          "title": "Facebook Ads Proxies — The Definitive 2026 Guide",
+          "slug": "facebook-ads-proxies-2026-guide",
+          "content_md": "## Intro EN...",
+          "meta_title": "Facebook Ads Proxies 2026 | FastProxy",
+          "meta_description": "Complete guide on dedicated proxies for Facebook Ads...",
+          "excerpt": "Why media buyers need dedicated proxies in 2026.",
+          "keyword_primary": "facebook ads proxies",
+          "keywords_secondary": ["proxies for facebook ads", "best proxies fb"],
+          "faq": [{ "question": "Are these residential?", "answer": "..." }]
+        },
+        "es": {
+          "title": "Proxies para Facebook Ads — Guía definitiva 2026",
+          "slug": "proxies-facebook-ads-guia-2026-es",
+          "content_md": "## Intro ES..."
+        }
+      }
+    }
+  ]
+}
+```
+
+Regras das traduções:
+- `slug` da tradução tem que ser único por idioma (use sufixo `-en`/`-es` se quiser).
+- Mesmo slug PT já existe → o endpoint **atualiza** o post + faz upsert de cada tradução.
+- Cada tradução pode ter seu próprio `cover_image_url`, `reading_time_minutes`, `display_author_name`, `faq`.
+- Se a tradução omitir `cover_image_url`, herda do post PT.
+
+### 🔁 Hreflang gerado automaticamente
+
+Ao publicar `pt + en + es`, o `/sitemap.xml` emite:
+
+```xml
+<url>
+  <loc>https://www.fastproxy.com.br/blog/proxies-facebook-ads-guia-2026</loc>
+  <xhtml:link rel="alternate" hreflang="x-default" href=".../blog/..." />
+  <xhtml:link rel="alternate" hreflang="pt-BR" href=".../blog/..." />
+  <xhtml:link rel="alternate" hreflang="en" href=".../en/blog/facebook-ads-proxies-2026-guide" />
+  <xhtml:link rel="alternate" hreflang="es" href=".../es/blog/proxies-facebook-ads-guia-2026-es" />
+</url>
+<!-- + uma <url> por idioma com o mesmo bloco hreflang -->
+```
+
+E cada página HTML carrega os `<link rel="alternate" hreflang="...">` no `<head>` —
+exigência do Google pra indexar internacional corretamente.
+
 Limites:
 - até **20 posts por request**
-- corpo total ≤ **500 KB**
-- `body_md` é Markdown puro; HTML perigoso (`<script>`, `<iframe>`, `javascript:`, `on*=`) é rejeitado.
+- corpo total ≤ **1 MB**
+- `content_md` é Markdown puro; HTML perigoso (`<script>`, `<iframe>`, `javascript:`, `on*=`) é rejeitado em PT **e** em cada tradução.
 
 ## Status / publicação
 

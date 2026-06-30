@@ -67,6 +67,7 @@ import { Route as AuthenticatedAdminCustomersIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
 import { Route as ApiPublicHooksStripeSyncRouteImport } from './routes/api/public/hooks/stripe-sync'
 import { Route as ApiPublicHooksStripeRouteImport } from './routes/api/public/hooks/stripe'
+import { Route as ApiPublicHooksResendEventsRouteImport } from './routes/api/public/hooks/resend-events'
 import { Route as ApiPublicHooksRenewalSweepRouteImport } from './routes/api/public/hooks/renewal-sweep'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 import { Route as ApiPublicHooksProxysellerFullSyncRouteImport } from './routes/api/public/hooks/proxyseller-full-sync'
@@ -396,6 +397,12 @@ const ApiPublicHooksStripeRoute = ApiPublicHooksStripeRouteImport.update({
   path: '/api/public/hooks/stripe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksResendEventsRoute =
+  ApiPublicHooksResendEventsRouteImport.update({
+    id: '/api/public/hooks/resend-events',
+    path: '/api/public/hooks/resend-events',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksRenewalSweepRoute =
   ApiPublicHooksRenewalSweepRouteImport.update({
     id: '/api/public/hooks/renewal-sweep',
@@ -574,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
+  '/api/public/hooks/resend-events': typeof ApiPublicHooksResendEventsRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
@@ -648,6 +656,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
+  '/api/public/hooks/resend-events': typeof ApiPublicHooksResendEventsRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/admin/blog': typeof AuthenticatedAdminBlogIndexRoute
@@ -727,6 +736,7 @@ export interface FileRoutesById {
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
+  '/api/public/hooks/resend-events': typeof ApiPublicHooksResendEventsRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
   '/api/public/hooks/stripe-sync': typeof ApiPublicHooksStripeSyncRoute
   '/_authenticated/admin/blog/': typeof AuthenticatedAdminBlogIndexRoute
@@ -806,6 +816,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/renewal-sweep'
+    | '/api/public/hooks/resend-events'
     | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog/'
@@ -880,6 +891,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/renewal-sweep'
+    | '/api/public/hooks/resend-events'
     | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/admin/blog'
@@ -958,6 +970,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/renewal-sweep'
+    | '/api/public/hooks/resend-events'
     | '/api/public/hooks/stripe'
     | '/api/public/hooks/stripe-sync'
     | '/_authenticated/admin/blog/'
@@ -1002,6 +1015,7 @@ export interface RootRouteChildren {
   ApiPublicHooksProxysellerFullSyncRoute: typeof ApiPublicHooksProxysellerFullSyncRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksRenewalSweepRoute: typeof ApiPublicHooksRenewalSweepRoute
+  ApiPublicHooksResendEventsRoute: typeof ApiPublicHooksResendEventsRoute
   ApiPublicHooksStripeRoute: typeof ApiPublicHooksStripeRoute
   ApiPublicHooksStripeSyncRoute: typeof ApiPublicHooksStripeSyncRoute
 }
@@ -1414,6 +1428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksStripeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/resend-events': {
+      id: '/api/public/hooks/resend-events'
+      path: '/api/public/hooks/resend-events'
+      fullPath: '/api/public/hooks/resend-events'
+      preLoaderRoute: typeof ApiPublicHooksResendEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/renewal-sweep': {
       id: '/api/public/hooks/renewal-sweep'
       path: '/api/public/hooks/renewal-sweep'
@@ -1716,6 +1737,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksProxysellerFullSyncRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
   ApiPublicHooksRenewalSweepRoute: ApiPublicHooksRenewalSweepRoute,
+  ApiPublicHooksResendEventsRoute: ApiPublicHooksResendEventsRoute,
   ApiPublicHooksStripeRoute: ApiPublicHooksStripeRoute,
   ApiPublicHooksStripeSyncRoute: ApiPublicHooksStripeSyncRoute,
 }

@@ -454,6 +454,72 @@ export type Database = {
           },
         ]
       }
+      email_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          from_email: string | null
+          html: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          metadata: Json | null
+          priority: number
+          reply_to: string | null
+          resend_id: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          subject: string
+          tags: Json | null
+          text_body: string | null
+          to_email: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          from_email?: string | null
+          html: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          metadata?: Json | null
+          priority?: number
+          reply_to?: string | null
+          resend_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          tags?: Json | null
+          text_body?: string | null
+          to_email: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          from_email?: string | null
+          html?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          metadata?: Json | null
+          priority?: number
+          reply_to?: string | null
+          resend_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          tags?: Json | null
+          text_body?: string | null
+          to_email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fx_rates: {
         Row: {
           currency: string

@@ -112,9 +112,21 @@ export const Route = createFileRoute("/blog/$slug")({
         })),
       });
     }
+    const links: Array<{ rel: string; href: string; hrefLang?: string }> = [
+      { rel: "canonical", href: url },
+      { rel: "alternate", hrefLang: "x-default", href: url },
+      { rel: "alternate", hrefLang: "pt-BR", href: url },
+    ];
+    for (const a of loaderData.alternates ?? []) {
+      links.push({
+        rel: "alternate",
+        hrefLang: a.locale,
+        href: `${SITE}/${a.locale}/blog/${a.slug}`,
+      });
+    }
     return {
       meta,
-      links: [{ rel: "canonical", href: url }],
+      links,
       scripts: ld.map((j) => ({
         type: "application/ld+json",
         children: JSON.stringify(j),

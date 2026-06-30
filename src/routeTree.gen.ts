@@ -40,6 +40,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated.dashboard.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
+import { Route as LocaleBlogIndexRouteImport } from './routes/$locale.blog.index'
 import { Route as BlogTagSlugRouteImport } from './routes/blog.tag.$slug'
 import { Route as BlogCSlugRouteImport } from './routes/blog.c.$slug'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
@@ -62,6 +63,7 @@ import { Route as AuthenticatedAdminCanceladosRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated.admin.broadcast'
 import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authenticated.admin.blog'
 import { Route as AuthenticatedAdminAllocationsRouteImport } from './routes/_authenticated.admin.allocations'
+import { Route as LocaleBlogSlugRouteImport } from './routes/$locale.blog.$slug'
 import { Route as AuthenticatedAdminInventoryIndexRouteImport } from './routes/_authenticated.admin.inventory.index'
 import { Route as AuthenticatedAdminCustomersIndexRouteImport } from './routes/_authenticated.admin.customers.index'
 import { Route as AuthenticatedAdminBlogIndexRouteImport } from './routes/_authenticated.admin.blog.index'
@@ -243,6 +245,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const LocaleBlogIndexRoute = LocaleBlogIndexRouteImport.update({
+  id: '/$locale/blog/',
+  path: '/$locale/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogTagSlugRoute = BlogTagSlugRouteImport.update({
   id: '/tag/$slug',
   path: '/tag/$slug',
@@ -369,6 +376,11 @@ const AuthenticatedAdminAllocationsRoute =
     path: '/allocations',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const LocaleBlogSlugRoute = LocaleBlogSlugRouteImport.update({
+  id: '/$locale/blog/$slug',
+  path: '/$locale/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminInventoryIndexRoute =
   AuthenticatedAdminInventoryIndexRouteImport.update({
     id: '/inventory/',
@@ -547,6 +559,7 @@ export interface FileRoutesByFullPath {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/comments/$': typeof CommentsSplatRoute
   '/blog/': typeof BlogIndexRoute
+  '/$locale/blog/$slug': typeof LocaleBlogSlugRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
@@ -569,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
+  '/$locale/blog/': typeof LocaleBlogIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
@@ -624,6 +638,7 @@ export interface FileRoutesByTo {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/comments/$': typeof CommentsSplatRoute
   '/blog': typeof BlogIndexRoute
+  '/$locale/blog/$slug': typeof LocaleBlogSlugRoute
   '/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/cancelados': typeof AuthenticatedAdminCanceladosRoute
@@ -645,6 +660,7 @@ export interface FileRoutesByTo {
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
+  '/$locale/blog': typeof LocaleBlogIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
@@ -704,6 +720,7 @@ export interface FileRoutesById {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/comments/$': typeof CommentsSplatRoute
   '/blog/': typeof BlogIndexRoute
+  '/$locale/blog/$slug': typeof LocaleBlogSlugRoute
   '/_authenticated/admin/allocations': typeof AuthenticatedAdminAllocationsRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRouteWithChildren
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
@@ -726,6 +743,7 @@ export interface FileRoutesById {
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
   '/blog/c/$slug': typeof BlogCSlugRoute
   '/blog/tag/$slug': typeof BlogTagSlugRoute
+  '/$locale/blog/': typeof LocaleBlogIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/admin/blog/$id': typeof AuthenticatedAdminBlogIdRoute
@@ -785,6 +803,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/comments/$'
     | '/blog/'
+    | '/$locale/blog/$slug'
     | '/admin/allocations'
     | '/admin/blog'
     | '/admin/broadcast'
@@ -807,6 +826,7 @@ export interface FileRouteTypes {
     | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
+    | '/$locale/blog/'
     | '/admin/'
     | '/dashboard/'
     | '/admin/blog/$id'
@@ -862,6 +882,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/comments/$'
     | '/blog'
+    | '/$locale/blog/$slug'
     | '/admin/allocations'
     | '/admin/broadcast'
     | '/admin/cancelados'
@@ -883,6 +904,7 @@ export interface FileRouteTypes {
     | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
+    | '/$locale/blog'
     | '/admin'
     | '/dashboard'
     | '/admin/blog/$id'
@@ -941,6 +963,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/comments/$'
     | '/blog/'
+    | '/$locale/blog/$slug'
     | '/_authenticated/admin/allocations'
     | '/_authenticated/admin/blog'
     | '/_authenticated/admin/broadcast'
@@ -963,6 +986,7 @@ export interface FileRouteTypes {
     | '/api/public/stripe-webhook'
     | '/blog/c/$slug'
     | '/blog/tag/$slug'
+    | '/$locale/blog/'
     | '/_authenticated/admin/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/admin/blog/$id'
@@ -1018,7 +1042,9 @@ export interface RootRouteChildren {
   TermosDothtmlRoute: typeof TermosDothtmlRoute
   CategorySplatRoute: typeof CategorySplatRoute
   CommentsSplatRoute: typeof CommentsSplatRoute
+  LocaleBlogSlugRoute: typeof LocaleBlogSlugRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  LocaleBlogIndexRoute: typeof LocaleBlogIndexRoute
   ApiPublicBlogIngestRoute: typeof ApiPublicBlogIngestRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksDunningSweepRoute: typeof ApiPublicHooksDunningSweepRoute
@@ -1253,6 +1279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/$locale/blog/': {
+      id: '/$locale/blog/'
+      path: '/$locale/blog'
+      fullPath: '/$locale/blog/'
+      preLoaderRoute: typeof LocaleBlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/tag/$slug': {
       id: '/blog/tag/$slug'
       path: '/tag/$slug'
@@ -1406,6 +1439,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/allocations'
       preLoaderRoute: typeof AuthenticatedAdminAllocationsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/$locale/blog/$slug': {
+      id: '/$locale/blog/$slug'
+      path: '/$locale/blog/$slug'
+      fullPath: '/$locale/blog/$slug'
+      preLoaderRoute: typeof LocaleBlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/inventory/': {
       id: '/_authenticated/admin/inventory/'
@@ -1745,7 +1785,9 @@ const rootRouteChildren: RootRouteChildren = {
   TermosDothtmlRoute: TermosDothtmlRoute,
   CategorySplatRoute: CategorySplatRoute,
   CommentsSplatRoute: CommentsSplatRoute,
+  LocaleBlogSlugRoute: LocaleBlogSlugRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  LocaleBlogIndexRoute: LocaleBlogIndexRoute,
   ApiPublicBlogIngestRoute: ApiPublicBlogIngestRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksDunningSweepRoute: ApiPublicHooksDunningSweepRoute,

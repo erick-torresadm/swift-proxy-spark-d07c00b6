@@ -66,7 +66,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
         from_email: params.from ?? null,
         reply_to: params.replyTo ?? null,
         tags: params.tags ?? null,
-        metadata: params.metadata ?? null,
+        metadata: (params.metadata ?? null) as never,
         priority: params.priority ?? 5,
         scheduled_at: (params.scheduledAt ?? new Date()).toISOString(),
         status: "pending",

@@ -57,7 +57,7 @@ async function logSent(opts: {
   campaign: string;
   stage: string;
   email: string;
-  resendId?: string;
+  queueId?: string;
 }) {
   await supabaseAdmin.from("dunning_emails").insert({
     order_id: opts.orderId,
@@ -65,7 +65,8 @@ async function logSent(opts: {
     campaign: opts.campaign,
     stage: opts.stage,
     email: opts.email,
-    resend_id: opts.resendId ?? null,
+    queue_id: opts.queueId ?? null,
+    resend_id: null,
   });
 }
 

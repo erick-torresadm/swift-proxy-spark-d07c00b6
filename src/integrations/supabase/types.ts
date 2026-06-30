@@ -389,6 +389,47 @@ export type Database = {
           },
         ]
       }
+      dunning_emails: {
+        Row: {
+          campaign: string
+          email: string | null
+          id: string
+          order_id: string
+          resend_id: string | null
+          sent_at: string
+          stage: string
+          user_id: string
+        }
+        Insert: {
+          campaign: string
+          email?: string | null
+          id?: string
+          order_id: string
+          resend_id?: string | null
+          sent_at?: string
+          stage: string
+          user_id: string
+        }
+        Update: {
+          campaign?: string
+          email?: string | null
+          id?: string
+          order_id?: string
+          resend_id?: string | null
+          sent_at?: string
+          stage?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dunning_emails_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fx_rates: {
         Row: {
           currency: string

@@ -12,6 +12,27 @@ const faqItem = z.object({
   answer: z.string().min(3).max(3000),
 });
 
+const localeRe = /^(en|es|de|fr|it|nl|ja)$/;
+export const SUPPORTED_LOCALES = ["en", "es", "de", "fr", "it", "nl", "ja"] as const;
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
+const translationSchema = z.object({
+  title: z.string().min(3).max(120),
+  slug: z.string().min(3).max(160).regex(slugRe),
+  content_md: z.string().min(200).max(80_000),
+  meta_title: z.string().max(70).optional(),
+  meta_description: z.string().max(200).optional(),
+  excerpt: z.string().max(300).optional(),
+  keyword_primary: z.string().max(255).optional(),
+  keywords_secondary: z.array(z.string().max(120)).max(30).optional(),
+  faq: z.array(faqItem).max(20).optional(),
+  cover_image_url: z.string().max(500).optional(),
+  reading_time_minutes: z.number().int().positive().max(240).optional(),
+  display_author_name: z.string().max(100).optional(),
+});
+
+export type IngestTranslation = z.infer<typeof translationSchema>;
+
 const postSchema = z.object({
   title: z.string().min(3).max(120),
   slug: z.string().min(3).max(160).regex(slugRe),
@@ -33,6 +54,7 @@ const postSchema = z.object({
   source: z.string().max(50).default("ai-generated"),
   tags: z.array(z.string().min(1).max(60)).max(15).optional(),
   status: z.enum(["draft", "published", "scheduled"]).default("draft"),
+  translations: z.record(z.string().regex(localeRe), translationSchema).optional(),
 });
 
 export const ingestPayloadSchema = z.object({

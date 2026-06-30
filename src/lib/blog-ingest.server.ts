@@ -247,7 +247,7 @@ export async function auditIngest(params: {
     source: `system:blog-ingest:${params.source}`,
     action: "ingest",
     status: params.status,
-    request: params.request as object,
-    response: params.response as object,
+    request: params.request as never,
+    response: params.response as never,
   });
 }

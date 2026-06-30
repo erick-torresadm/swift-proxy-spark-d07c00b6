@@ -536,6 +536,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       post_categories: {
@@ -1011,6 +1018,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "provider_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       provider_settings: {
@@ -1167,6 +1181,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "proxy_stock_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "proxy_stock_provider_order_id_fkey"
             columns: ["provider_order_id"]
             isOneToOne: false
@@ -1268,6 +1289,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "restock_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       stripe_events: {
@@ -1359,7 +1387,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      products_public: {
+        Row: {
+          active: boolean | null
+          block_size: number | null
+          category: Database["public"]["Enums"]["product_category"] | null
+          country_code: string | null
+          delivery_mode: Database["public"]["Enums"]["delivery_mode"] | null
+          description: string | null
+          duration_days: number | null
+          id: string | null
+          ip_rotations_per_month: number | null
+          name: string | null
+          price_monthly_cents: number | null
+          price_yearly_cents: number | null
+          slug: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          block_size?: number | null
+          category?: Database["public"]["Enums"]["product_category"] | null
+          country_code?: string | null
+          delivery_mode?: Database["public"]["Enums"]["delivery_mode"] | null
+          description?: string | null
+          duration_days?: number | null
+          id?: string | null
+          ip_rotations_per_month?: number | null
+          name?: string | null
+          price_monthly_cents?: number | null
+          price_yearly_cents?: number | null
+          slug?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          block_size?: number | null
+          category?: Database["public"]["Enums"]["product_category"] | null
+          country_code?: string | null
+          delivery_mode?: Database["public"]["Enums"]["delivery_mode"] | null
+          description?: string | null
+          duration_days?: number | null
+          id?: string | null
+          ip_rotations_per_month?: number | null
+          name?: string | null
+          price_monthly_cents?: number | null
+          price_yearly_cents?: number | null
+          slug?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       bump_blog_ingest_rate: {

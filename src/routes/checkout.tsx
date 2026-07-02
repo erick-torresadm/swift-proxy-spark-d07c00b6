@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   CreditCard,
@@ -13,12 +13,20 @@ import {
   Mail,
   User,
   Check,
+  Clock,
+  Zap,
+  Sparkles,
+  Shield,
+  Users,
+  CalendarClock,
 } from "lucide-react";
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
 import { validateCouponPublic } from "@/lib/coupons.functions";
 import { getPublicCatalog } from "@/lib/catalog.functions";
 import { pixelTrack } from "@/lib/meta-pixel";
+import { computeBumpsTotals, BUMP_CONFIG, type Bumps } from "@/lib/order-bumps";
+
 
 type Slug =
   | "ipv6-br" | "ipv6-us"

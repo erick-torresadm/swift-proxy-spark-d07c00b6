@@ -234,9 +234,21 @@ function CheckoutPage() {
   const item = CATALOG[slug];
   const unitCents = billing === "yearly" ? item.yearly : item.monthly;
   const subtotal = unitCents * qty;
+
+  // Server = source of truth. We recompute the same numbers on the client for preview.
+  const bumpTotals = computeBumpsTotals({
+    billing,
+    unitMonthlyCents: item.monthly,
+    quantity: qty,
+    bumps,
+  });
+  const bumpsSubtotal =
+    bumpTotals.extraProxiesRecurringCents * (billing === "yearly" ? 12 : 1) +
+    bumpTotals.firstInvoiceExtraCents;
   const discount = appliedCoupon?.discount_cents ?? 0;
-  const total = Math.max(0, subtotal - discount);
-  const ipsTotal = qty * item.blockSize;
+  const total = Math.max(0, subtotal + bumpsSubtotal - discount);
+  const ipsTotal = (qty + bumpTotals.extraProxies) * item.blockSize;
+
 
   // Fire ViewContent when the user lands on /checkout with a chosen plan
   useEffect(() => {

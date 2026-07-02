@@ -372,8 +372,15 @@ function CheckoutPage() {
           email: cleanEmail,
           name: cleanName,
           couponCode: appliedCoupon?.code ?? null,
+          bumps: {
+            extraProxies: bumps.extraProxies ?? 0,
+            extendMonths: bumps.extendMonths ?? 0,
+            vipSupport: !!bumps.vipSupport,
+            setupAssist: !!bumps.setupAssist,
+          },
         },
       });
+
       if (res?.url) {
         window.location.href = res.url;
       } else {

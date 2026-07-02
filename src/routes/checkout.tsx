@@ -682,6 +682,76 @@ function CheckoutPage() {
             </div>
           </section>
 
+          {/* Step 6 — Order bumps (upgrades opcionais) */}
+          <section className="mb-8">
+            <StepHeader
+              n={6}
+              title="Turbine seu pedido"
+              hint="Adicionais opcionais com desconto — só neste checkout"
+            />
+            <div className="space-y-2.5">
+              {/* +N proxies extras */}
+              <BumpRow
+                Icon={Plus}
+                checked={(bumps.extraProxies ?? 0) > 0}
+                onToggle={() =>
+                  setBumps((b) => ({
+                    ...b,
+                    extraProxies: (b.extraProxies ?? 0) > 0 ? 0 : BUMP_CONFIG.extraProxies.defaultCount,
+                  }))
+                }
+                title={`+${BUMP_CONFIG.extraProxies.defaultCount} proxies extras — 20% off no adicional`}
+                desc="Mesmo produto, entregues junto. Recorrente."
+                priceLabel={`+${formatBRL(
+                  Math.round(
+                    BUMP_CONFIG.extraProxies.defaultCount *
+                      item.monthly *
+                      (billing === "yearly" ? 12 : 1) *
+                      (1 - BUMP_CONFIG.extraProxies.discount),
+                  ),
+                )}/${billing === "yearly" ? "ano" : "mês"}`}
+              />
+
+              {/* Estender +6 meses (só mensal) */}
+              {billing === "monthly" && (
+                <BumpRow
+                  Icon={CalendarClock}
+                  checked={(bumps.extendMonths ?? 0) > 0}
+                  onToggle={() =>
+                    setBumps((b) => ({
+                      ...b,
+                      extendMonths:
+                        (b.extendMonths ?? 0) > 0 ? 0 : BUMP_CONFIG.extendMonths.months,
+                    }))
+                  }
+                  title={`Pré-pague +${BUMP_CONFIG.extendMonths.months} meses — 30% off`}
+                  desc="Cobrado uma vez agora. Trava o preço e evita esquecer."
+                  priceLabel={`+${formatBRL(bumpTotals.extendMonthsCents || Math.round(BUMP_CONFIG.extendMonths.months * item.monthly * qty * 0.7))} (única vez)`}
+                />
+              )}
+
+              {/* Suporte VIP */}
+              <BumpRow
+                Icon={Users}
+                checked={!!bumps.vipSupport}
+                onToggle={() => setBumps((b) => ({ ...b, vipSupport: !b.vipSupport }))}
+                title="Suporte Prioritário VIP"
+                desc="Atendimento por WhatsApp, resposta < 15min, engenheiro dedicado."
+                priceLabel={`+${formatBRL(BUMP_CONFIG.vipSupport.firstInvoiceCents)}`}
+              />
+
+              {/* Setup assistido */}
+              <BumpRow
+                Icon={Sparkles}
+                checked={!!bumps.setupAssist}
+                onToggle={() => setBumps((b) => ({ ...b, setupAssist: !b.setupAssist }))}
+                title="Setup assistido 1:1"
+                desc="Vídeo-chamada de 30min pra configurar Chrome/anti-detect com você."
+                priceLabel={`+${formatBRL(BUMP_CONFIG.setupAssist.oneTimeCents)} (única vez)`}
+              />
+            </div>
+          </section>
+
           {/* Coupon */}
           <div className="mb-6 p-4 rounded-xl border border-border bg-background/60">
             <div className="flex items-center gap-2 mb-2">
@@ -770,6 +840,35 @@ function CheckoutPage() {
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-semibold">{formatBRL(subtotal)}</span>
             </div>
+
+            {/* Bumps rows */}
+            {bumpTotals.extraProxies > 0 && (
+              <div className="flex justify-between text-sm mb-2 text-primary">
+                <span>+{bumpTotals.extraProxies} proxies extras ({billing === "yearly" ? "anual" : "mensal"})</span>
+                <span className="font-bold">
+                  +{formatBRL(bumpTotals.extraProxiesRecurringCents * (billing === "yearly" ? 12 : 1))}
+                </span>
+              </div>
+            )}
+            {bumpTotals.extendMonthsCents > 0 && (
+              <div className="flex justify-between text-sm mb-2 text-primary">
+                <span>Pré-pagamento +{bumpTotals.extendMonths}m (30% off)</span>
+                <span className="font-bold">+{formatBRL(bumpTotals.extendMonthsCents)}</span>
+              </div>
+            )}
+            {bumpTotals.vipSupportCents > 0 && (
+              <div className="flex justify-between text-sm mb-2 text-primary">
+                <span>Suporte Prioritário VIP</span>
+                <span className="font-bold">+{formatBRL(bumpTotals.vipSupportCents)}</span>
+              </div>
+            )}
+            {bumpTotals.setupAssistCents > 0 && (
+              <div className="flex justify-between text-sm mb-2 text-primary">
+                <span>Setup assistido 1:1</span>
+                <span className="font-bold">+{formatBRL(bumpTotals.setupAssistCents)}</span>
+              </div>
+            )}
+
             {appliedCoupon && (
               <div className="flex justify-between text-sm mb-2 text-emerald-400">
                 <span>Cupom {appliedCoupon.code}</span>
@@ -779,13 +878,19 @@ function CheckoutPage() {
             <div className="border-t border-border my-3" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold">
-                Total a cada {billing === "yearly" ? "12 meses" : "30 dias"}
+                Total {billing === "yearly" ? "hoje (12 meses)" : "hoje"}
               </span>
               <span className="text-2xl font-black text-primary">
                 {formatBRL(total)}
               </span>
             </div>
+            {billing === "monthly" && (
+              <div className="mt-2 text-[11px] text-muted-foreground text-right">
+                Depois: {formatBRL(unitCents * (qty + bumpTotals.extraProxies))}/mês
+              </div>
+            )}
           </div>
+
 
 
           {error && (

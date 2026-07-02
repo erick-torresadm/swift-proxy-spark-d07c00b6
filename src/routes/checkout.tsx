@@ -215,8 +215,9 @@ function CheckoutPage() {
   const [country, setCountry] = useState<Country>(META[initialSlug].country);
   const [slug, setSlug] = useState<Slug>(initialSlug);
   const [billing, setBilling] = useState<"monthly" | "yearly">(
-    search.billing ?? "monthly",
+    search.billing ?? "yearly",
   );
+
   const [qty, setQty] = useState<number>(search.qty ?? 1);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");

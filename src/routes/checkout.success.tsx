@@ -296,6 +296,15 @@ function SuccessPage() {
           </div>
         )}
 
+        {/* One-click upsell mensal → anual */}
+        {isPaid &&
+          order?.billing_cycle === "monthly" &&
+          !order.upsell_taken && (
+            <AnnualUpsell orderId={orderId!} amountCents={order.amount_cents} />
+          )}
+
+
+
         {/* CTAs */}
         <div className="mt-7 space-y-2">
           {isLoggedIn ? (

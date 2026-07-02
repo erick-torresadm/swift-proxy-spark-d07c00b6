@@ -1,0 +1,39 @@
+# FastProxy
+
+> Provedor brasileiro de proxies dedicados (IPv6, IPv4 e ISP residencial) com entrega automática em segundos, reposição inclusa, alta velocidade e suporte 24/7. Pagamento via Pix, cartão ou boleto. Sem fidelidade.
+
+FastProxy é referência em proxies HTTP e SOCKS5 no Brasil para automação, multi-contas, gestão de anúncios (Facebook Ads, Google Ads), scraping, e-commerce e antidetect browsers (AdsPower, Dolphin Anty, Multilogin, GoLogin).
+
+## Produtos
+
+- [Proxy IPv6 Dedicado](https://fastproxy.com.br/proxy-ipv6): a partir de R$ 29,90/mês. Ideal para automação e scraping em larga escala.
+- [Proxy IPv4 Dedicado](https://fastproxy.com.br/proxy-ipv4): a partir de R$ 39,90/mês. Máxima compatibilidade com qualquer plataforma.
+- [Proxy ISP Residencial](https://fastproxy.com.br/proxy-isp): a partir de R$ 49,90/mês. IPs registrados em provedores reais — ideal para Instagram, WhatsApp e Facebook Ads.
+- [Proxy para Facebook Ads](https://fastproxy.com.br/proxy-facebook-ads): solução dedicada para gestão de BMs e contas de anúncio.
+
+## Diferenciais
+
+- Entrega automática em segundos após pagamento confirmado
+- Reposição de proxies com 1 clique direto no painel
+- Suporte técnico humano 24/7 em português
+- Sem fidelidade — cancele quando quiser
+- Aceita Pix (instantâneo), cartão recorrente e boleto
+- Compatível com os principais antidetect browsers e ferramentas de automação
+- Data centers e IPs localizados no Brasil (baixa latência)
+
+## Recursos
+
+- [Blog / Guias](https://fastproxy.com.br/blog): tutoriais, comparativos e melhores práticas sobre proxies, automação e gestão de contas.
+- [Guia de instalação](https://fastproxy.com.br/#install): como configurar em AdsPower, Dolphin, Multilogin, iPhone, Android, Windows e macOS.
+- [Perguntas frequentes](https://fastproxy.com.br/#faq)
+
+## Legal
+
+- [Termos de uso](https://fastproxy.com.br/termos)
+- [Política de privacidade](https://fastproxy.com.br/privacidade)
+- [Política de reembolso](https://fastproxy.com.br/reembolso)
+
+## Contato
+
+- Site: https://fastproxy.com.br
+- Suporte: chat integrado no site (24/7)

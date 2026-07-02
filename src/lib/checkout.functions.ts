@@ -3,6 +3,17 @@ import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
+import { computeBumpsTotals, type Bumps } from "./order-bumps";
+
+const BumpsSchema = z
+  .object({
+    extraProxies: z.number().int().min(0).max(50).optional(),
+    extendMonths: z.number().int().min(0).max(24).optional(),
+    vipSupport: z.boolean().optional(),
+    setupAssist: z.boolean().optional(),
+  })
+  .optional()
+  .nullable();
 
 const CheckoutSchema = z.object({
   productSlug: z.string().min(1).max(64),
@@ -11,7 +22,9 @@ const CheckoutSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
   name: z.string().trim().min(1).max(120),
   couponCode: z.string().trim().min(1).max(40).optional().nullable(),
+  bumps: BumpsSchema,
 });
+
 
 function originFromRequest(): string {
   const origin = getRequestHeader("origin");
@@ -49,6 +62,19 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     if (!unitAmount || unitAmount <= 0)
       throw new Error("Plano sem preço configurado para este ciclo");
 
+    // ---- Order bumps (server-side pricing = source of truth) ----
+    const bumps: Bumps = data.bumps ?? {};
+    // Monthly unit price is the reference for all bump math, even on yearly.
+    const unitMonthlyCents = product.price_monthly_cents;
+    const bumpTotals = computeBumpsTotals({
+      billing: data.billing,
+      unitMonthlyCents,
+      quantity: data.quantity,
+      bumps,
+    });
+    // Effective quantity = base + extra proxies (extra proxies bill recurring).
+    const effectiveQuantity = data.quantity + bumpTotals.extraProxies;
+
     const stripe = getStripe();
 
     // Try to find existing auth user by email (link order if exists)
@@ -76,7 +102,11 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       customerId = created.id;
     }
 
-    const totalAmount = unitAmount * data.quantity;
+    // Base subscription total (recurring). Bumps that hit the first invoice
+    // are added on top; the recurring extras (extra proxies) are already in
+    // effectiveQuantity.
+    const totalAmount =
+      unitAmount * effectiveQuantity + bumpTotals.firstInvoiceExtraCents;
 
     // ---- Coupon resolution (server-side validation) ----
     let appliedCoupon: {
@@ -128,19 +158,61 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         customer_email: data.email,
         customer_name: data.name,
         product_id: product.id,
-        quantity: data.quantity,
+        quantity: effectiveQuantity,
         billing_cycle: data.billing,
         amount_cents: totalAmount,
         discount_cents: appliedCoupon?.discount_cents ?? 0,
         promo_code: appliedCoupon?.code ?? null,
         status: "pending",
         stripe_customer_id: customerId,
-      })
+        bumps: bumps as never,
+        vip_support: !!bumps.vipSupport,
+      } as never)
       .select("id")
       .single();
     if (orderErr || !order) throw new Error(orderErr?.message || "Falha ao criar pedido");
 
     const origin = originFromRequest();
+
+    // Build one-time invoice items for bumps that shouldn't recur.
+    const addInvoiceItems: Array<{
+      quantity: number;
+      price_data: { currency: string; unit_amount: number; product_data: { name: string } };
+    }> = [];
+    if (bumpTotals.extendMonthsCents > 0) {
+      addInvoiceItems.push({
+        quantity: 1,
+        price_data: {
+          currency: "brl",
+          unit_amount: bumpTotals.extendMonthsCents,
+          product_data: {
+            name: `Pré-pagamento +${bumpTotals.extendMonths} meses (30% off)`,
+          },
+        },
+      });
+    }
+    if (bumpTotals.vipSupportCents > 0) {
+      addInvoiceItems.push({
+        quantity: 1,
+        price_data: {
+          currency: "brl",
+          unit_amount: bumpTotals.vipSupportCents,
+          product_data: { name: "Suporte Prioritário VIP" },
+        },
+      });
+    }
+    if (bumpTotals.setupAssistCents > 0) {
+      addInvoiceItems.push({
+        quantity: 1,
+        price_data: {
+          currency: "brl",
+          unit_amount: bumpTotals.setupAssistCents,
+          product_data: { name: "Setup assistido 1:1" },
+        },
+      });
+    }
+
+    const bumpsMeta = JSON.stringify(bumps);
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -152,7 +224,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       client_reference_id: order.id,
       line_items: [
         {
-          quantity: data.quantity,
+          quantity: effectiveQuantity,
           price_data: {
             currency: "brl",
             unit_amount: unitAmount,
@@ -173,21 +245,24 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
           product_id: product.id,
           product_slug: product.slug,
           billing: data.billing,
-          quantity: String(data.quantity),
+          quantity: String(effectiveQuantity),
           customer_email: data.email,
           customer_name: data.name,
           coupon_code: appliedCoupon?.code ?? "",
+          bumps: bumpsMeta,
         },
+        ...(addInvoiceItems.length > 0 ? { add_invoice_items: addInvoiceItems } : {}),
       },
       metadata: {
         order_id: order.id,
         product_id: product.id,
         product_slug: product.slug,
         billing: data.billing,
-        quantity: String(data.quantity),
+        quantity: String(effectiveQuantity),
         customer_email: data.email,
         customer_name: data.name,
         coupon_code: appliedCoupon?.code ?? "",
+        bumps: bumpsMeta,
       },
       success_url: `${origin}/checkout/success?order=${order.id}`,
       cancel_url: `${origin}/checkout?plan=${product.slug}&billing=${data.billing}&qty=${data.quantity}&canceled=1`,
@@ -197,6 +272,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       .from("orders")
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", order.id);
+
 
     // Best-effort: log redemption + increment uses_count (kept simple; webhook
     // may also record on paid status. We dedupe by order_id.)

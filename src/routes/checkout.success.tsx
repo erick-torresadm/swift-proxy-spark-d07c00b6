@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
   Mail,
@@ -9,15 +9,22 @@ import {
   LayoutDashboard,
   Server,
   AlertCircle,
+  Zap,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { z } from "zod";
 import { getOrderPublicStatus, syncMyAllocations, reconcileOrderPublic } from "@/lib/dashboard.functions";
+import { createAnnualUpgradeSession } from "@/lib/upsell.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { pixelTrack, purchaseEventId } from "@/lib/meta-pixel";
 
 const searchSchema = z.object({
   order: z.string().uuid().optional(),
+  upsell: z.coerce.number().optional(),
+  upsell_canceled: z.coerce.number().optional(),
 });
+
 
 export const Route = createFileRoute("/checkout/success")({
   validateSearch: searchSchema,
@@ -289,6 +296,15 @@ function SuccessPage() {
           </div>
         )}
 
+        {/* One-click upsell mensal → anual */}
+        {isPaid &&
+          order?.billing_cycle === "monthly" &&
+          !order.upsell_taken && (
+            <AnnualUpsell orderId={orderId!} amountCents={order.amount_cents} />
+          )}
+
+
+
         {/* CTAs */}
         <div className="mt-7 space-y-2">
           {isLoggedIn ? (
@@ -319,3 +335,128 @@ function SuccessPage() {
     </div>
   );
 }
+
+function formatBRL2(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function AnnualUpsell({ orderId, amountCents }: { orderId: string; amountCents: number }) {
+  const startUpgrade = useServerFn(createAnnualUpgradeSession);
+  const [left, setLeft] = useState(10 * 60);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const key = `fp_upsell_deadline_${orderId}`;
+    let deadline = Number(sessionStorage.getItem(key) || 0);
+    if (!deadline || deadline < Date.now()) {
+      deadline = Date.now() + 10 * 60 * 1000;
+      sessionStorage.setItem(key, String(deadline));
+    }
+    const tick = () => setLeft(Math.max(0, Math.floor((deadline - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [orderId]);
+
+  // Annual = ~10x monthly (plans.yearly ≈ 10 months). Bonus = +1 month → economia ~= 3 meses.
+  const annualEquivalent = amountCents * 10;
+  const bonusValue = amountCents; // 1 mês grátis
+  const totalSavings = amountCents * 2 + bonusValue;
+
+  async function onUpgrade() {
+    setErr(null);
+    setBusy(true);
+    try {
+      const res = await startUpgrade({ data: { orderId } });
+      if (res?.url) {
+        window.location.href = res.url;
+      } else {
+        throw new Error("Sessão inválida");
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erro ao criar upgrade");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: 0.3, duration: 0.4 }}
+        className="mt-7 rounded-2xl border-2 border-primary/60 bg-primary/5 p-5 relative overflow-hidden shadow-[0_0_40px_-12px_hsl(var(--primary)/0.5)]"
+      >
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-200 text-[10px] font-black uppercase tracking-wider">
+          <Clock className="w-3 h-3" />
+          {String(Math.floor(left / 60)).padStart(2, "0")}:
+          {String(left % 60).padStart(2, "0")}
+        </div>
+
+        <div className="flex items-center gap-2 text-primary text-[11px] font-black uppercase tracking-[0.2em] mb-2">
+          <Zap className="w-3.5 h-3.5" /> Oferta única — só nesta tela
+        </div>
+        <h2 className="text-xl sm:text-2xl font-black font-display leading-tight mb-2">
+          Faça upgrade pro anual e ganhe <span className="text-primary">+1 mês grátis</span>
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Trave o preço por 12 meses, ganhe suporte prioritário, IPs bônus e economize{" "}
+          <strong className="text-foreground">{formatBRL2(totalSavings)}</strong> no ano.
+          O cartão que você acabou de usar é aproveitado — <strong>1 clique</strong>.
+        </p>
+
+        <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+          <div className="rounded-lg border border-border bg-background/50 p-2">
+            <div className="text-[10px] text-muted-foreground uppercase font-bold">Hoje mensal</div>
+            <div className="text-sm font-black">{formatBRL2(amountCents)}/mês</div>
+          </div>
+          <div className="rounded-lg border border-primary/40 bg-primary/10 p-2">
+            <div className="text-[10px] text-primary uppercase font-bold">Com upgrade</div>
+            <div className="text-sm font-black text-primary">{formatBRL2(Math.round(annualEquivalent * 0.825 / 12))}/mês</div>
+          </div>
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-2">
+            <div className="text-[10px] text-emerald-400 uppercase font-bold">Você economiza</div>
+            <div className="text-sm font-black text-emerald-400">{formatBRL2(totalSavings)}</div>
+          </div>
+        </div>
+
+        <ul className="text-xs text-foreground/85 space-y-1 mb-4">
+          <li className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> +1 mês grátis exclusivo desta oferta</li>
+          <li className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> +10% de IPs bônus</li>
+          <li className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> Suporte prioritário 12 meses</li>
+          <li className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> Preço travado — sem reajuste no ano</li>
+        </ul>
+
+        <button
+          onClick={onUpgrade}
+          disabled={busy || left === 0}
+          className="w-full py-3.5 rounded-xl bg-gradient-primary text-primary-foreground font-black text-sm shadow-glow hover:opacity-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {busy ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Preparando upgrade…
+            </>
+          ) : left === 0 ? (
+            "Oferta expirada"
+          ) : (
+            <>
+              <Zap className="w-4 h-4" /> Fazer upgrade em 1 clique
+            </>
+          )}
+        </button>
+
+        {err && (
+          <div className="mt-3 p-2 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-xs">
+            {err}
+          </div>
+        )}
+
+        <p className="mt-3 text-center text-[11px] text-muted-foreground">
+          Sem upgrade? Sem problema — seus proxies mensais já estão ativos abaixo.
+        </p>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+

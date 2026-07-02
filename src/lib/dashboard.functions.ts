@@ -39,7 +39,7 @@ export const getOrderPublicStatus = createServerFn({ method: "POST" })
     const { data: order } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, status, quantity, billing_cycle, amount_cents, user_id, current_period_end, created_at, products(name, slug, block_size)",
+        "id, status, quantity, billing_cycle, amount_cents, user_id, current_period_end, created_at, bumps, vip_support, upsell_taken, upsell_offered_at, products(name, slug, block_size)",
       )
       .eq("id", data.orderId)
       .maybeSingle();
@@ -64,8 +64,13 @@ export const getOrderPublicStatus = createServerFn({ method: "POST" })
       has_user: !!order.user_id,
       current_period_end: order.current_period_end,
       created_at: order.created_at,
+      bumps: (order as { bumps?: unknown }).bumps ?? {},
+      vip_support: (order as { vip_support?: boolean }).vip_support ?? false,
+      upsell_taken: (order as { upsell_taken?: boolean }).upsell_taken ?? false,
+      upsell_offered_at: (order as { upsell_offered_at?: string | null }).upsell_offered_at ?? null,
     };
   });
+
 
 export const getMyOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

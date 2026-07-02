@@ -599,6 +599,7 @@ export type Database = {
         Row: {
           amount_cents: number
           billing_cycle: string
+          bumps: Json
           created_at: string
           current_period_end: string | null
           customer_email: string | null
@@ -616,11 +617,16 @@ export type Database = {
           stripe_payment_intent_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
+          upsell_offered_at: string | null
+          upsell_order_id: string | null
+          upsell_taken: boolean
           user_id: string | null
+          vip_support: boolean
         }
         Insert: {
           amount_cents: number
           billing_cycle?: string
+          bumps?: Json
           created_at?: string
           current_period_end?: string | null
           customer_email?: string | null
@@ -638,11 +644,16 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
+          upsell_offered_at?: string | null
+          upsell_order_id?: string | null
+          upsell_taken?: boolean
           user_id?: string | null
+          vip_support?: boolean
         }
         Update: {
           amount_cents?: number
           billing_cycle?: string
+          bumps?: Json
           created_at?: string
           current_period_end?: string | null
           customer_email?: string | null
@@ -660,7 +671,11 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
+          upsell_offered_at?: string | null
+          upsell_order_id?: string | null
+          upsell_taken?: boolean
           user_id?: string | null
+          vip_support?: boolean
         }
         Relationships: [
           {
@@ -675,6 +690,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_upsell_order_id_fkey"
+            columns: ["upsell_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]

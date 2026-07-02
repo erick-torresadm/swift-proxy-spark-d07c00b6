@@ -113,11 +113,14 @@ export function Plans() {
             </button>
             <button
               onClick={() => setBilling("yearly")}
-              className={`text-sm font-bold transition ${
+              className={`relative text-sm font-bold transition ${
                 billing === "yearly" ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t("plans.yearly")}
+              <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-wider">
+                Mais escolhido
+              </span>
             </button>
             <span className="inline-flex px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
               {t("plans.yearly_badge_save")}
@@ -125,6 +128,7 @@ export function Plans() {
             <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider">
               {t("plans.yearly_badge_months")}
             </span>
+
           </div>
           <p className="text-xs text-muted-foreground">
             {billing === "yearly" ? t("plans.helper_yearly") : t("plans.helper_monthly")}

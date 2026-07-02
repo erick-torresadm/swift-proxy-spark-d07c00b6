@@ -181,6 +181,23 @@ function CheckoutPage() {
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_cents: number } | null>(null);
+  const [bumps, setBumps] = useState<Bumps>({});
+
+  // Scarcity timer: 15 min lock on the annual discount for anyone viewing monthly.
+  const [scarcityLeft, setScarcityLeft] = useState<number>(15 * 60);
+  useEffect(() => {
+    const KEY = "fp_annual_scarcity_deadline";
+    let deadline = Number(sessionStorage.getItem(KEY) || 0);
+    if (!deadline || deadline < Date.now()) {
+      deadline = Date.now() + 15 * 60 * 1000;
+      sessionStorage.setItem(KEY, String(deadline));
+    }
+    const tick = () => setScarcityLeft(Math.max(0, Math.floor((deadline - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
 
   // Merge live DB prices with static metadata.
   const CATALOG = useMemo(() => {

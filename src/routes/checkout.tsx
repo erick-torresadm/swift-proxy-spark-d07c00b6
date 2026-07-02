@@ -493,25 +493,106 @@ function CheckoutPage() {
             </div>
           </section>
 
-          {/* Step 3 — Billing */}
+          {/* Step 3 — Billing (reforço agressivo pró-anual) */}
           <section className="mb-8">
-            <StepHeader n={3} title="Ciclo de cobrança" hint="Anual economiza 17,5% — pago de uma vez" />
-            <div className="inline-flex p-1 rounded-xl border border-border bg-background">
-              {(["monthly", "yearly"] as const).map((b) => (
-                <button
-                  key={b}
-                  onClick={() => setBilling(b)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                    billing === b
-                      ? "bg-primary text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+            <StepHeader n={3} title="Ciclo de cobrança" hint="Escolha o plano que mais cabe no seu bolso" />
+
+            {/* Scarcity timer aparece quando mensal selecionado */}
+            <AnimatePresence>
+              {billing === "monthly" && scarcityLeft > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-400/10 text-amber-200 px-3 py-2 text-xs"
                 >
-                  {b === "monthly" ? "Mensal" : "Anual (-17,5%)"}
-                </button>
-              ))}
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>
+                      <strong>Trave o desconto anual</strong> — oferta expira em{" "}
+                      <span className="font-mono font-bold tabular-nums">
+                        {String(Math.floor(scarcityLeft / 60)).padStart(2, "0")}:
+                        {String(scarcityLeft % 60).padStart(2, "0")}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setBilling("yearly")}
+                    className="text-[11px] font-bold uppercase tracking-wider text-amber-100 hover:text-white underline underline-offset-2"
+                  >
+                    Trocar pra anual
+                  </button>
+                </motion.div>
+              )}
+              {billing === "yearly" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-400/40 bg-emerald-400/10 text-emerald-300 px-3 py-2 text-xs"
+                >
+                  <Check className="w-4 h-4" />
+                  <span><strong>Desconto anual travado</strong> — 2 meses grátis + bônus exclusivos abaixo</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Anual — card em destaque */}
+              <button
+                onClick={() => setBilling("yearly")}
+                className={`relative text-left rounded-xl border px-4 py-4 transition ${
+                  billing === "yearly"
+                    ? "border-primary bg-primary/10 shadow-[0_0_30px_-8px_hsl(var(--primary)/0.5)]"
+                    : "border-border hover:border-foreground/30"
+                }`}
+              >
+                <span className="absolute -top-2 left-3 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary text-primary-foreground">
+                  Mais escolhido — 2 meses grátis
+                </span>
+                <div className="flex items-start justify-between gap-2 mt-1">
+                  <div>
+                    <div className="font-bold text-sm">Anual</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Pague 10, use 12 meses • economia de 17,5%
+                    </div>
+                  </div>
+                  {billing === "yearly" && <Check className="w-4 h-4 text-primary shrink-0" />}
+                </div>
+                <ul className="mt-3 space-y-1.5 text-[12px] text-foreground/85">
+                  <li className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> +10% de IPs bônus</li>
+                  <li className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary" /> Trava de preço 12 meses</li>
+                  <li className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-primary" /> Suporte prioritário incluso</li>
+                  <li className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-primary" /> Garantia estendida 60 dias</li>
+                </ul>
+              </button>
+
+              {/* Mensal — neutro */}
+              <button
+                onClick={() => setBilling("monthly")}
+                className={`text-left rounded-xl border px-4 py-4 transition ${
+                  billing === "monthly"
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-foreground/30"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-bold text-sm">Mensal</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Flexível, cancele quando quiser
+                    </div>
+                  </div>
+                  {billing === "monthly" && <Check className="w-4 h-4 text-primary shrink-0" />}
+                </div>
+                <ul className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
+                  <li>• Sem bônus</li>
+                  <li>• Preço sujeito a reajuste</li>
+                  <li>• Sem suporte prioritário</li>
+                </ul>
+              </button>
             </div>
           </section>
+
 
           {/* Step 4 — Quantity */}
           <section className="mb-8">

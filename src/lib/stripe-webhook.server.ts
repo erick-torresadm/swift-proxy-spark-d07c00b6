@@ -212,12 +212,26 @@ async function handleCheckoutSession(s: Stripe.Checkout.Session, eventType: stri
     discountCents: s.total_details?.amount_discount ?? 0,
   });
 
+  // If this was an upsell (mensal → anual), flag the original order.
+  const upsellFrom = (s.metadata?.upsell_from as string | undefined) ?? undefined;
+  if (upsellFrom) {
+    try {
+      await supabaseAdmin
+        .from("orders")
+        .update({ upsell_taken: true } as never)
+        .eq("id", upsellFrom);
+    } catch {
+      /* ignore */
+    }
+  }
+
   for (const id of paidOrderIds) {
     await allocateOrder(id);
     await notifySale(id, eventType);
     await sendPurchaseCapi(id, customerEmail, customerName);
   }
 }
+
 
 async function sendPurchaseCapi(
   orderId: string,

@@ -153,6 +153,51 @@ function StepHeader({ n, title, hint }: { n: number; title: string; hint?: strin
   );
 }
 
+function BumpRow({
+  Icon,
+  checked,
+  onToggle,
+  title,
+  desc,
+  priceLabel,
+}: {
+  Icon: typeof Plus;
+  checked: boolean;
+  onToggle: () => void;
+  title: string;
+  desc: string;
+  priceLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`w-full text-left rounded-xl border px-4 py-3 transition flex items-start gap-3 ${
+        checked ? "border-primary bg-primary/10" : "border-border hover:border-foreground/30 bg-background/40"
+      }`}
+    >
+      <div className="mt-0.5 shrink-0">
+        <div
+          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+            checked ? "bg-primary border-primary" : "border-muted-foreground/40"
+          }`}
+        >
+          {checked && <Check className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={3} />}
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Icon className="w-4 h-4 text-primary shrink-0" />
+          <span className="font-bold text-sm">{title}</span>
+          <span className="ml-auto text-xs font-bold text-primary">{priceLabel}</span>
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">{desc}</div>
+      </div>
+    </button>
+  );
+}
+
+
 function CheckoutPage() {
   const location = useLocation();
   const search = Route.useSearch();

@@ -38,19 +38,24 @@ function priceToMonthlyCents(amount: number, interval: string, intervalCount: nu
 
 async function collectStripeMetrics() {
   const stripe = getStripe();
-  const since = Math.floor((Date.now() - 30 * 86400000) / 1000);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const since30 = nowSec - 30 * 86400;
 
-  // Customers — usamos a contagem aproximada via search/listing (cap 1000 p/ não estourar).
+  // Customers — cap 1000 pra não estourar.
   let customersCount = 0;
   for await (const _ of stripe.customers.list({ limit: 100 })) {
     customersCount++;
     if (customersCount >= 1000) break;
   }
 
-  // Subscriptions: ativas, trial, past_due, unpaid, canceled
+  // Subscriptions ativas — MRR gross e net.
   let activeSubs = 0;
-  let trialingSubs = 0;
   let mrrCents = 0;
+  let netMrrCents = 0; // exclui subs com cancel_at_period_end
+  let scheduledCancelSubs = 0;
+  let scheduledCancelMrrCents = 0;
+  const activeCustomerIds = new Set<string>();
+  const currenciesSeen = new Set<string>();
   const mrrByProduct = new Map<string, { name: string; mrr_cents: number; subs: number }>();
   const productNameCache = new Map<string, string>();
   const resolveProductName = async (productId: string): Promise<string> => {
@@ -72,15 +77,21 @@ async function collectStripeMetrics() {
     expand: ["data.items.data.price"],
   })) {
     activeSubs++;
+    const custId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
+    if (custId) activeCustomerIds.add(custId);
+    let subMrr = 0;
     for (const item of sub.items.data) {
       const price = item.price;
       if (!price.recurring || !price.unit_amount) continue;
+      currenciesSeen.add(price.currency);
+      // só soma BRL pra não misturar moedas
+      if (price.currency !== "brl") continue;
       const monthly = priceToMonthlyCents(
         price.unit_amount * (item.quantity ?? 1),
         price.recurring.interval,
         price.recurring.interval_count ?? 1,
       );
-      mrrCents += monthly;
+      subMrr += monthly;
       const product = price.product;
       const prodId = typeof product === "string" ? product : product?.id ?? "unknown";
       const prodName = prodId === "unknown" ? prodId : await resolveProductName(prodId);
@@ -89,45 +100,83 @@ async function collectStripeMetrics() {
       existing.subs += 1;
       mrrByProduct.set(prodId, existing);
     }
+    mrrCents += subMrr;
+    if (sub.cancel_at_period_end) {
+      scheduledCancelSubs++;
+      scheduledCancelMrrCents += subMrr;
+    } else {
+      netMrrCents += subMrr;
+    }
   }
 
-  for await (const _ of stripe.subscriptions.list({ status: "trialing", limit: 100 })) {
-    trialingSubs++;
-  }
+  let trialingSubs = 0;
+  for await (const _ of stripe.subscriptions.list({ status: "trialing", limit: 100 })) trialingSubs++;
   let delinquentSubs = 0;
-  for await (const _ of stripe.subscriptions.list({ status: "past_due", limit: 100 })) {
-    delinquentSubs++;
-  }
-  for await (const _ of stripe.subscriptions.list({ status: "unpaid", limit: 100 })) {
-    delinquentSubs++;
-  }
+  for await (const _ of stripe.subscriptions.list({ status: "past_due", limit: 100 })) delinquentSubs++;
+  for await (const _ of stripe.subscriptions.list({ status: "unpaid", limit: 100 })) delinquentSubs++;
+
   let canceledSubs = 0;
-  for await (const _ of stripe.subscriptions.list({ status: "canceled", limit: 100 })) {
+  let churn30d = 0;
+  for await (const sub of stripe.subscriptions.list({ status: "canceled", limit: 100 })) {
     canceledSubs++;
+    if (sub.canceled_at && sub.canceled_at >= since30) churn30d++;
     if (canceledSubs >= 500) break;
   }
 
-  // Receita 30d via charges (succeeded - refunded).
-  let revenue30dCents = 0;
+  // Novos assinantes 30d (qualquer sub criada nos últimos 30d).
+  let newSubs30d = 0;
+  for await (const _ of stripe.subscriptions.list({
+    status: "all",
+    created: { gte: since30 },
+    limit: 100,
+  })) {
+    newSubs30d++;
+    if (newSubs30d >= 500) break;
+  }
+
+  // Receita 30d via charges (succeeded) — bruto, reembolso e líquido separados.
+  let revenueGross30dCents = 0;
+  let refunds30dCents = 0;
   let payments30d = 0;
-  for await (const ch of stripe.charges.list({ created: { gte: since }, limit: 100 })) {
+  let failedCharges30d = 0;
+  for await (const ch of stripe.charges.list({ created: { gte: since30 }, limit: 100 })) {
+    if (ch.currency !== "brl") continue;
+    if (ch.status === "failed") {
+      failedCharges30d++;
+      continue;
+    }
     if (ch.status !== "succeeded") continue;
     payments30d++;
-    revenue30dCents += (ch.amount ?? 0) - (ch.amount_refunded ?? 0);
+    revenueGross30dCents += ch.amount ?? 0;
+    refunds30dCents += ch.amount_refunded ?? 0;
   }
+  const revenueNet30dCents = revenueGross30dCents - refunds30dCents;
+  const arpuCents = activeSubs > 0 ? Math.round(mrrCents / activeSubs) : 0;
 
   return {
     customers: customersCount,
     active_subs: activeSubs,
+    active_customers: activeCustomerIds.size,
     trialing_subs: trialingSubs,
     delinquent_subs: delinquentSubs,
     canceled_subs: canceledSubs,
+    churn_30d: churn30d,
+    new_subs_30d: newSubs30d,
+    scheduled_cancel_subs: scheduledCancelSubs,
+    scheduled_cancel_mrr_cents: scheduledCancelMrrCents,
     mrr_cents: mrrCents,
+    net_mrr_cents: netMrrCents,
+    arpu_cents: arpuCents,
     mrr_by_product: Array.from(mrrByProduct.entries())
       .map(([id, v]) => ({ product_id: id, name: v.name, mrr_cents: v.mrr_cents, subs: v.subs }))
       .sort((a, b) => b.mrr_cents - a.mrr_cents),
-    revenue30d_cents: revenue30dCents,
+    revenue30d_cents: revenueNet30dCents,
+    revenue30d_gross_cents: revenueGross30dCents,
+    refunds30d_cents: refunds30dCents,
     payments30d,
+    failed_charges_30d: failedCharges30d,
+    currencies_seen: Array.from(currenciesSeen),
+    mixed_currency_warning: currenciesSeen.size > 1,
   };
 }
 
@@ -136,8 +185,6 @@ export const getAdminKpis = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
-
-
 
     let stripe: Awaited<ReturnType<typeof collectStripeMetrics>> | null = null;
     let stripeError: string | null = null;
@@ -153,6 +200,8 @@ export const getAdminKpis = createServerFn({ method: "GET" })
       { count: stockAvailable },
       { count: stockAllocated },
       { count: dbPastDue },
+      { count: dbPaidOrders },
+      { count: dbActiveSubOrders },
       { data: lowStock },
     ] = await Promise.all([
       supabaseAdmin.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "customer"),
@@ -160,6 +209,12 @@ export const getAdminKpis = createServerFn({ method: "GET" })
       supabaseAdmin.from("proxy_stock").select("*", { count: "exact", head: true }).eq("status", "available"),
       supabaseAdmin.from("proxy_stock").select("*", { count: "exact", head: true }).eq("status", "allocated"),
       supabaseAdmin.from("orders").select("*", { count: "exact", head: true }).in("status", ["past_due", "grace"]),
+      supabaseAdmin.from("orders").select("*", { count: "exact", head: true }).eq("status", "paid"),
+      supabaseAdmin
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "paid")
+        .not("stripe_subscription_id", "is", null),
       supabaseAdmin.from("restock_rules").select("min_stock, product_id").eq("enabled", true),
     ]);
 
@@ -173,6 +228,9 @@ export const getAdminKpis = createServerFn({ method: "GET" })
       if ((count ?? 0) < rule.min_stock) alerts++;
     }
 
+    const drift =
+      stripe && dbActiveSubOrders != null ? stripe.active_subs - dbActiveSubOrders : null;
+
     const result = {
       stripe,
       stripe_error: stripeError,
@@ -182,6 +240,9 @@ export const getAdminKpis = createServerFn({ method: "GET" })
       stock_allocated: stockAllocated ?? 0,
       stock_alerts: alerts,
       db_past_due: dbPastDue ?? 0,
+      db_paid_orders: dbPaidOrders ?? 0,
+      db_active_sub_orders: dbActiveSubOrders ?? 0,
+      stripe_db_drift: drift,
       generated_at: new Date().toISOString(),
     };
     return result;

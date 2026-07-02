@@ -91,27 +91,39 @@ function AdminOverview() {
       {/* Receita / Stripe */}
       <section>
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
-          Receita & assinaturas (Stripe)
+          Receita & assinaturas (Stripe · fonte da verdade)
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Receita 30d"
+            label="Receita líquida 30d"
             value={s ? fmtBRL(s.revenue30d_cents) : "—"}
-            hint={s ? `${s.payments30d} pagamentos` : undefined}
+            hint={
+              s
+                ? `Bruto ${fmtBRL(s.revenue30d_gross_cents)} · Reemb. ${fmtBRL(s.refunds30d_cents)} · ${s.payments30d} pagos${s.failed_charges_30d ? ` · ${s.failed_charges_30d} falhas` : ""}`
+                : undefined
+            }
             icon={DollarSign}
             accent="ok"
           />
           <StatCard
-            label="MRR (estimado)"
-            value={s ? fmtBRL(s.mrr_cents) : "—"}
-            hint="Receita mensal recorrente normalizada"
+            label="MRR líquido"
+            value={s ? fmtBRL(s.net_mrr_cents) : "—"}
+            hint={
+              s
+                ? `Bruto ${fmtBRL(s.mrr_cents)}${s.scheduled_cancel_subs ? ` · ${s.scheduled_cancel_subs} cancel. agendado (−${fmtBRL(s.scheduled_cancel_mrr_cents)})` : ""}`
+                : undefined
+            }
             icon={TrendingUp}
             accent="ok"
           />
           <StatCard
             label="Assinaturas ativas"
             value={s?.active_subs ?? "—"}
-            hint={s?.trialing_subs ? `+${s.trialing_subs} em trial` : undefined}
+            hint={
+              s
+                ? `${s.active_customers} clientes únicos${s.trialing_subs ? ` · +${s.trialing_subs} trial` : ""}`
+                : undefined
+            }
             icon={CreditCard}
           />
           <StatCard
@@ -119,15 +131,91 @@ function AdminOverview() {
             value={delinquentTotal}
             hint={
               s
-                ? `${s.delinquent_subs} Stripe · ${data?.db_past_due ?? 0} no banco`
-                : `${data?.db_past_due ?? 0} no banco`
+                ? `${s.delinquent_subs} Stripe · ${data?.db_past_due ?? 0} banco`
+                : `${data?.db_past_due ?? 0} banco`
             }
             icon={AlertTriangle}
             accent={delinquentTotal > 0 ? "danger" : "ok"}
             to="/admin/inadimplentes"
           />
+          <StatCard
+            label="ARPU (ticket recorrente)"
+            value={s ? fmtBRL(s.arpu_cents) : "—"}
+            hint="MRR ÷ assinaturas ativas"
+            icon={DollarSign}
+          />
+          <StatCard
+            label="Novos assinantes 30d"
+            value={s?.new_subs_30d ?? "—"}
+            icon={UserCheck}
+            accent="ok"
+          />
+          <StatCard
+            label="Churn 30d"
+            value={s?.churn_30d ?? "—"}
+            hint="Assinaturas canceladas nos últimos 30 dias"
+            icon={AlertTriangle}
+            accent={(s?.churn_30d ?? 0) > 0 ? "warn" : "ok"}
+          />
+          <StatCard
+            label="Cancelamento agendado"
+            value={s?.scheduled_cancel_subs ?? "—"}
+            hint={
+              s?.scheduled_cancel_subs
+                ? `Vazamento de ${fmtBRL(s.scheduled_cancel_mrr_cents)}/mês`
+                : "Nenhum"
+            }
+            icon={Clock}
+            accent={(s?.scheduled_cancel_subs ?? 0) > 0 ? "warn" : "ok"}
+          />
         </div>
+        {s?.mixed_currency_warning && (
+          <p className="text-xs text-amber-500 mt-3 inline-flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Detectadas moedas: {s.currencies_seen.join(", ").toUpperCase()}. MRR/receita
+            somam apenas BRL — valores em outras moedas ficam fora.
+          </p>
+        )}
       </section>
+
+      {/* Cross-check Stripe vs Banco */}
+      {s && (
+        <section>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+            Cross-check Stripe × Banco
+          </h3>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Stripe ativas"
+              value={s.active_subs}
+              icon={CreditCard}
+            />
+            <StatCard
+              label="Banco (orders paid c/ sub)"
+              value={data?.db_active_sub_orders ?? "—"}
+              icon={CreditCard}
+            />
+            <StatCard
+              label="Divergência"
+              value={data?.stripe_db_drift ?? "—"}
+              hint={
+                (data?.stripe_db_drift ?? 0) === 0
+                  ? "✓ Sincronizado"
+                  : "Rodar stripe-sync"
+              }
+              icon={AlertTriangle}
+              accent={(data?.stripe_db_drift ?? 0) === 0 ? "ok" : "warn"}
+            />
+            <StatCard
+              label="Total orders paid (banco)"
+              value={data?.db_paid_orders ?? "—"}
+              icon={Package}
+              to="/admin/orders"
+            />
+          </div>
+        </section>
+      )}
+
 
       {/* MRR por produto */}
       {s && s.mrr_by_product.length > 0 && (

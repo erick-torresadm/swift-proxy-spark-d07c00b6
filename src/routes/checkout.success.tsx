@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
   Mail,
@@ -9,15 +9,22 @@ import {
   LayoutDashboard,
   Server,
   AlertCircle,
+  Zap,
+  Clock,
+  Sparkles,
 } from "lucide-react";
 import { z } from "zod";
 import { getOrderPublicStatus, syncMyAllocations, reconcileOrderPublic } from "@/lib/dashboard.functions";
+import { createAnnualUpgradeSession } from "@/lib/upsell.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { pixelTrack, purchaseEventId } from "@/lib/meta-pixel";
 
 const searchSchema = z.object({
   order: z.string().uuid().optional(),
+  upsell: z.coerce.number().optional(),
+  upsell_canceled: z.coerce.number().optional(),
 });
+
 
 export const Route = createFileRoute("/checkout/success")({
   validateSearch: searchSchema,

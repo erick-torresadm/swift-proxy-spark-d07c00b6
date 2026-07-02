@@ -3,6 +3,17 @@ import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
+import { computeBumpsTotals, type Bumps } from "./order-bumps";
+
+const BumpsSchema = z
+  .object({
+    extraProxies: z.number().int().min(0).max(50).optional(),
+    extendMonths: z.number().int().min(0).max(24).optional(),
+    vipSupport: z.boolean().optional(),
+    setupAssist: z.boolean().optional(),
+  })
+  .optional()
+  .nullable();
 
 const CheckoutSchema = z.object({
   productSlug: z.string().min(1).max(64),
@@ -11,7 +22,9 @@ const CheckoutSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
   name: z.string().trim().min(1).max(120),
   couponCode: z.string().trim().min(1).max(40).optional().nullable(),
+  bumps: BumpsSchema,
 });
+
 
 function originFromRequest(): string {
   const origin = getRequestHeader("origin");

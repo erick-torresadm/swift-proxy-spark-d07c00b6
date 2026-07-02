@@ -5,4 +5,72 @@ Disallow: /dashboard
 Disallow: /checkout
 Disallow: /api/
 
+# AI / LLM crawlers — explicitamente permitidos (GEO / AI Search)
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
+User-agent: CCBot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /api/
+
 Sitemap: https://www.fastproxy.com.br/sitemap.xml

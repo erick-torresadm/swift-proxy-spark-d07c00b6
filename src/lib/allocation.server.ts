@@ -176,11 +176,12 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
             purchaseError = e instanceof Error ? e.message : String(e);
             console.error("[allocation] auto-purchase IPv6 failed:", e);
             void notifyAllAdmins({
-              title: "🛑 Falha na compra automática",
-              body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"}: ${purchaseError}`,
+              title: "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
+              body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete a cada hora até ser resolvido.`,
               link: "/admin/inventory",
               metadata: { orderId: order.id, productId: product.id, error: purchaseError },
-              dedupeKey: `restock-fail:${order.id}`,
+              // Re-arma a cada hora enquanto a falha persistir
+              dedupeKey: `restock-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
             });
           } finally {
             await releasePurchaseLock(product.id);

@@ -606,3 +606,92 @@ export const sendWinbackEmail = createServerFn({ method: "POST" })
     if (!r.ok) throw new Error(r.error ?? "Falha ao enviar");
     return { ok: true, id: r.id, sent_to: data.email };
   });
+
+
+// ============== Snapshot HOJE (rápido, pra mostrar em destaque no PWA) ==============
+// Mostra "quanto você vendeu hoje" comparado com ontem — fuso America/Sao_Paulo.
+
+function saoPauloDayBounds(offsetDays = 0): { start: Date; end: Date; label: string } {
+  // -03:00 fixo (BRT sem horário de verão). Suficiente para KPI de dia.
+  const now = new Date();
+  const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  brt.setUTCHours(0, 0, 0, 0);
+  brt.setUTCDate(brt.getUTCDate() + offsetDays);
+  const start = new Date(brt.getTime() + 3 * 60 * 60 * 1000); // volta para UTC
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  const label = start.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "America/Sao_Paulo" });
+  return { start, end, label };
+}
+
+async function sumPaidOrdersInWindow(from: Date, to: Date): Promise<{ count: number; revenueCents: number }> {
+  // Somamos orders com status paid criadas nesta janela — inclui compras à vista e primeira cobrança de recorrentes.
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .select("amount_cents, discount_cents")
+    .eq("status", "paid")
+    .gte("created_at", from.toISOString())
+    .lt("created_at", to.toISOString());
+  if (error) throw new Error(error.message);
+  let revenueCents = 0;
+  let count = 0;
+  for (const row of data ?? []) {
+    revenueCents += (row.amount_cents ?? 0) - (row.discount_cents ?? 0);
+    count++;
+  }
+  return { count, revenueCents };
+}
+
+async function newCustomersInWindow(from: Date, to: Date): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .gte("created_at", from.toISOString())
+    .lt("created_at", to.toISOString());
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export const getTodaySnapshot = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+
+    const today = saoPauloDayBounds(0);
+    const yesterday = saoPauloDayBounds(-1);
+
+    const [todaySales, yesterdaySales, todayNew, yesterdayNew, month] = await Promise.all([
+      sumPaidOrdersInWindow(today.start, today.end),
+      sumPaidOrdersInWindow(yesterday.start, yesterday.end),
+      newCustomersInWindow(today.start, today.end),
+      newCustomersInWindow(yesterday.start, yesterday.end),
+      sumPaidOrdersInWindow(new Date(today.end.getTime() - 30 * 24 * 60 * 60 * 1000), today.end),
+    ]);
+
+    const diffCount = todaySales.count - yesterdaySales.count;
+    const diffRevenue = todaySales.revenueCents - yesterdaySales.revenueCents;
+
+    return {
+      today: {
+        label: today.label,
+        sales: todaySales.count,
+        revenue_cents: todaySales.revenueCents,
+        new_customers: todayNew,
+      },
+      yesterday: {
+        label: yesterday.label,
+        sales: yesterdaySales.count,
+        revenue_cents: yesterdaySales.revenueCents,
+        new_customers: yesterdayNew,
+      },
+      diff: {
+        sales: diffCount,
+        revenue_cents: diffRevenue,
+        new_customers: todayNew - yesterdayNew,
+      },
+      last30d: {
+        sales: month.count,
+        revenue_cents: month.revenueCents,
+      },
+      generated_at: new Date().toISOString(),
+    };
+  });

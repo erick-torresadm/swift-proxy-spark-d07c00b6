@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+
 import { supabase } from "@/lib/supabase-custom/client";
 import logo from "@/assets/logo-fastproxy.png";
 

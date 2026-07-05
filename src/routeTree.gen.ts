@@ -75,6 +75,7 @@ import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/
 import { Route as ApiPublicHooksProxysellerFullSyncRouteImport } from './routes/api/public/hooks/proxyseller-full-sync'
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './routes/api/public/hooks/notifications-dispatch'
+import { Route as ApiPublicHooksFulfillmentSweepRouteImport } from './routes/api/public/hooks/fulfillment-sweep'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
 import { Route as ApiPublicHooksEmailQueueWorkerRouteImport } from './routes/api/public/hooks/email-queue-worker'
 import { Route as ApiPublicHooksDunningSweepRouteImport } from './routes/api/public/hooks/dunning-sweep'
@@ -446,6 +447,12 @@ const ApiPublicHooksNotificationsDispatchRoute =
     path: '/api/public/hooks/notifications-dispatch',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksFulfillmentSweepRoute =
+  ApiPublicHooksFulfillmentSweepRouteImport.update({
+    id: '/api/public/hooks/fulfillment-sweep',
+    path: '/api/public/hooks/fulfillment-sweep',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksEngagementNudgesRoute =
   ApiPublicHooksEngagementNudgesRouteImport.update({
     id: '/api/public/hooks/engagement-nudges',
@@ -598,6 +605,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
   '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
+  '/api/public/hooks/fulfillment-sweep': typeof ApiPublicHooksFulfillmentSweepRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
@@ -676,6 +684,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
   '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
+  '/api/public/hooks/fulfillment-sweep': typeof ApiPublicHooksFulfillmentSweepRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
@@ -759,6 +768,7 @@ export interface FileRoutesById {
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
   '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
+  '/api/public/hooks/fulfillment-sweep': typeof ApiPublicHooksFulfillmentSweepRoute
   '/api/public/hooks/notifications-dispatch': typeof ApiPublicHooksNotificationsDispatchRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
@@ -842,6 +852,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dunning-sweep'
     | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
+    | '/api/public/hooks/fulfillment-sweep'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
@@ -920,6 +931,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dunning-sweep'
     | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
+    | '/api/public/hooks/fulfillment-sweep'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
@@ -1002,6 +1014,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/dunning-sweep'
     | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
+    | '/api/public/hooks/fulfillment-sweep'
     | '/api/public/hooks/notifications-dispatch'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
@@ -1050,6 +1063,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDunningSweepRoute: typeof ApiPublicHooksDunningSweepRoute
   ApiPublicHooksEmailQueueWorkerRoute: typeof ApiPublicHooksEmailQueueWorkerRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
+  ApiPublicHooksFulfillmentSweepRoute: typeof ApiPublicHooksFulfillmentSweepRoute
   ApiPublicHooksNotificationsDispatchRoute: typeof ApiPublicHooksNotificationsDispatchRoute
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
   ApiPublicHooksProxysellerFullSyncRoute: typeof ApiPublicHooksProxysellerFullSyncRoute
@@ -1524,6 +1538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksNotificationsDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/fulfillment-sweep': {
+      id: '/api/public/hooks/fulfillment-sweep'
+      path: '/api/public/hooks/fulfillment-sweep'
+      fullPath: '/api/public/hooks/fulfillment-sweep'
+      preLoaderRoute: typeof ApiPublicHooksFulfillmentSweepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/engagement-nudges': {
       id: '/api/public/hooks/engagement-nudges'
       path: '/api/public/hooks/engagement-nudges'
@@ -1793,6 +1814,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDunningSweepRoute: ApiPublicHooksDunningSweepRoute,
   ApiPublicHooksEmailQueueWorkerRoute: ApiPublicHooksEmailQueueWorkerRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,
+  ApiPublicHooksFulfillmentSweepRoute: ApiPublicHooksFulfillmentSweepRoute,
   ApiPublicHooksNotificationsDispatchRoute:
     ApiPublicHooksNotificationsDispatchRoute,
   ApiPublicHooksProxysellerBackfillRoute:

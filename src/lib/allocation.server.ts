@@ -577,8 +577,9 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     .maybeSingle();
   if (!product) return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "product not found" };
 
-  const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
-  if (!isIpv6) {
+  const cat = product.category ?? "";
+  const isRenewable = cat === "ipv6" || cat === "ipv6_fb" || cat === "ipv4" || cat === "isp";
+  if (!isRenewable) {
     return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: `category ${product.category} not auto-renewable yet` };
   }
   if (!product.provider_tariff_id) {

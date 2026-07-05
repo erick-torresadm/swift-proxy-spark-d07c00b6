@@ -624,7 +624,7 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: blockIds.length, cost_usd: 0, dry_run: false, skipped_reason: "no external_proxy_id (dry-run/sim block)" };
   }
 
-  const kind: PsProxyKind = "ipv6";
+  const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
   const { data: settings } = await supabaseAdmin
     .from("provider_settings")
     .select("dry_run")

@@ -108,6 +108,11 @@ const GuestSendSchema = z.object({
 export const guestSendMessage = createServerFn({ method: "POST" })
   .inputValidator((input) => GuestSendSchema.parse(input))
   .handler(async ({ data }) => {
+    const { enforceRateLimit, currentIp } = await import("@/lib/rate-limit.server");
+    // 20 msgs/min por conversa e 40/min por IP para guests
+    await enforceRateLimit("chat.guest.conv", data.conversationId, 60, 20);
+    await enforceRateLimit("chat.guest.ip", currentIp(), 60, 40);
+
     const { data: conv, error } = await supabaseAdmin
       .from("chat_conversations")
       .select("id, guest_token, user_id")
@@ -166,6 +171,9 @@ export const clientSendMessage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { enforceRateLimit } = await import("@/lib/rate-limit.server");
+    await enforceRateLimit("chat.client.send", userId, 60, 30);
+
     const { data: conv } = await supabase
       .from("chat_conversations")
       .select("id, user_id")

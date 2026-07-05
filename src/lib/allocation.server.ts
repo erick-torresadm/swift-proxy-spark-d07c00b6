@@ -1157,6 +1157,14 @@ export async function runRenewalSweep(opts: {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       out.errors.push(`${block.id}: ${msg}`);
+      // Alerta por bloco — dedupe diário, então repete todo dia até resolver.
+      void notifyAllAdmins({
+        title: "🛑 Falha ao renovar bloco — AÇÃO NECESSÁRIA",
+        body: `Bloco ${block.id.slice(0, 8)} (${block.country_code ?? "?"}, ${occupancy} cliente(s) ativos) NÃO foi renovado: ${msg}. Alerta se repete diariamente até resolver.`,
+        link: "/admin/inventory",
+        metadata: { blockId: block.id, country: block.country_code, occupancy, error: msg },
+        dedupeKey: `renewal-fail:${block.id}:${new Date().toISOString().slice(0, 10)}`,
+      });
     }
   }
 

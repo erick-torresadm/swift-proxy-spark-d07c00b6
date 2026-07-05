@@ -183,13 +183,20 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
           } catch (e) {
             purchaseError = e instanceof Error ? e.message : String(e);
             console.error("[allocation] auto-purchase IPv6 failed:", e);
+            const isInsufficientFunds = /insufficient funds/i.test(purchaseError);
             void notifyAllAdmins({
-              title: "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
-              body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete a cada hora até ser resolvido.`,
+              title: isInsufficientFunds
+                ? "💸 SALDO ProxySeller INSUFICIENTE — RECARREGUE"
+                : "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
+              body: isInsufficientFunds
+                ? `Cliente ${order.id.slice(0, 8)} pagou e está SEM PROXY. ProxySeller: ${purchaseError}. Recarregue o saldo em https://proxy-seller.com/personal/balance — assim que recarregar, o sistema aloca sozinho na próxima varredura (5 min).`
+                : `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete até ser resolvido.`,
               link: "/admin/inventory",
-              metadata: { orderId: order.id, productId: product.id, error: purchaseError },
-              // Re-arma a cada hora enquanto a falha persistir
-              dedupeKey: `restock-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
+              metadata: { orderId: order.id, productId: product.id, error: purchaseError, insufficientFunds: isInsufficientFunds },
+              // Saldo baixo: re-arma a cada 15 min (urgente). Outros erros: a cada hora.
+              dedupeKey: isInsufficientFunds
+                ? `low-balance:${Math.floor(Date.now() / (15 * 60000))}`
+                : `restock-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
             });
           } finally {
             await releasePurchaseLock(product.id);
@@ -1205,3 +1212,87 @@ export async function runRenewalSweep(opts: {
 
   return out;
 }
+
+// ─────────────────────── Fulfillment sweep ───────────────────────
+
+/**
+ * Varre pedidos `paid` que ainda não têm todos os proxies alocados e re-tenta
+ * `allocateProxiesForOrder`. Roda a cada 5 min. Serve para:
+ *  - retomar automaticamente após falha temporária (saldo ProxySeller, timeout, etc.)
+ *  - alocar pedidos que ficaram pending aguardando IPs do provedor
+ *  - alertar admin quando pedido pago está há mais de X minutos sem proxy
+ */
+export async function runFulfillmentSweep(opts: { alertAfterMinutes?: number } = {}): Promise<{
+  scanned: number;
+  fulfilled: number;
+  still_short: number;
+  errors: Array<{ order_id: string; error: string }>;
+  alerts_sent: number;
+}> {
+  const alertAfterMs = (opts.alertAfterMinutes ?? 10) * 60_000;
+  const out = {
+    scanned: 0,
+    fulfilled: 0,
+    still_short: 0,
+    errors: [] as Array<{ order_id: string; error: string }>,
+    alerts_sent: 0,
+  };
+
+  // Pedidos paid nos últimos 7 dias (janela ampla; se ficou muito antigo já é caso perdido)
+  const since = new Date(Date.now() - 7 * 86400 * 1000).toISOString();
+  const { data: orders } = await supabaseAdmin
+    .from("orders")
+    .select("id, quantity, product_id, created_at, customer_email, products(block_size)")
+    .eq("status", "paid")
+    .gte("created_at", since);
+
+  for (const order of orders ?? []) {
+    const blockSize = (order as { products?: { block_size?: number } | null }).products?.block_size ?? 1;
+    const needed = (order.quantity ?? 1) * blockSize;
+
+    const { count: allocated } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("*", { count: "exact", head: true })
+      .eq("order_id", order.id)
+      .neq("status", "released");
+
+    if ((allocated ?? 0) >= needed) continue;
+    out.scanned++;
+
+    try {
+      const result = await allocateProxiesForOrder(order.id);
+      if (result.short === 0) {
+        out.fulfilled++;
+      } else {
+        out.still_short++;
+        const ageMs = Date.now() - new Date(order.created_at).getTime();
+        if (ageMs > alertAfterMs) {
+          // Cliente esperando há mais que o limite → alerta destacado por pedido, re-arma por hora
+          void notifyAllAdmins({
+            title: "⏱️ Cliente PAGO SEM PROXY — AÇÃO NECESSÁRIA",
+            body: `${order.customer_email ?? order.id.slice(0, 8)} pagou há ${Math.floor(ageMs / 60000)} min e ainda não recebeu ${needed} IP(s). Erro: ${result.error ?? "estoque esgotado / compra pendente"}. Alerta se repete a cada hora até resolver.`,
+            link: `/admin/orders/${order.id}`,
+            metadata: { orderId: order.id, needed, allocated: allocated ?? 0, error: result.error ?? null } as never,
+            dedupeKey: `fulfillment-stuck:${order.id}:${Math.floor(Date.now() / 3600000)}`,
+          });
+          out.alerts_sent++;
+        }
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      out.errors.push({ order_id: order.id, error: msg });
+    }
+  }
+
+  if (out.scanned > 0) {
+    await supabaseAdmin.from("audit_log").insert({
+      action: "fulfillment_sweep",
+      source: "cron",
+      status: out.errors.length ? "error" : "ok",
+      response: out as never,
+    });
+  }
+
+  return out;
+}
+

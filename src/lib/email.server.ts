@@ -1,5 +1,5 @@
 // Server-only: envio de emails via Resend, sempre via fila (email_queue)
-// para respeitar o limite do plano gratuito (3000/mês, 100/dia, 2 req/s).
+// para respeitar rate-limit configurável (default plano Pro).
 // Lê RESEND_API_KEY de process.env dentro de cada chamada.
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 
@@ -8,14 +8,24 @@ const RESEND_URL = "https://api.resend.com/emails";
 // Remetente padrão. Pode ser sobrescrito via env EMAIL_FROM.
 const DEFAULT_FROM = "Fast Proxy <onboarding@resend.dev>";
 
-// Limites conservadores do plano gratuito do Resend.
-// Reais: 100/dia, 3000/mês, 2 req/s. Usamos margem de segurança.
-export const RESEND_FREE_LIMITS = {
-  daily: 95,
-  monthly: 2900,
-  minIntervalMs: 700, // ~1.4 req/s, abaixo do limite de 2 req/s
-  batchPerRun: 6,     // worker roda a cada minuto; 6 × ~700ms ≈ 4,2s
+// Limites configuráveis via env. Defaults assumem plano Resend Pro
+// (50k/mês, 10 req/s). No plano Free ajuste as envs para
+// EMAIL_DAILY_CAP=95, EMAIL_MONTHLY_CAP=2900, EMAIL_MIN_INTERVAL_MS=700,
+// EMAIL_BATCH_PER_RUN=6.
+function envNum(name: string, fallback: number): number {
+  const v = process.env[name];
+  const n = v ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+export const RESEND_LIMITS = {
+  get daily() { return envNum("EMAIL_DAILY_CAP", 10000); },
+  get monthly() { return envNum("EMAIL_MONTHLY_CAP", 50000); },
+  get minIntervalMs() { return envNum("EMAIL_MIN_INTERVAL_MS", 150); }, // ~6 req/s
+  get batchPerRun() { return envNum("EMAIL_BATCH_PER_RUN", 100); },
 };
+/** @deprecated use RESEND_LIMITS */
+export const RESEND_FREE_LIMITS = RESEND_LIMITS;
+
 
 export interface SendEmailParams {
   to: string | string[];

@@ -21,16 +21,16 @@ export function WhatsAppFloat() {
   const [showTip, setShowTip] = useState(false);
 
   useEffect(() => {
-    // Mostra após 1 minuto que o cliente ficou no site
-    const t = setTimeout(() => setVisible(true), 60000);
-    // Mostra balãozinho uma vez por sessão logo após aparecer
+    // Aparece rápido pra ninguém ficar sem achar o suporte
+    const t = setTimeout(() => setVisible(true), 1500);
+    // Balãozinho de dica uma vez por sessão
     const t2 = setTimeout(() => {
       if (!sessionStorage.getItem("wa-tip-shown")) {
         setShowTip(true);
         sessionStorage.setItem("wa-tip-shown", "1");
         setTimeout(() => setShowTip(false), 6000);
       }
-    }, 62000);
+    }, 4000);
     return () => {
       clearTimeout(t);
       clearTimeout(t2);

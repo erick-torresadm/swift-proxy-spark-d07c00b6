@@ -214,12 +214,11 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
   const ids = picks.map((p) => p.id);
   await supabaseAdmin.from("proxy_stock").update({ status: "allocated" }).in("id", ids);
 
-  // ───────── 3) Proactive restock (stock-mode products only) ─────────
-  // If after allocation the available pool dropped to or below the product
-  // threshold, pre-buy a new block so future customers don't wait.
-  if (product.delivery_mode === "stock" && canAutoPurchase) {
-    void maybeProactiveRestock(product, order.id);
-  }
+  // ───────── 3) Proactive restock DESATIVADO por decisão do dono ─────────
+  // Só compramos blocos novos quando um pedido pago realmente precisa de IPs
+  // (fluxo 2c acima). Nada de compra especulativa por threshold.
+  // Para reativar no futuro: chamar maybeProactiveRestock(product, order.id).
+  void maybeProactiveRestock; // referencia p/ não quebrar lint de "unused"
 
   return {
     allocated: (existing ?? 0) + picks.length,

@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.bump_rate_hit(text, text, integer, integer) FROM authenticated, anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.bump_rate_hit(text, text, integer, integer) TO service_role;

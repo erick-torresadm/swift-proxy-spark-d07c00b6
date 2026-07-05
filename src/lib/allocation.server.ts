@@ -1185,5 +1185,15 @@ export async function runRenewalSweep(opts: {
     });
   }
 
+  if (!dryRun && out.errors.length > 0) {
+    void notifyAllAdmins({
+      title: `🛑 Renovação com ${out.errors.length} falha(s) — AÇÃO NECESSÁRIA`,
+      body: `${out.errors.length} bloco(s) não renovaram. Ver detalhes em /admin/inventory. Alerta se repete a cada varredura até resolver.`,
+      link: "/admin/inventory",
+      metadata: { errors: out.errors } as never,
+      dedupeKey: `renewal-errors:${new Date().toISOString().slice(0, 10)}`,
+    });
+  }
+
   return out;
 }

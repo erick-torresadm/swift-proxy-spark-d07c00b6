@@ -183,13 +183,20 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
           } catch (e) {
             purchaseError = e instanceof Error ? e.message : String(e);
             console.error("[allocation] auto-purchase IPv6 failed:", e);
+            const isInsufficientFunds = /insufficient funds/i.test(purchaseError);
             void notifyAllAdmins({
-              title: "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
-              body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete a cada hora até ser resolvido.`,
+              title: isInsufficientFunds
+                ? "💸 SALDO ProxySeller INSUFICIENTE — RECARREGUE"
+                : "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
+              body: isInsufficientFunds
+                ? `Cliente ${order.id.slice(0, 8)} pagou e está SEM PROXY. ProxySeller: ${purchaseError}. Recarregue o saldo em https://proxy-seller.com/personal/balance — assim que recarregar, o sistema aloca sozinho na próxima varredura (5 min).`
+                : `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete até ser resolvido.`,
               link: "/admin/inventory",
-              metadata: { orderId: order.id, productId: product.id, error: purchaseError },
-              // Re-arma a cada hora enquanto a falha persistir
-              dedupeKey: `restock-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
+              metadata: { orderId: order.id, productId: product.id, error: purchaseError, insufficientFunds: isInsufficientFunds },
+              // Saldo baixo: re-arma a cada 15 min (urgente). Outros erros: a cada hora.
+              dedupeKey: isInsufficientFunds
+                ? `low-balance:${Math.floor(Date.now() / (15 * 60000))}`
+                : `restock-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
             });
           } finally {
             await releasePurchaseLock(product.id);

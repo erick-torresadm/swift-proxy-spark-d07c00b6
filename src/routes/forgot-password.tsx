@@ -21,14 +21,11 @@ function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Sempre mostra o mesmo sucesso — não revela se o email existe (anti-enumeração).
+    await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
     setSent(true);
   }
 

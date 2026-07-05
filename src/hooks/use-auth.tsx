@@ -46,7 +46,13 @@ export function useAuth() {
 
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    // scope: 'global' revoga o refresh token no servidor — token não sobrevive ao logout.
+    try {
+      await supabase.auth.signOut({ scope: "global" });
+    } catch {
+      // fallback local caso a rede falhe — sessão local ainda é apagada.
+      await supabase.auth.signOut({ scope: "local" });
+    }
   }, []);
 
   return { user, session, loading, signOut };

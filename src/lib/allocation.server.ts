@@ -120,7 +120,15 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     // This is the #1 protection against double-spending.
     if (remaining - picks.length > 0) {
       const synced = await syncProviderInventoryIntoStock(product).catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error("[allocation] provider sync failed:", e);
+        void notifyAllAdmins({
+          title: "⚠️ Sync ProxySeller falhou — AÇÃO NECESSÁRIA",
+          body: `Não consegui listar IPs do provedor antes de comprar (${product.category}/${product.country_code ?? "?"}): ${msg}. Alerta se repete a cada hora até resolver.`,
+          link: "/admin/inventory",
+          metadata: { productId: product.id, error: msg },
+          dedupeKey: `sync-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
+        });
         return 0;
       });
       if (synced > 0) {

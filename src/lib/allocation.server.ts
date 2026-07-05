@@ -120,7 +120,15 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     // This is the #1 protection against double-spending.
     if (remaining - picks.length > 0) {
       const synced = await syncProviderInventoryIntoStock(product).catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error("[allocation] provider sync failed:", e);
+        void notifyAllAdmins({
+          title: "⚠️ Sync ProxySeller falhou — AÇÃO NECESSÁRIA",
+          body: `Não consegui listar IPs do provedor antes de comprar (${product.category}/${product.country_code ?? "?"}): ${msg}. Alerta se repete a cada hora até resolver.`,
+          link: "/admin/inventory",
+          metadata: { productId: product.id, error: msg },
+          dedupeKey: `sync-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
+        });
         return 0;
       });
       if (synced > 0) {
@@ -176,11 +184,12 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
             purchaseError = e instanceof Error ? e.message : String(e);
             console.error("[allocation] auto-purchase IPv6 failed:", e);
             void notifyAllAdmins({
-              title: "🛑 Falha na compra automática",
-              body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"}: ${purchaseError}`,
+              title: "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
+              body: `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete a cada hora até ser resolvido.`,
               link: "/admin/inventory",
               metadata: { orderId: order.id, productId: product.id, error: purchaseError },
-              dedupeKey: `restock-fail:${order.id}`,
+              // Re-arma a cada hora enquanto a falha persistir
+              dedupeKey: `restock-fail:${product.id}:${Math.floor(Date.now() / 3600000)}`,
             });
           } finally {
             await releasePurchaseLock(product.id);
@@ -214,12 +223,11 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
   const ids = picks.map((p) => p.id);
   await supabaseAdmin.from("proxy_stock").update({ status: "allocated" }).in("id", ids);
 
-  // ───────── 3) Proactive restock (stock-mode products only) ─────────
-  // If after allocation the available pool dropped to or below the product
-  // threshold, pre-buy a new block so future customers don't wait.
-  if (product.delivery_mode === "stock" && canAutoPurchase) {
-    void maybeProactiveRestock(product, order.id);
-  }
+  // ───────── 3) Proactive restock DESATIVADO por decisão do dono ─────────
+  // Só compramos blocos novos quando um pedido pago realmente precisa de IPs
+  // (fluxo 2c acima). Nada de compra especulativa por threshold.
+  // Para reativar no futuro: chamar maybeProactiveRestock(product, order.id).
+  void maybeProactiveRestock; // referencia p/ não quebrar lint de "unused"
 
   return {
     allocated: (existing ?? 0) + picks.length,
@@ -1157,6 +1165,14 @@ export async function runRenewalSweep(opts: {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       out.errors.push(`${block.id}: ${msg}`);
+      // Alerta por bloco — dedupe diário, então repete todo dia até resolver.
+      void notifyAllAdmins({
+        title: "🛑 Falha ao renovar bloco — AÇÃO NECESSÁRIA",
+        body: `Bloco ${block.id.slice(0, 8)} (${block.country_code ?? "?"}, ${occupancy} cliente(s) ativos) NÃO foi renovado: ${msg}. Alerta se repete diariamente até resolver.`,
+        link: "/admin/inventory",
+        metadata: { blockId: block.id, country: block.country_code, occupancy, error: msg },
+        dedupeKey: `renewal-fail:${block.id}:${new Date().toISOString().slice(0, 10)}`,
+      });
     }
   }
 
@@ -1174,6 +1190,16 @@ export async function runRenewalSweep(opts: {
       link: "/admin/inventory",
       metadata: out as never,
       dedupeKey: `renewal-sweep:${new Date().toISOString().slice(0, 10)}`,
+    });
+  }
+
+  if (!dryRun && out.errors.length > 0) {
+    void notifyAllAdmins({
+      title: `🛑 Renovação com ${out.errors.length} falha(s) — AÇÃO NECESSÁRIA`,
+      body: `${out.errors.length} bloco(s) não renovaram. Ver detalhes em /admin/inventory. Alerta se repete a cada varredura até resolver.`,
+      link: "/admin/inventory",
+      metadata: { errors: out.errors } as never,
+      dedupeKey: `renewal-errors:${new Date().toISOString().slice(0, 10)}`,
     });
   }
 

@@ -13,6 +13,7 @@ import {
   Clock,
 } from "lucide-react";
 import { getAdminKpis } from "@/lib/admin-kpis.functions";
+import { TodaySnapshotCard } from "@/components/admin/TodaySnapshotCard";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: AdminOverview,
@@ -71,6 +72,8 @@ function AdminOverview() {
 
   return (
     <div className="space-y-8">
+      <TodaySnapshotCard />
+
       <div>
         <h2 className="text-xl font-bold mb-1">Visão geral</h2>
         <p className="text-sm text-muted-foreground">

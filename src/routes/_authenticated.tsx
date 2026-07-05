@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, useNavigate, useLocation, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LayoutDashboard, Server, Receipt, Settings, LogOut, Shield, Menu, X, Bell, XCircle } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase-custom/client";
@@ -41,6 +41,7 @@ function AuthenticatedLayout() {
   const isModerator = roles.includes("moderator");
   const isStaff = isAdmin || isEditor || isModerator;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const fetchExpiring = useServerFn(getExpiringCount);
   const { data: expiring } = useQuery({
@@ -52,8 +53,11 @@ function AuthenticatedLayout() {
   useAppBadge(expiring?.count ?? 0);
 
   async function handleSignOut() {
+    // Ordem correta: parar queries -> limpar cache -> signOut -> navegar com replace.
+    await queryClient.cancelQueries();
+    queryClient.clear();
     await signOut();
-    navigate({ to: "/" });
+    navigate({ to: "/", replace: true });
   }
 
   return (

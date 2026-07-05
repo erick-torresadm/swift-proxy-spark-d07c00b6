@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+
 import { supabase } from "@/lib/supabase-custom/client";
 import logo from "@/assets/logo-fastproxy.png";
 
@@ -21,14 +21,11 @@ function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Sempre mostra o mesmo sucesso — não revela se o email existe (anti-enumeração).
+    await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
     setSent(true);
   }
 

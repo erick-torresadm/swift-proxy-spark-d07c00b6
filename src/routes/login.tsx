@@ -50,9 +50,9 @@ function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      toast.error(error.message === "Invalid login credentials"
-        ? "Email ou senha inválidos."
-        : error.message);
+      // Mensagem genérica — não diferencia "email não existe" de "senha errada"
+      // para evitar enumeração de usuários.
+      toast.error("Email ou senha inválidos.");
       return;
     }
     toast.success("Bem-vindo de volta!");

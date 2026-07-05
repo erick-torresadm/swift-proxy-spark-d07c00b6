@@ -45,6 +45,10 @@ function originFromRequest(): string {
 export const createCheckoutSession = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => CheckoutSchema.parse(data))
   .handler(async ({ data }) => {
+    // Rate limit anti-abuso: até 30 checkouts/min por IP.
+    const { enforceRateLimit, currentIp } = await import("@/lib/rate-limit.server");
+    await enforceRateLimit("checkout.create", currentIp(), 60, 30);
+
     const { data: product, error: prodErr } = await supabaseAdmin
       .from("products")
       .select(

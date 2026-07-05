@@ -1477,6 +1477,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_hits: {
+        Row: {
+          bucket: string
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       restock_rules: {
         Row: {
           batch_quantity: number
@@ -1664,6 +1685,19 @@ export type Database = {
       bump_blog_ingest_rate: {
         Args: { _ip: string; _window_minutes?: number }
         Returns: number
+      }
+      bump_rate_hit: {
+        Args: {
+          _bucket: string
+          _key: string
+          _limit: number
+          _window_seconds: number
+        }
+        Returns: {
+          allowed: boolean
+          count: number
+          retry_after: number
+        }[]
       }
       can_manage_blog: { Args: { _user_id: string }; Returns: boolean }
       can_moderate_comments: { Args: { _user_id: string }; Returns: boolean }

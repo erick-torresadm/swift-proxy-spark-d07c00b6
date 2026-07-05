@@ -61,11 +61,11 @@ function SignupPage() {
     });
     setLoading(false);
     if (error) {
-      toast.error(
-        error.message === "User already registered"
-          ? "Esse email já está cadastrado. Faça login."
-          : error.message,
+      // Não confirma se o email já existe — resposta genérica evita enumeração.
+      toast.success(
+        "Se estiver tudo certo, você receberá um email para confirmar a conta.",
       );
+      navigate({ to: "/login" });
       return;
     }
     toast.success("Conta criada! Verifique seu email para confirmar.");

@@ -577,8 +577,9 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     .maybeSingle();
   if (!product) return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "product not found" };
 
-  const isIpv6 = product.category === "ipv6" || product.category === "ipv6_fb";
-  if (!isIpv6) {
+  const cat = product.category ?? "";
+  const isRenewable = cat === "ipv6" || cat === "ipv6_fb" || cat === "ipv4" || cat === "isp";
+  if (!isRenewable) {
     return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: `category ${product.category} not auto-renewable yet` };
   }
   if (!product.provider_tariff_id) {
@@ -623,7 +624,7 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: blockIds.length, cost_usd: 0, dry_run: false, skipped_reason: "no external_proxy_id (dry-run/sim block)" };
   }
 
-  const kind: PsProxyKind = "ipv6";
+  const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
   const { data: settings } = await supabaseAdmin
     .from("provider_settings")
     .select("dry_run")
@@ -1047,7 +1048,8 @@ export async function runRenewalSweep(opts: {
   const cutoff = new Date(Date.now() + windowDays * 86400 * 1000).toISOString();
   const nowIso = new Date().toISOString();
 
-  // Only IPv6/IPv6-FB blocks are renewable through prolong/make today.
+  // IPv6, IPv4 and ISP blocks are all renewable through prolong/make.
+  // Mobile is provider-managed, skip.
   const { data: blocks } = await supabaseAdmin
     .from("provider_orders")
     .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
@@ -1057,7 +1059,11 @@ export async function runRenewalSweep(opts: {
 
   for (const block of blocks ?? []) {
     const prod = (block as { products?: { slug: string; category: string | null; provider_tariff_id: string | null } | null }).products;
-    if (!prod || !prod.category?.startsWith("ipv6")) continue;
+    const cat = prod?.category ?? "";
+    const isRenewable = cat.startsWith("ipv6") || cat === "ipv4" || cat === "isp";
+    if (!prod || !isRenewable) continue;
+    const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
+
     out.blocks_seen++;
 
     // All stock rows in this block
@@ -1146,10 +1152,10 @@ export async function runRenewalSweep(opts: {
     try {
       let costUsd = 0;
       if (dryRun) {
-        const calc = await prolongCalc("ipv6", { ids: externalIds, periodId: cfg.periodId });
+        const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
         costUsd = Number(calc.total) || 0;
       } else {
-        const res = await prolongMake("ipv6", { ids: externalIds, periodId: cfg.periodId });
+        const res = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
         costUsd = Number(res.total) || 0;
         const newExpiry = new Date(Date.now() + 30 * 86400 * 1000).toISOString();
         await supabaseAdmin.from("proxy_stock").update({ expires_at: newExpiry }).in("id", stockIds);

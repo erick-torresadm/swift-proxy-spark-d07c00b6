@@ -627,18 +627,15 @@ async function sumPaidOrdersInWindow(from: Date, to: Date): Promise<{ count: num
   // Somamos orders com status paid criadas nesta janela — inclui compras à vista e primeira cobrança de recorrentes.
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select("total_cents, currency")
-    .in("status", ["paid", "active"])
+    .select("amount_cents, discount_cents")
+    .eq("status", "paid")
     .gte("created_at", from.toISOString())
     .lt("created_at", to.toISOString());
   if (error) throw new Error(error.message);
   let revenueCents = 0;
   let count = 0;
   for (const row of data ?? []) {
-    // Só BRL para o total exibido; outras moedas ficam fora do KPI para não misturar.
-    if ((row.currency ?? "brl").toLowerCase() === "brl") {
-      revenueCents += row.total_cents ?? 0;
-    }
+    revenueCents += (row.amount_cents ?? 0) - (row.discount_cents ?? 0);
     count++;
   }
   return { count, revenueCents };

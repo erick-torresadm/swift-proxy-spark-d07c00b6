@@ -1,7 +1,8 @@
-// Server-only: worker que drena email_queue respeitando os limites do
-// plano gratuito do Resend (3000/mês, 100/dia, 2 req/s).
+// Server-only: worker que drena email_queue respeitando limites
+// configuráveis via env (default: plano Resend Pro).
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { RESEND_FREE_LIMITS, sendNow } from "@/lib/email.server";
+
 
 interface ProcessResult {
   scanned: number;

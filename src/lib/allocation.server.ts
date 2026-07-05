@@ -241,19 +241,34 @@ async function maybeProactiveRestock(
 ): Promise<void> {
   try {
     const threshold = product.restock_threshold ?? 2;
+
+    // Count sibling pool availability (IPv6 BR + IPv6-FB BR share upstream IPs).
+    // Without this, threshold=10 on ipv6-br would ignore free IPs sitting in
+    // ipv6-fb-br and buy blocks needlessly. See docs/PROXY-CATALOG.md.
+    const family = SIBLING_CATEGORIES[product.category ?? ""] ?? [];
+    let poolIds: string[] = [product.id];
+    if (family.length > 0 && product.country_code) {
+      const { data: siblings } = await supabaseAdmin
+        .from("products")
+        .select("id")
+        .in("category", family as ("ipv4" | "ipv6" | "ipv6_fb" | "isp")[])
+        .eq("country_code", product.country_code);
+      poolIds = Array.from(new Set([product.id, ...((siblings ?? []).map((s) => s.id as string))]));
+    }
+
     const { count: avail } = await supabaseAdmin
       .from("proxy_stock")
       .select("*", { count: "exact", head: true })
-      .eq("product_id", product.id)
+      .in("product_id", poolIds)
       .eq("status", "available");
     if ((avail ?? 0) > threshold) return;
 
-    // Skip if another pending provider order is already in-flight
+    // Skip if another pending provider order is already in-flight (any sibling)
     const cutoff = new Date(Date.now() - PENDING_BLOCK_NEW_BUY_MS).toISOString();
     const { count: openPending } = await supabaseAdmin
       .from("provider_orders")
       .select("*", { count: "exact", head: true })
-      .eq("product_id", product.id)
+      .in("product_id", poolIds)
       .eq("status", "pending")
       .gte("created_at", cutoff);
     if ((openPending ?? 0) > 0) return;
@@ -264,10 +279,10 @@ async function maybeProactiveRestock(
       await autoPurchaseIntoStock(product, PROXYSELLER_IPV6_MIN_BLOCK, triggeringOrderId);
       void notifyAllAdmins({
         title: "♻️ Restock automático",
-        body: `Estoque de ${product.category}/${product.country_code ?? "?"} caiu para ${avail ?? 0}. Comprando novo bloco.`,
+        body: `Pool ${product.category}/${product.country_code ?? "?"} caiu para ${avail ?? 0} (limite ${threshold}). Comprando bloco de reserva.`,
         link: "/admin/inventory",
-        metadata: { productId: product.id, available: avail ?? 0 },
-        dedupeKey: `proactive-restock:${product.id}:${Math.floor(Date.now() / 60000)}`,
+        metadata: { productId: product.id, available: avail ?? 0, threshold, poolIds },
+        dedupeKey: `proactive-restock:${product.country_code ?? product.id}:${Math.floor(Date.now() / 60000)}`,
       });
     } finally {
       await releasePurchaseLock(product.id);

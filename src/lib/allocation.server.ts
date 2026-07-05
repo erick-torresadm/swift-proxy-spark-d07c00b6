@@ -1151,10 +1151,10 @@ export async function runRenewalSweep(opts: {
     try {
       let costUsd = 0;
       if (dryRun) {
-        const calc = await prolongCalc("ipv6", { ids: externalIds, periodId: cfg.periodId });
+        const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
         costUsd = Number(calc.total) || 0;
       } else {
-        const res = await prolongMake("ipv6", { ids: externalIds, periodId: cfg.periodId });
+        const res = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
         costUsd = Number(res.total) || 0;
         const newExpiry = new Date(Date.now() + 30 * 86400 * 1000).toISOString();
         await supabaseAdmin.from("proxy_stock").update({ expires_at: newExpiry }).in("id", stockIds);

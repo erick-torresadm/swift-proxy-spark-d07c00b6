@@ -231,6 +231,7 @@ function RootComponent() {
           <SaleSoundListener />
           <Outlet />
           <ChatWidget />
+          <WhatsAppFloat />
           <CookieBanner />
           <ThemedToaster />
         </CurrencyProvider>

@@ -55,8 +55,49 @@ export const Route = createFileRoute("/api/public/hooks/proxyseller-sync")({
             .maybeSingle();
           const min = Number(settings?.min_balance_usd ?? 50);
           summary.balance_low = balanceUsd < min;
+
+          // ── Alerta escalonado de saldo ProxySeller ──
+          // 3 níveis com dedupe cada vez mais curto → força o dono a recarregar.
+          // Ao recarregar, o alerta some sozinho no próximo ciclo.
+          let alertLevel: "critical" | "urgent" | "warning" | null = null;
+          let dedupeBucketMs = 0;
+          let title = "";
+          if (balanceUsd < 2) {
+            alertLevel = "critical";
+            dedupeBucketMs = 30 * 60_000; // 30 min
+            title = `🚨 SALDO ProxySeller CRÍTICO — US$ ${balanceUsd.toFixed(2)} — RECARREGUE AGORA`;
+          } else if (balanceUsd < min / 2) {
+            alertLevel = "urgent";
+            dedupeBucketMs = 2 * 60 * 60_000; // 2h
+            title = `⚠️ Saldo ProxySeller BAIXO — US$ ${balanceUsd.toFixed(2)}`;
+          } else if (balanceUsd < min) {
+            alertLevel = "warning";
+            dedupeBucketMs = 6 * 60 * 60_000; // 6h
+            title = `💰 Saldo ProxySeller em atenção — US$ ${balanceUsd.toFixed(2)}`;
+          }
+          if (alertLevel) {
+            void notifyAllAdmins({
+              title,
+              body:
+                alertLevel === "critical"
+                  ? `Saldo insuficiente para o próximo bloco IPv6 (~US$ 1,26). Pedidos pagos vão FALHAR até você recarregar. Mín. recomendado US$ ${min}. Recarregue em proxy-seller.com/personal/balance. Alerta se repete a cada 30 min.`
+                  : alertLevel === "urgent"
+                  ? `Saldo abaixo de US$ ${(min / 2).toFixed(0)} (metade do mínimo US$ ${min}). Recarregue em breve. Alerta se repete a cada 2h.`
+                  : `Saldo abaixo de US$ ${min}. Recarregue quando puder. Alerta se repete a cada 6h.`,
+              link: "/admin/inventory",
+              metadata: { balanceUsd, min, level: alertLevel } as never,
+              dedupeKey: `provider-balance-${alertLevel}:${Math.floor(Date.now() / dedupeBucketMs)}`,
+            });
+          }
         } else {
           summary.errors.push(`balance: ${bal.error}`);
+          void notifyAllAdmins({
+            title: "🛑 Não consegui checar saldo ProxySeller — AÇÃO NECESSÁRIA",
+            body: `Erro: ${bal.error}. Alerta se repete a cada hora até resolver.`,
+            link: "/admin/inventory",
+            metadata: { error: bal.error } as never,
+            dedupeKey: `provider-balance-check-fail:${Math.floor(Date.now() / 3600000)}`,
+          });
         }
 
         // 3) Restock preventivo (somente IPv6 por enquanto)

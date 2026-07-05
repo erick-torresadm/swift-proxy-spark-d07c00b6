@@ -1047,7 +1047,8 @@ export async function runRenewalSweep(opts: {
   const cutoff = new Date(Date.now() + windowDays * 86400 * 1000).toISOString();
   const nowIso = new Date().toISOString();
 
-  // Only IPv6/IPv6-FB blocks are renewable through prolong/make today.
+  // IPv6, IPv4 and ISP blocks are all renewable through prolong/make.
+  // Mobile is provider-managed, skip.
   const { data: blocks } = await supabaseAdmin
     .from("provider_orders")
     .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
@@ -1057,7 +1058,11 @@ export async function runRenewalSweep(opts: {
 
   for (const block of blocks ?? []) {
     const prod = (block as { products?: { slug: string; category: string | null; provider_tariff_id: string | null } | null }).products;
-    if (!prod || !prod.category?.startsWith("ipv6")) continue;
+    const cat = prod?.category ?? "";
+    const isRenewable = cat.startsWith("ipv6") || cat === "ipv4" || cat === "isp";
+    if (!prod || !isRenewable) continue;
+    const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
+
     out.blocks_seen++;
 
     // All stock rows in this block

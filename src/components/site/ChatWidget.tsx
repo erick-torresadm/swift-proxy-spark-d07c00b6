@@ -178,13 +178,14 @@ function ChatWidgetInner() {
         },
       });
       setConversationId(r.conversationId);
-      if (r.guestToken) {
-        setGuestToken(r.guestToken);
-        saveGuest({ token: r.guestToken, conversationId: r.conversationId });
+      const tk = r.guestToken ?? null;
+      if (tk) {
+        setGuestToken(tk);
+        saveGuest({ token: tk, conversationId: r.conversationId });
       }
       setBody("");
       play("outgoing");
-      toast.success("Mensagem enviada! Aguardando atendente...");
+      triggerBot(r.conversationId, tk);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {

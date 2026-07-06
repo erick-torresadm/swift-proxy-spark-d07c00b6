@@ -204,8 +204,8 @@ function ChatWidgetInner() {
     setMessages((p) => [...p, tmp]);
     play("outgoing");
     try {
+      let cid = conversationId;
       if (authUser && !conversationId) {
-        // primeira mensagem do cliente autenticado — cria a conversa
         const r = await startFnAuth({
           data: {
             name: authUser.email?.split("@")[0] || "Cliente",
@@ -215,12 +215,14 @@ function ChatWidgetInner() {
             message: text,
           },
         });
-        setConversationId(r.conversationId);
+        cid = r.conversationId;
+        setConversationId(cid);
       } else if (authUser && conversationId) {
         await clientSendFn({ data: { conversationId, body: text } });
       } else if (guestToken && conversationId) {
         await guestSendFn({ data: { conversationId, guestToken, body: text } });
       }
+      if (cid) triggerBot(cid, guestToken);
     } catch (err) {
       toast.error((err as Error).message);
       setMessages((p) => p.filter((m) => m.id !== tmp.id));

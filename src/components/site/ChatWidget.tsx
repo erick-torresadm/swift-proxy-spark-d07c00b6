@@ -59,6 +59,17 @@ function ChatWidgetInner() {
   const clientSendFn = useServerFn(clientSendMessage);
   const clientMarkReadFn = useServerFn(clientMarkRead);
   const clientListFn = useServerFn(clientListMyConversation);
+  const botReplyFn = useServerFn(botReply);
+
+  const triggerBot = async (convId: string, token: string | null) => {
+    try {
+      await botReplyFn({
+        data: { conversationId: convId, ...(token ? { guestToken: token } : {}) },
+      });
+    } catch (e) {
+      console.error("bot", e);
+    }
+  };
 
   // auth state
   useEffect(() => {

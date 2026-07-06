@@ -11,6 +11,7 @@ import {
   clientSendMessage,
   clientMarkRead,
   clientListMyConversation,
+  botReply,
 } from "@/lib/chat.functions";
 import { useChatSound } from "@/hooks/useChatSound";
 import { toast } from "sonner";
@@ -58,6 +59,17 @@ function ChatWidgetInner() {
   const clientSendFn = useServerFn(clientSendMessage);
   const clientMarkReadFn = useServerFn(clientMarkRead);
   const clientListFn = useServerFn(clientListMyConversation);
+  const botReplyFn = useServerFn(botReply);
+
+  const triggerBot = async (convId: string, token: string | null) => {
+    try {
+      await botReplyFn({
+        data: { conversationId: convId, ...(token ? { guestToken: token } : {}) },
+      });
+    } catch (e) {
+      console.error("bot", e);
+    }
+  };
 
   // auth state
   useEffect(() => {
@@ -166,13 +178,14 @@ function ChatWidgetInner() {
         },
       });
       setConversationId(r.conversationId);
-      if (r.guestToken) {
-        setGuestToken(r.guestToken);
-        saveGuest({ token: r.guestToken, conversationId: r.conversationId });
+      const tk = r.guestToken ?? null;
+      if (tk) {
+        setGuestToken(tk);
+        saveGuest({ token: tk, conversationId: r.conversationId });
       }
       setBody("");
       play("outgoing");
-      toast.success("Mensagem enviada! Aguardando atendente...");
+      triggerBot(r.conversationId, tk);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -191,8 +204,8 @@ function ChatWidgetInner() {
     setMessages((p) => [...p, tmp]);
     play("outgoing");
     try {
+      let cid = conversationId;
       if (authUser && !conversationId) {
-        // primeira mensagem do cliente autenticado — cria a conversa
         const r = await startFnAuth({
           data: {
             name: authUser.email?.split("@")[0] || "Cliente",
@@ -202,12 +215,14 @@ function ChatWidgetInner() {
             message: text,
           },
         });
-        setConversationId(r.conversationId);
+        cid = r.conversationId;
+        setConversationId(cid);
       } else if (authUser && conversationId) {
         await clientSendFn({ data: { conversationId, body: text } });
       } else if (guestToken && conversationId) {
         await guestSendFn({ data: { conversationId, guestToken, body: text } });
       }
+      if (cid) triggerBot(cid, guestToken);
     } catch (err) {
       toast.error((err as Error).message);
       setMessages((p) => p.filter((m) => m.id !== tmp.id));
@@ -288,22 +303,18 @@ function ChatWidgetInner() {
             <>
               <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-background/40">
                 {messages.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center">Sem mensagens ainda.</p>
+                  <BotIntro onPick={(q) => setBody(q)} />
                 )}
                 {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
-                      m.sender === "client"
-                        ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                        : m.sender === "admin"
-                        ? "mr-auto bg-secondary text-secondary-foreground rounded-bl-sm"
-                        : "mx-auto bg-muted text-muted-foreground text-xs"
-                    }`}
-                  >
-                    {m.body}
-                  </div>
+                  <BotMessage key={m.id} m={m} />
                 ))}
+                {sending && (
+                  <div className="mr-auto max-w-[70%] px-3 py-2 rounded-2xl text-xs bg-secondary text-secondary-foreground flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-current animate-bounce" />
+                    <span className="size-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
+                    <span className="size-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
+                  </div>
+                )}
               </div>
               <form onSubmit={handleSend} className="p-3 border-t border-border flex gap-2 bg-card">
                 <input
@@ -326,5 +337,85 @@ function ChatWidgetInner() {
         </div>
       )}
     </>
+  );
+}
+
+const QUICK_QUESTIONS: { label: string; q: string }[] = [
+  { label: "Quais tipos de proxy vocês têm?", q: "Quais tipos de proxy vocês têm?" },
+  { label: "Qual proxy usar para Instagram?", q: "Qual proxy usar para Instagram/WhatsApp?" },
+  { label: "Como funciona a entrega?", q: "Como funciona a entrega após o pagamento?" },
+  { label: "Quais formas de pagamento?", q: "Quais formas de pagamento vocês aceitam?" },
+  { label: "Como configurar o proxy?", q: "Como configuro o proxy no meu navegador?" },
+  { label: "Falar com um humano", q: "Quero falar com um atendente humano." },
+];
+
+function BotIntro({ onPick }: { onPick: (q: string) => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="mr-auto max-w-[85%] px-3 py-2 rounded-2xl text-sm bg-secondary text-secondary-foreground rounded-bl-sm">
+        Oi! Sou a <strong>Fast</strong>, do time FastProxy 👋 Posso te ajudar em segundos. Escolha uma dúvida ou escreva a sua:
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {QUICK_QUESTIONS.map((q) => (
+          <button
+            key={q.label}
+            type="button"
+            onClick={() => onPick(q.q)}
+            className="text-[11px] px-2.5 py-1.5 rounded-full bg-background border border-border hover:border-primary/50 hover:bg-accent transition"
+          >
+            {q.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function parseCta(body: string): { text: string; cta: { label: string; url: string } | null } {
+  const m = body.match(/\[\[CTA:([^|\]]+)\|([^\]]+)\]\]/);
+  if (!m) return { text: body, cta: null };
+  return {
+    text: body.replace(m[0], "").trim(),
+    cta: { label: m[1].trim(), url: m[2].trim() },
+  };
+}
+
+function BotMessage({ m }: { m: Msg }) {
+  if (m.sender === "client") {
+    return (
+      <div className="ml-auto max-w-[80%] px-3 py-2 rounded-2xl rounded-br-sm text-sm bg-primary text-primary-foreground">
+        {m.body}
+      </div>
+    );
+  }
+  if (m.sender === "admin") {
+    return (
+      <div className="mr-auto max-w-[80%]">
+        <div className="text-[10px] text-muted-foreground mb-0.5 ml-1">Atendente</div>
+        <div className="px-3 py-2 rounded-2xl rounded-bl-sm text-sm bg-secondary text-secondary-foreground whitespace-pre-wrap">
+          {m.body}
+        </div>
+      </div>
+    );
+  }
+  // sender === "system" — bot
+  const { text, cta } = parseCta(m.body);
+  return (
+    <div className="mr-auto max-w-[85%]">
+      <div className="text-[10px] text-muted-foreground mb-0.5 ml-1 flex items-center gap-1">
+        <span className="inline-block size-1.5 rounded-full bg-green-500" /> Fast · assistente
+      </div>
+      <div className="px-3 py-2 rounded-2xl rounded-bl-sm text-sm bg-secondary text-secondary-foreground whitespace-pre-wrap">
+        {text}
+      </div>
+      {cta && (
+        <a
+          href={cta.url}
+          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-gradient-primary text-primary-foreground hover:opacity-90"
+        >
+          {cta.label} →
+        </a>
+      )}
+    </div>
   );
 }

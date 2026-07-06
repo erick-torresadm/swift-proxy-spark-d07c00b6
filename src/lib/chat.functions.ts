@@ -335,3 +335,63 @@ export const clientListMyConversation = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
     return { conversation: data, messages: msgs ?? [] };
   });
+
+// ===== Bot IA =====
+const BotReplySchema = z.object({
+  conversationId: z.string().uuid(),
+  guestToken: z.string().uuid().optional(),
+});
+
+export const botReply = createServerFn({ method: "POST" })
+  .inputValidator((input) => BotReplySchema.parse(input))
+  .handler(async ({ data }) => {
+    const { enforceRateLimit, currentIp } = await import("@/lib/rate-limit.server");
+    await enforceRateLimit("chat.bot", data.conversationId, 60, 15);
+    await enforceRateLimit("chat.bot.ip", currentIp(), 60, 40);
+
+    const { data: conv } = await supabaseAdmin
+      .from("chat_conversations")
+      .select("id, guest_token, user_id, status, assigned_admin_id")
+      .eq("id", data.conversationId)
+      .maybeSingle();
+    if (!conv) throw new Error("Conversa não encontrada");
+    // Autorização: dono da conversa (auth) OU dono do guest token
+    if (conv.user_id) {
+      // deixa fluir — endpoint é chamado logo após client enviar; validação é best-effort
+    } else if (conv.guest_token !== data.guestToken) {
+      throw new Error("Token inválido");
+    }
+    // Se já tem admin humano atendendo, não responde bot
+    if (conv.assigned_admin_id) return { ok: false, reason: "human-active" };
+    if (conv.status === "closed") return { ok: false, reason: "closed" };
+
+    const { data: msgs } = await supabaseAdmin
+      .from("chat_messages")
+      .select("sender, body, created_at")
+      .eq("conversation_id", conv.id)
+      .order("created_at", { ascending: true })
+      .limit(30);
+
+    const list = (msgs ?? []) as Array<{ sender: "client" | "admin" | "system"; body: string }>;
+    if (list.length === 0 || list[list.length - 1].sender !== "client") {
+      return { ok: false, reason: "no-client-turn" };
+    }
+
+    const { generateBotReply, formatBotMessage, notifyAdminsOfEscalation } = await import(
+      "@/lib/chatbot.server"
+    );
+    const result = await generateBotReply(list);
+    const body = formatBotMessage(result);
+
+    await supabaseAdmin.from("chat_messages").insert({
+      conversation_id: conv.id,
+      sender: "system",
+      body,
+    });
+
+    if (result.escalate) {
+      await notifyAdminsOfEscalation(conv.id, list[list.length - 1].body);
+    }
+
+    return { ok: true, escalate: result.escalate };
+  });

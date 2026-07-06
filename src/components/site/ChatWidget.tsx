@@ -303,22 +303,18 @@ function ChatWidgetInner() {
             <>
               <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-background/40">
                 {messages.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center">Sem mensagens ainda.</p>
+                  <BotIntro onPick={(q) => setBody(q)} />
                 )}
                 {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
-                      m.sender === "client"
-                        ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                        : m.sender === "admin"
-                        ? "mr-auto bg-secondary text-secondary-foreground rounded-bl-sm"
-                        : "mx-auto bg-muted text-muted-foreground text-xs"
-                    }`}
-                  >
-                    {m.body}
-                  </div>
+                  <BotMessage key={m.id} m={m} />
                 ))}
+                {sending && (
+                  <div className="mr-auto max-w-[70%] px-3 py-2 rounded-2xl text-xs bg-secondary text-secondary-foreground flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-current animate-bounce" />
+                    <span className="size-1.5 rounded-full bg-current animate-bounce [animation-delay:120ms]" />
+                    <span className="size-1.5 rounded-full bg-current animate-bounce [animation-delay:240ms]" />
+                  </div>
+                )}
               </div>
               <form onSubmit={handleSend} className="p-3 border-t border-border flex gap-2 bg-card">
                 <input

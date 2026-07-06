@@ -11,6 +11,7 @@ import {
   clientSendMessage,
   clientMarkRead,
   clientListMyConversation,
+  botReply,
 } from "@/lib/chat.functions";
 import { useChatSound } from "@/hooks/useChatSound";
 import { toast } from "sonner";

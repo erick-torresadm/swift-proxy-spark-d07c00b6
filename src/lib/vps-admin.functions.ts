@@ -14,6 +14,7 @@ async function assertAdmin(userId: string) {
 
 export type VpsStatus = {
   enabled: boolean;
+  apiBaseUrl: string;
   healthOk: boolean;
   healthError: string | null;
   healthJson: string;
@@ -34,6 +35,7 @@ export const getVpsStatus = createServerFn({ method: "GET" })
     await assertAdmin(context.userId);
     const vps = await import("@/lib/fastproxy-vps.server");
     const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const apiBaseUrl = vps.getConfiguredVpsApiBaseUrl();
 
     let healthOk = true;
     let healthError: string | null = null;
@@ -70,6 +72,7 @@ export const getVpsStatus = createServerFn({ method: "GET" })
     const enabled = !((settings as { dry_run?: boolean } | null)?.dry_run ?? true);
     return {
       enabled,
+      apiBaseUrl,
       healthOk,
       healthError,
       healthJson,

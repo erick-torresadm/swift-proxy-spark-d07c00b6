@@ -45,10 +45,29 @@ export type VpsAuditEntry = {
   [k: string]: unknown;
 };
 
+const DIRECT_VPS_API_URL = "http://104.234.186.95:8888";
+
+function normalizeBaseUrl(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname === "104.234.186.95") {
+      return trimmed;
+    }
+    return DIRECT_VPS_API_URL;
+  } catch {
+    return DIRECT_VPS_API_URL;
+  }
+}
+
 function baseUrl(): string {
   const raw = process.env.FASTPROXY_VPS_API_URL;
-  if (!raw) throw new Error("FASTPROXY_VPS_API_URL not configured");
-  return raw.replace(/\/+$/, "");
+  if (!raw) return DIRECT_VPS_API_URL;
+  return normalizeBaseUrl(raw);
+}
+
+export function getConfiguredVpsApiBaseUrl(): string {
+  return baseUrl();
 }
 
 function token(): string {
@@ -117,6 +136,7 @@ async function vpsCall<T>(
       response: {
         http_status: status,
         duration_ms: Date.now() - started,
+        base_url: baseUrl(),
         body: parsed ?? null,
         error: errMsg ?? null,
       } as never,

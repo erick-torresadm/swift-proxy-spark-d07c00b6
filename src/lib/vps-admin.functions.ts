@@ -12,35 +12,76 @@ async function assertAdmin(userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
+export type VpsStatus = {
+  enabled: boolean;
+  healthOk: boolean;
+  healthError: string | null;
+  healthJson: string;
+  vpsBlocksJson: string;
+  dbBlocks: Array<{
+    id: string;
+    external_order_id: string | null;
+    expires_at: string | null;
+    quantity: number;
+    status: string | null;
+    created_at: string;
+  }>;
+};
+
 export const getVpsStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<VpsStatus> => {
     await assertAdmin(context.userId);
     const vps = await import("@/lib/fastproxy-vps.server");
     const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
 
-    const [health, blocks, settings, dbBlocks] = await Promise.all([
-      vps.getHealth().then((h) => ({ ok: true as const, data: h as Record<string, unknown> })).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) })),
-      vps.listBlocks().then((bs) => bs as unknown as Record<string, unknown>[]).catch(() => [] as Record<string, unknown>[]),
-      supabaseAdmin
-        .from("provider_settings")
-        .select("dry_run")
-        .eq("provider", "fastproxy_vps")
-        .maybeSingle(),
-      supabaseAdmin
-        .from("provider_orders")
-        .select("id, external_order_id, expires_at, quantity, status, created_at")
-        .eq("provider", "fastproxy_vps")
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+    let healthOk = true;
+    let healthError: string | null = null;
+    let healthJson = "{}";
+    try {
+      const h = await vps.getHealth();
+      healthJson = JSON.stringify(h);
+    } catch (e) {
+      healthOk = false;
+      healthError = e instanceof Error ? e.message : String(e);
+    }
 
-    const enabled = !((settings.data as { dry_run?: boolean } | null)?.dry_run ?? true);
+    let vpsBlocksJson = "[]";
+    try {
+      const bs = await vps.listBlocks();
+      vpsBlocksJson = JSON.stringify(bs);
+    } catch {
+      /* ignore */
+    }
+
+    const { data: settings } = await supabaseAdmin
+      .from("provider_settings")
+      .select("dry_run")
+      .eq("provider", "fastproxy_vps")
+      .maybeSingle();
+
+    const { data: dbBlocksRaw } = await supabaseAdmin
+      .from("provider_orders")
+      .select("id, external_order_id, expires_at, quantity, status, created_at")
+      .eq("provider", "fastproxy_vps")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    const enabled = !((settings as { dry_run?: boolean } | null)?.dry_run ?? true);
     return {
       enabled,
-      health,
-      vpsBlocks: blocks,
-      dbBlocks: dbBlocks.data ?? [],
+      healthOk,
+      healthError,
+      healthJson,
+      vpsBlocksJson,
+      dbBlocks: (dbBlocksRaw ?? []).map((r) => ({
+        id: r.id,
+        external_order_id: r.external_order_id,
+        expires_at: r.expires_at,
+        quantity: r.quantity,
+        status: r.status as string | null,
+        created_at: r.created_at,
+      })),
     };
   });
 

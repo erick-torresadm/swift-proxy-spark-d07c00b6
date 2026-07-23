@@ -158,8 +158,8 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
           pendingInFlight = true;
         } else {
           void notifyAllAdmins({
-            title: "⚠️ Estoque insuficiente",
-            body: `Pedido ${order.id.slice(0, 8)} precisa de ${remaining} IPs do produto ${product.category}/${product.country_code ?? "?"}. Faltam ${stillShortAfterReuse}. Comprando bloco na ProxySeller…`,
+            title: "📉 Estoque baixo — comprando bloco novo",
+            body: `Um cliente pagou e precisa de ${remaining} IP(s) do plano ${product.category}/${product.country_code ?? "?"}, mas faltam ${stillShortAfterReuse} no estoque. Estamos comprando um bloco novo na ProxySeller agora — leva ~1 min. Nada a fazer, só acompanhar.`,
             link: "/admin/inventory",
             metadata: { orderId: order.id, productId: product.id, shortBy: stillShortAfterReuse },
             dedupeKey: `stock-short:${order.id}`,
@@ -1046,15 +1046,16 @@ export async function runRenewalSweep(opts: {
   };
 
   const cutoff = new Date(Date.now() + windowDays * 86400 * 1000).toISOString();
-  const nowIso = new Date().toISOString();
 
   // IPv6, IPv4 and ISP blocks are all renewable through prolong/make.
   // Mobile is provider-managed, skip.
+  // NOTE: we no longer filter by `provider_orders.expires_at` here — many blocks
+  // have NULL there and the real expiry is stored on `proxy_stock.expires_at`.
+  // We fetch all active/pending blocks and compute the effective expiry from
+  // the stock rows below.
   const { data: blocks } = await supabaseAdmin
     .from("provider_orders")
     .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
-    .lte("expires_at", cutoff)
-    .gte("expires_at", nowIso)
     .in("status", ["active", "pending"]);
 
   for (const block of blocks ?? []) {
@@ -1069,11 +1070,38 @@ export async function runRenewalSweep(opts: {
     // All stock rows in this block
     const { data: stockRows } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, external_proxy_id")
+      .select("id, external_proxy_id, expires_at")
       .eq("provider_order_id", block.id);
     const stockIds = (stockRows ?? []).map((s) => s.id);
     const externalIds = (stockRows ?? []).map((s) => s.external_proxy_id).filter((x): x is string => !!x);
     const blockSize = stockIds.length;
+
+    // Effective expiry: use provider_orders.expires_at when set, otherwise
+    // fall back to the earliest expires_at across this block's stock rows.
+    const stockExpiryMs = (stockRows ?? [])
+      .map((s) => (s.expires_at ? new Date(s.expires_at).getTime() : 0))
+      .filter((n) => n > 0);
+    const effectiveExpiryMs = block.expires_at
+      ? new Date(block.expires_at).getTime()
+      : (stockExpiryMs.length ? Math.min(...stockExpiryMs) : 0);
+
+    // Only act on blocks whose real expiry is inside the renewal window.
+    // Blocks with unknown/no expiry are surfaced as "skipped".
+    if (!effectiveExpiryMs) {
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy: 0,
+        block_size: blockSize,
+        action: "skipped",
+        reason: "no expiry on block or stock",
+      });
+      continue;
+    }
+    if (effectiveExpiryMs > new Date(cutoff).getTime()) {
+      // Too far in the future to renew right now — skip silently.
+      continue;
+    }
 
     if (blockSize === 0) {
       out.details.push({

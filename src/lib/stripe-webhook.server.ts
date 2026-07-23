@@ -439,9 +439,9 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         if (subscriptionId) {
           await markOrderPastDue(subscriptionId);
           await notifyAllAdmins({
-            title: "⚠️ Pagamento falhou",
-            body: `Assinatura ${subscriptionId} entrou em atraso (${inv.customer_email ?? "cliente"}).`,
-            link: "/admin/stripe",
+            title: "⚠️ Pagamento falhou — cliente em atraso",
+            body: `A cobrança de ${inv.customer_email ?? "um cliente"} não foi aprovada (cartão recusado, saldo insuficiente ou 3DS não finalizado). O acesso continua por até 7 dias (período de graça). Depois disso os proxies são liberados.`,
+            link: "/admin/inadimplentes",
             metadata: { invoiceId: inv.id, subscriptionId },
             dedupeKey: `payment-failed:${inv.id}`,
           });
@@ -455,9 +455,9 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         baseRow.status = "canceled";
         await markOrderCanceled(sub.id);
         await notifyAllAdmins({
-          title: "⛔ Assinatura cancelada",
-          body: `Assinatura ${sub.id.slice(0, 12)}… cancelada no Stripe.`,
-          link: "/admin/stripe",
+          title: "⛔ Assinatura encerrada",
+          body: `A assinatura foi encerrada no Stripe e os proxies do cliente foram liberados. Motivo comum: cancelamento pelo cliente ou pagamento não recuperado após o período de graça.`,
+          link: "/admin/cancelados",
           metadata: { subscriptionId: sub.id },
           dedupeKey: `subscription-canceled:${sub.id}`,
         });
@@ -472,9 +472,9 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         if (cancelAt) {
           baseRow.reason = "cancel_at_period_end";
           await notifyAllAdmins({
-            title: "🟡 Cancelamento agendado",
-            body: `Cliente agendou cancelamento da assinatura ${sub.id.slice(0, 12)}…`,
-            link: "/admin/stripe",
+            title: "🟡 Cliente agendou cancelamento",
+            body: `Um cliente marcou para cancelar no fim do período atual. Ele continua com os proxies até a data de renovação; depois disso, nada é cobrado.`,
+            link: "/admin/cancelados",
             metadata: { subscriptionId: sub.id },
             dedupeKey: `subscription-cancel-scheduled:${sub.id}`,
           });
@@ -486,8 +486,8 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         baseRow.subscription_id = sub.id;
         baseRow.status = "trial_ending";
         await notifyAllAdmins({
-          title: "⏰ Trial acabando",
-          body: `Trial da assinatura ${sub.id.slice(0, 12)}… termina em breve.`,
+          title: "⏰ Período de teste acabando em 3 dias",
+          body: `Um cliente em trial vai ser cobrado em breve. Se o cartão falhar, ele cai em inadimplência automática.`,
           link: "/admin/stripe",
           metadata: { subscriptionId: sub.id },
           dedupeKey: `trial-ending:${sub.id}`,

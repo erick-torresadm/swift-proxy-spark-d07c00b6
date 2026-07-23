@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getVpsStatus, setVpsEnabled } from "@/lib/vps-admin.functions";
+import { useState } from "react";
+import { getVpsStatus, setVpsEnabled, listVpsProducts, issueVpsBlock } from "@/lib/vps-admin.functions";
 import { toast } from "sonner";
-import { ServerCog, CheckCircle2, AlertCircle } from "lucide-react";
+import { ServerCog, CheckCircle2, AlertCircle, PlusCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vps")({
   component: VpsAdmin,
@@ -11,6 +12,8 @@ export const Route = createFileRoute("/_authenticated/admin/vps")({
 
 function VpsAdmin() {
   const fetchStatus = useServerFn(getVpsStatus);
+  const fetchProducts = useServerFn(listVpsProducts);
+  const issue = useServerFn(issueVpsBlock);
   const toggle = useServerFn(setVpsEnabled);
   const qc = useQueryClient();
   const { data, isLoading, refetch } = useQuery({
@@ -18,11 +21,32 @@ function VpsAdmin() {
     queryFn: () => fetchStatus(),
     refetchInterval: 30000,
   });
+  const { data: products } = useQuery({
+    queryKey: ["admin-vps-products"],
+    queryFn: () => fetchProducts(),
+  });
 
   const mut = useMutation({
     mutationFn: (enabled: boolean) => toggle({ data: { enabled } }),
     onSuccess: (r) => {
       toast.success(r.enabled ? "VPS ativada — novos IPv6 BR virão daqui" : "VPS desligada");
+      qc.invalidateQueries({ queryKey: ["admin-vps"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+
+  const [productId, setProductId] = useState<string>("");
+  const [size, setSize] = useState<number>(10);
+  const [days, setDays] = useState<number>(30);
+
+  const issueMut = useMutation({
+    mutationFn: () => issue({ data: { product_id: productId, size, duration_days: days } }),
+    onSuccess: (r) => {
+      toast.success(
+        r.pending
+          ? `Bloco ${r.blockId.slice(0, 8)} criado (aguardando IPs da VPS)`
+          : `Bloco emitido: ${r.added} IPs adicionados ao estoque`,
+      );
       qc.invalidateQueries({ queryKey: ["admin-vps"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -65,6 +89,65 @@ function VpsAdmin() {
           {data?.enabled ? "Desligar" : "Ativar"}
         </button>
       </div>
+
+      <div className="rounded-lg border p-4 space-y-3">
+        <div className="font-medium flex items-center gap-2">
+          <PlusCircle className="h-4 w-4" /> Emitir novo bloco IPv6 na VPS
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Cria um bloco novo direto na sua VPS e ingere os IPs no estoque como <strong>disponíveis</strong>. Útil para pré-abastecer antes de campanhas ou repor manualmente. Só mostra produtos marcados como <code>fastproxy_vps</code>.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="md:col-span-2">
+            <label className="text-xs text-muted-foreground">Produto</label>
+            <select
+              className="w-full mt-1 rounded-md border bg-background px-2 py-2 text-sm"
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+            >
+              <option value="">Selecione…</option>
+              {(products ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name ?? p.slug ?? p.id.slice(0, 8)} {p.country_code ? `(${p.country_code})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Tamanho (IPs)</label>
+            <input
+              type="number" min={1} max={256}
+              className="w-full mt-1 rounded-md border bg-background px-2 py-2 text-sm"
+              value={size}
+              onChange={(e) => setSize(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Duração (dias)</label>
+            <input
+              type="number" min={1} max={365}
+              className="w-full mt-1 rounded-md border bg-background px-2 py-2 text-sm"
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
+            disabled={!productId || issueMut.isPending || size < 1 || days < 1}
+            onClick={() => issueMut.mutate()}
+          >
+            {issueMut.isPending ? "Emitindo…" : "Emitir bloco"}
+          </button>
+          {(products ?? []).length === 0 && (
+            <span className="text-xs text-amber-600">
+              Nenhum produto marcado como <code>fastproxy_vps</code> encontrado.
+            </span>
+          )}
+        </div>
+      </div>
+
 
       <div className="rounded-lg border p-4">
         <div className="font-medium mb-2">Saúde da API</div>

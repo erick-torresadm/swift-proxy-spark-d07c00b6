@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "@/lib/stripe.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
-import { allocateProxiesForOrder } from "@/lib/allocation.server";
+import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder, restoreHiddenProxiesForPaidOrder } from "@/lib/allocation.server";
 import { reconcileOrderWithStripe } from "@/lib/reconcile.server";
 
 function subscriptionPeriodEnd(subscription: unknown): string | null {
@@ -137,9 +137,19 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
             }
 
             if (newStatus === "paid") {
+              await restoreHiddenProxiesForPaidOrder(o.id);
               const r = await allocateProxiesForOrder(o.id);
               summary.allocated += r.allocated;
               if (r.error) summary.errors.push(`${o.id}: allocation ${r.error}`);
+            } else if (newStatus === "past_due") {
+              await supabaseAdmin
+                .from("customer_proxies")
+                .update({ status: "grace" as never })
+                .eq("order_id", o.id)
+                .eq("status", "active");
+            } else if (newStatus === "cancelled") {
+              const changed = await hideOrReleaseProxiesForOrder(o.id);
+              summary.released += changed.hidden_ipv6 + changed.released;
             }
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);

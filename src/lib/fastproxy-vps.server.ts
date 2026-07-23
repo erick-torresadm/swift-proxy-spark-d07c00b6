@@ -51,11 +51,10 @@ function normalizeBaseUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, "");
   try {
     const parsed = new URL(trimmed);
-    const hostname = parsed.hostname.toLowerCase();
-    if (hostname === "fastproxy.com.br" || hostname === "www.fastproxy.com.br") {
-      return DIRECT_VPS_API_URL;
+    if (parsed.hostname === "104.234.186.95") {
+      return trimmed;
     }
-    return trimmed;
+    return DIRECT_VPS_API_URL;
   } catch {
     return DIRECT_VPS_API_URL;
   }

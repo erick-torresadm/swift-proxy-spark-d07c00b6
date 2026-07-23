@@ -11,6 +11,7 @@ import {
 } from "./proxyseller.server";
 import type { PsProxyItem, PsProxyKind } from "./proxyseller.server";
 import { notifyAllAdmins } from "./notifications.server";
+import * as vps from "./fastproxy-vps.server";
 
 /**
  * IPv6 families that share the SAME upstream pool when country matches.

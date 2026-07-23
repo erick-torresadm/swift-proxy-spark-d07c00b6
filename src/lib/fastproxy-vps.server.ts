@@ -45,24 +45,20 @@ export type VpsAuditEntry = {
   [k: string]: unknown;
 };
 
-const DIRECT_VPS_API_URL = "http://104.234.186.95:8888";
+const DEFAULT_VPS_API_URL = "http://104.234.186.95:8888";
 
 function normalizeBaseUrl(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, "");
   try {
-    const parsed = new URL(trimmed);
-    if (parsed.hostname === "104.234.186.95") {
-      return trimmed;
-    }
-    return DIRECT_VPS_API_URL;
+    return new URL(trimmed).toString().replace(/\/+$/, "");
   } catch {
-    return DIRECT_VPS_API_URL;
+    return DEFAULT_VPS_API_URL;
   }
 }
 
 function baseUrl(): string {
   const raw = process.env.FASTPROXY_VPS_API_URL;
-  if (!raw) return DIRECT_VPS_API_URL;
+  if (!raw) return DEFAULT_VPS_API_URL;
   return normalizeBaseUrl(raw);
 }
 

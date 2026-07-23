@@ -467,7 +467,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
           await markOrderPastDue(subscriptionId);
           await notifyAllAdmins({
             title: "⚠️ Pagamento falhou — cliente em atraso",
-            body: `A cobrança de ${inv.customer_email ?? "um cliente"} não foi aprovada (cartão recusado, saldo insuficiente ou 3DS não finalizado). O acesso continua por até 7 dias (período de graça). Depois disso os proxies são liberados.`,
+            body: `A cobrança de ${inv.customer_email ?? "um cliente"} não foi aprovada (cartão recusado, saldo insuficiente ou 3DS não finalizado). O acesso continua por até 7 dias. Depois disso IPv6 é apenas ocultado do painel; IPv4/ISP pode voltar ao estoque.`,
             link: "/admin/inadimplentes",
             metadata: { invoiceId: inv.id, subscriptionId },
             dedupeKey: `payment-failed:${inv.id}`,
@@ -483,7 +483,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         await markOrderCanceled(sub.id);
         await notifyAllAdmins({
           title: "⛔ Assinatura encerrada",
-          body: `A assinatura foi encerrada no Stripe e os proxies do cliente foram liberados. Motivo comum: cancelamento pelo cliente ou pagamento não recuperado após o período de graça.`,
+          body: `A assinatura foi encerrada. IPv6 fica preservado no fornecedor e oculto do painel; IPv4/ISP pode voltar ao estoque quando aplicável.`,
           link: "/admin/cancelados",
           metadata: { subscriptionId: sub.id },
           dedupeKey: `subscription-canceled:${sub.id}`,

@@ -82,6 +82,71 @@ function endpointKey(host: string | null | undefined, port: number | string | nu
   return `${cleanHost}:${String(port)}`;
 }
 
+async function vpsUsernamesForStockIds(stockIds: string[]): Promise<string[]> {
+  if (stockIds.length === 0) return [];
+  const { data } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("username, provider_order_id, provider_orders(provider)")
+    .in("id", stockIds);
+  const usernames = new Set<string>();
+  for (const row of (data ?? []) as unknown as Array<{
+    username?: string | null;
+    provider_orders?: { provider?: string | null } | null;
+  }>) {
+    if (row.provider_orders?.provider === "fastproxy_vps" && row.username) {
+      usernames.add(row.username);
+    }
+  }
+  return Array.from(usernames);
+}
+
+async function suspendVpsCredentials(stockIds: string[]): Promise<void> {
+  const usernames = await vpsUsernamesForStockIds(stockIds);
+  for (const u of usernames) {
+    try { await vps.suspendCredential(u); }
+    catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      void notifyAllAdmins({
+        title: "⚠️ VPS: falha ao suspender credencial",
+        body: `Não consegui suspender o usuário ${u} na VPS: ${msg}`,
+        metadata: { username: u, error: msg },
+        dedupeKey: `vps-suspend-fail:${u}:${Math.floor(Date.now() / 3600000)}`,
+      });
+    }
+  }
+}
+
+async function restoreVpsCredentials(stockIds: string[]): Promise<void> {
+  if (stockIds.length === 0) return;
+  const { data } = await supabaseAdmin
+    .from("proxy_stock")
+    .select("username, password, provider_order_id, provider_orders(provider, external_order_id)")
+    .in("id", stockIds);
+  for (const row of (data ?? []) as unknown as Array<{
+    username?: string | null;
+    password?: string | null;
+    provider_orders?: { provider?: string | null; external_order_id?: string | null } | null;
+  }>) {
+    if (row.provider_orders?.provider !== "fastproxy_vps") continue;
+    if (!row.username || !row.password) continue;
+    try {
+      await vps.upsertCredential({
+        username: row.username,
+        password: row.password,
+        block_id: row.provider_orders.external_order_id ?? undefined,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      void notifyAllAdmins({
+        title: "⚠️ VPS: falha ao reativar credencial",
+        body: `Não consegui reativar o usuário ${row.username} na VPS: ${msg}`,
+        metadata: { username: row.username, error: msg },
+        dedupeKey: `vps-restore-fail:${row.username}:${Math.floor(Date.now() / 3600000)}`,
+      });
+    }
+  }
+}
+
 export async function restoreHiddenProxiesForPaidOrder(orderId: string): Promise<number> {
   const { data: order } = await supabaseAdmin
     .from("orders")
@@ -115,6 +180,8 @@ export async function restoreHiddenProxiesForPaidOrder(orderId: string): Promise
       .from("proxy_stock")
       .update({ status: "allocated" as never })
       .in("id", stockIds);
+    // Reativa credenciais no 3proxy da VPS (no-op para stock de outros provedores).
+    await restoreVpsCredentials(stockIds);
   }
 
   return ids.length;
@@ -185,8 +252,16 @@ export async function hideOrReleaseProxiesForOrder(orderId: string): Promise<{
     }
   }
 
+  // Suspende credenciais no 3proxy da VPS para tudo que foi escondido/liberado
+  // (só afeta stock cujo provider_order.provider = 'fastproxy_vps').
+  const allStockIds = [...hiddenStockIds, ...releasedStockIds];
+  if (allStockIds.length > 0) {
+    await suspendVpsCredentials(allStockIds);
+  }
+
   return { hidden_ipv6: hiddenIds.length, released: releasedIds.length };
 }
+
 
 async function reconcileStockRowsFromProviderList(
   kind: PsProxyKind,

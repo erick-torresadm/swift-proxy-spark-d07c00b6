@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useLocation, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, Server, Receipt, Settings, LogOut, Shield, Menu, X, Bell, XCircle } from "lucide-react";
+import { LayoutDashboard, Server, Receipt, Settings, LogOut, Shield, Menu, X, Bell } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase-custom/client";
 import { useAuth } from "@/hooks/use-auth";

@@ -679,6 +679,66 @@ export async function insertProxiesToStock(
 }
 
 /**
+ * VPS variant of autoPurchaseIntoStock: creates a fresh block on our own
+ * infrastructure and ingests the returned IPs into `proxy_stock`. Records
+ * a `provider_orders` row with provider='fastproxy_vps' so the renewal
+ * sweep can route it back to the VPS adapter later.
+ */
+async function vpsPurchaseIntoStock(
+  product: { id: string; country_code: string | null; category?: string | null },
+  needed: number,
+  triggeredByOrderId: string,
+): Promise<number> {
+  const size = Math.max(needed, 10);
+  const block = await vps.createBlock({
+    size,
+    duration_days: 30,
+    customer_ref: triggeredByOrderId,
+  });
+
+  const proxies = block.proxies ?? [];
+  const isReady = proxies.length > 0;
+
+  const { data: provOrder } = await supabaseAdmin
+    .from("provider_orders")
+    .insert({
+      product_id: product.id,
+      provider: "fastproxy_vps",
+      external_order_id: block.id,
+      status: isReady ? "active" : "pending",
+      quantity: proxies.length,
+      cost_cents: 0,
+      country_code: product.country_code,
+      triggered_by_order_id: triggeredByOrderId,
+      expires_at: block.expires_at ?? null,
+      raw_payload: { blockId: block.id, size, source: "fastproxy_vps" } as never,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (!isReady) return 0;
+
+  const stockRows = proxies.map((p) => ({
+    product_id: product.id,
+    provider_order_id: provOrder?.id ?? null,
+    external_proxy_id: `vps:${block.id}:${p.ip}:${p.port}`,
+    host: p.ip,
+    port: p.port,
+    username: p.username ?? null,
+    password: p.password ?? null,
+    protocol: (p.protocol || "http").toLowerCase(),
+    country_code: product.country_code,
+    status: "available" as const,
+    expires_at: block.expires_at ?? null,
+  }));
+
+  const { error: stockErr } = await supabaseAdmin.from("proxy_stock").insert(stockRows);
+  if (stockErr) throw new Error(`vps stock insert failed: ${stockErr.message}`);
+
+  return stockRows.length;
+}
+
+/**
  * Try to recover IPs from a previously-placed provider order that returned no
  * proxies yet (race between /order/make and ProxySeller provisioning).
  * Returns number of IPs newly added to stock.

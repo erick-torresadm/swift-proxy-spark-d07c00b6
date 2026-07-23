@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getVpsStatus, setVpsEnabled } from "@/lib/vps-admin.functions";
+import { useState } from "react";
+import { getVpsStatus, setVpsEnabled, listVpsProducts, issueVpsBlock } from "@/lib/vps-admin.functions";
 import { toast } from "sonner";
-import { ServerCog, CheckCircle2, AlertCircle } from "lucide-react";
+import { ServerCog, CheckCircle2, AlertCircle, PlusCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vps")({
   component: VpsAdmin,
@@ -11,6 +12,8 @@ export const Route = createFileRoute("/_authenticated/admin/vps")({
 
 function VpsAdmin() {
   const fetchStatus = useServerFn(getVpsStatus);
+  const fetchProducts = useServerFn(listVpsProducts);
+  const issue = useServerFn(issueVpsBlock);
   const toggle = useServerFn(setVpsEnabled);
   const qc = useQueryClient();
   const { data, isLoading, refetch } = useQuery({
@@ -18,11 +21,32 @@ function VpsAdmin() {
     queryFn: () => fetchStatus(),
     refetchInterval: 30000,
   });
+  const { data: products } = useQuery({
+    queryKey: ["admin-vps-products"],
+    queryFn: () => fetchProducts(),
+  });
 
   const mut = useMutation({
     mutationFn: (enabled: boolean) => toggle({ data: { enabled } }),
     onSuccess: (r) => {
       toast.success(r.enabled ? "VPS ativada — novos IPv6 BR virão daqui" : "VPS desligada");
+      qc.invalidateQueries({ queryKey: ["admin-vps"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+
+  const [productId, setProductId] = useState<string>("");
+  const [size, setSize] = useState<number>(10);
+  const [days, setDays] = useState<number>(30);
+
+  const issueMut = useMutation({
+    mutationFn: () => issue({ data: { product_id: productId, size, duration_days: days } }),
+    onSuccess: (r) => {
+      toast.success(
+        r.pending
+          ? `Bloco ${r.blockId.slice(0, 8)} criado (aguardando IPs da VPS)`
+          : `Bloco emitido: ${r.added} IPs adicionados ao estoque`,
+      );
       qc.invalidateQueries({ queryKey: ["admin-vps"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),

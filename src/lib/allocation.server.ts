@@ -46,6 +46,187 @@ const PENDING_BLOCK_NEW_BUY_MS = 20 * 60_000;
 const DRY_RUN_DELAY_MIN_MS = 3 * 60_000;
 const DRY_RUN_DELAY_MAX_MS = 5 * 60_000;
 
+type ProviderStockRow = {
+  id: string;
+  external_proxy_id: string | null;
+  host: string | null;
+  port: number | null;
+  username?: string | null;
+  password?: string | null;
+  protocol?: string | null;
+  expires_at?: string | null;
+  provider_order_id?: string | null;
+};
+
+type PaidStockAllocation = {
+  allocationId: string;
+  orderId: string;
+  stockId: string;
+  customerEmail: string | null;
+};
+
+function providerHost(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  if (value.startsWith("[")) {
+    const end = value.indexOf("]");
+    return end > 0 ? value.slice(1, end) : value.replace(/^\[|\]$/g, "");
+  }
+  if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(value)) {
+    return value.split(":")[0] ?? value;
+  }
+  return value.replace(/^\[|\]$/g, "");
+}
+
+function endpointKey(host: string | null | undefined, port: number | string | null | undefined): string | null {
+  const cleanHost = providerHost(host);
+  if (!cleanHost || port === null || port === undefined) return null;
+  return `${cleanHost}:${String(port)}`;
+}
+
+function shouldReissueAfterRenewalFailure(message: string, effectiveExpiryMs?: number): boolean {
+  if (effectiveExpiryMs && effectiveExpiryMs < Date.now()) return true;
+  return /orders? not found|not found|no data|empty result|expired/i.test(message);
+}
+
+async function getPaidAllocationsForStock(stockIds: string[]): Promise<PaidStockAllocation[]> {
+  if (stockIds.length === 0) return [];
+
+  const { data: allocations } = await supabaseAdmin
+    .from("customer_proxies")
+    .select("id, order_id, stock_id")
+    .in("stock_id", stockIds)
+    .in("status", ["active", "grace"]);
+
+  const allocationRows = (allocations ?? []) as Array<{ id: string; order_id: string | null; stock_id: string | null }>;
+  const orderIds = Array.from(new Set(allocationRows.map((a) => a.order_id).filter((x): x is string => !!x)));
+  if (orderIds.length === 0) return [];
+
+  const { data: orders } = await supabaseAdmin
+    .from("orders")
+    .select("id, status, customer_email")
+    .in("id", orderIds)
+    .eq("status", "paid");
+
+  const paidOrders = new Map((orders ?? []).map((o) => [o.id as string, (o.customer_email as string | null) ?? null]));
+
+  return allocationRows
+    .filter((a) => !!a.order_id && paidOrders.has(a.order_id))
+    .map((a) => ({
+      allocationId: a.id,
+      orderId: a.order_id as string,
+      stockId: a.stock_id as string,
+      customerEmail: paidOrders.get(a.order_id as string) ?? null,
+    }));
+}
+
+async function reconcileStockRowsFromProviderList(
+  kind: PsProxyKind,
+  rows: ProviderStockRow[],
+): Promise<{ rows: ProviderStockRow[]; updates: number; missing: number }> {
+  if (rows.length === 0) return { rows, updates: 0, missing: 0 };
+
+  const items = await listProxies(kind);
+  const byExternalId = new Map(items.map((item) => [String(item.id), item]));
+  const byEndpoint = new Map<string, PsProxyItem>();
+  for (const item of items) {
+    const key = endpointKey(item.ip_only || item.ip, item.port_http);
+    if (key) byEndpoint.set(key, item);
+  }
+
+  let updates = 0;
+  let missing = 0;
+  const reconciled: ProviderStockRow[] = [];
+
+  for (const row of rows) {
+    const endpoint = endpointKey(row.host, row.port);
+    const item = row.external_proxy_id ? byExternalId.get(row.external_proxy_id) : undefined;
+    const matched = item ?? (endpoint ? byEndpoint.get(endpoint) : undefined);
+
+    if (!matched) {
+      missing++;
+      reconciled.push(row);
+      continue;
+    }
+
+    const nextHost = providerHost(matched.ip_only || matched.ip);
+    const nextPort = Number(matched.port_http) || row.port;
+    const nextExpiry = psDateToIso(matched.date_end) ?? row.expires_at ?? null;
+    const patch: Record<string, unknown> = {};
+
+    if (matched.id && matched.id !== row.external_proxy_id) patch.external_proxy_id = matched.id;
+    if (nextHost && nextHost !== row.host) patch.host = nextHost;
+    if (nextPort && nextPort !== row.port) patch.port = nextPort;
+    if (matched.login && matched.login !== row.username) patch.username = matched.login;
+    if (matched.password && matched.password !== row.password) patch.password = matched.password;
+    if (matched.protocol && matched.protocol.toLowerCase() !== row.protocol) patch.protocol = matched.protocol.toLowerCase();
+    if (nextExpiry && (!row.expires_at || new Date(nextExpiry).getTime() !== new Date(row.expires_at).getTime())) {
+      patch.expires_at = nextExpiry;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabaseAdmin.from("proxy_stock").update(patch as never).eq("id", row.id);
+      if (!error) updates++;
+    }
+
+    reconciled.push({
+      ...row,
+      external_proxy_id: matched.id || row.external_proxy_id,
+      host: nextHost ?? row.host,
+      port: nextPort ?? row.port,
+      username: matched.login ?? row.username,
+      password: matched.password ?? row.password,
+      protocol: matched.protocol?.toLowerCase() ?? row.protocol,
+      expires_at: nextExpiry,
+    });
+  }
+
+  return { rows: reconciled, updates, missing };
+}
+
+async function reissuePaidOrdersForStock(
+  stockIds: string[],
+  reason: string,
+): Promise<{ orders: number; released: number; allocated: number; short: number; errors: string[] }> {
+  const out = { orders: 0, released: 0, allocated: 0, short: 0, errors: [] as string[] };
+  const allocations = await getPaidAllocationsForStock(stockIds);
+  const allocationIds = allocations.map((a) => a.allocationId);
+  const orderIds = Array.from(new Set(allocations.map((a) => a.orderId)));
+  if (allocationIds.length === 0 || orderIds.length === 0) return out;
+
+  await supabaseAdmin
+    .from("customer_proxies")
+    .update({ status: "released", released_at: new Date().toISOString() } as never)
+    .in("id", allocationIds);
+  await supabaseAdmin.from("proxy_stock").update({ status: "expired" as never }).in("id", stockIds);
+
+  out.released = allocationIds.length;
+  out.orders = orderIds.length;
+
+  for (const orderId of orderIds) {
+    try {
+      const result = await allocateProxiesForOrder(orderId);
+      if (result.short === 0) out.allocated++;
+      out.short += Math.max(0, result.short);
+      if (result.error) out.errors.push(`${orderId}: ${result.error}`);
+    } catch (e) {
+      out.errors.push(`${orderId}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  void notifyAllAdmins({
+    title: out.short > 0 ? "🛑 Proxy vencido sem substituição total" : "🚑 Proxy vencido substituído",
+    body: out.short > 0
+      ? `${out.orders} pedido(s) pago(s) tinham proxy irrecuperável (${reason}). Liberei ${out.released} proxy(s), mas ainda faltam ${out.short} IP(s). Ação necessária.`
+      : `${out.orders} pedido(s) pago(s) tinham proxy irrecuperável (${reason}). Liberei ${out.released} proxy(s) antigo(s) e realoquei automaticamente.`,
+    link: "/admin/orders",
+    metadata: { stockIds, reason, ...out } as never,
+    dedupeKey: `proxy-reissue:${stockIds.slice(0, 3).join(":")}:${Math.floor(Date.now() / 3600000)}`,
+  });
+
+  return out;
+}
+
 /**
  * Allocates proxies from stock to a paid order.
  * - quantityNeeded = order.quantity * product.block_size
@@ -613,10 +794,37 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
   }
 
   // Todos os IPs (alocados + livres) que pertencem a esses blocos
-  const { data: blockStock } = await supabaseAdmin
+  const { data: blockStockRaw } = await supabaseAdmin
     .from("proxy_stock")
-    .select("id, external_proxy_id")
+    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, provider_order_id")
     .in("provider_order_id", blockIds);
+  let blockStock = (blockStockRaw ?? []) as ProviderStockRow[];
+
+  const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
+  if (blockStock.length > 0) {
+    try {
+      const reconciled = await reconcileStockRowsFromProviderList(kind, blockStock);
+      blockStock = reconciled.rows;
+      if (reconciled.updates > 0) {
+        void notifyAllAdmins({
+          title: "🔄 Proxies sincronizados com o provedor",
+          body: `Atualizei ${reconciled.updates} proxy(s) do pedido ${orderId.slice(0, 8)} com os dados atuais do provedor antes da renovação.`,
+          link: `/admin/orders/${orderId}`,
+          metadata: { orderId, updates: reconciled.updates, missing: reconciled.missing },
+          dedupeKey: `renewal-sync:${orderId}:${Math.floor(Date.now() / 3600000)}`,
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      void notifyAllAdmins({
+        title: "⚠️ Sync antes da renovação falhou",
+        body: `Não consegui conferir os proxies do pedido ${orderId.slice(0, 8)} no provedor: ${msg}. Vou tentar renovar mesmo assim.`,
+        link: `/admin/orders/${orderId}`,
+        metadata: { orderId, error: msg },
+        dedupeKey: `renewal-presync-fail:${orderId}:${Math.floor(Date.now() / 3600000)}`,
+      });
+    }
+  }
   const externalIds = (blockStock ?? [])
     .map((r) => r.external_proxy_id)
     .filter((x): x is string => !!x);
@@ -624,7 +832,6 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: blockIds.length, cost_usd: 0, dry_run: false, skipped_reason: "no external_proxy_id (dry-run/sim block)" };
   }
 
-  const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
   const { data: settings } = await supabaseAdmin
     .from("provider_settings")
     .select("dry_run")
@@ -633,12 +840,35 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
   const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
 
   let costUsd = 0;
-  if (dryRun) {
-    const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
-    costUsd = Number(calc.total) || 0;
-  } else {
-    const result = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
-    costUsd = Number(result.total) || 0;
+  try {
+    if (dryRun) {
+      const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
+      costUsd = Number(calc.total) || 0;
+    } else {
+      const result = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
+      costUsd = Number(result.total) || 0;
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const stockIdAll = (blockStock ?? []).map((r) => r.id);
+    const expiredMs = (blockStock ?? [])
+      .map((r) => (r.expires_at ? new Date(r.expires_at).getTime() : 0))
+      .filter((n) => n > 0);
+    const effectiveExpiryMs = expiredMs.length ? Math.min(...expiredMs) : undefined;
+
+    if (!dryRun && shouldReissueAfterRenewalFailure(msg, effectiveExpiryMs)) {
+      const reissue = await reissuePaidOrdersForStock(stockIdAll, msg);
+      if (reissue.orders > 0 && reissue.short === 0) {
+        return {
+          renewed_proxies: reissue.released,
+          renewed_blocks: blockIds.length,
+          cost_usd: 0,
+          dry_run: dryRun,
+        };
+      }
+    }
+
+    throw new Error(`${msg}. Tentei substituir automaticamente os proxies pagos quando possível.`);
   }
 
   // Estende expires_at local em 30 dias (período mensal padrão) — o sync do provedor reconcilia depois
@@ -1068,12 +1298,22 @@ export async function runRenewalSweep(opts: {
     out.blocks_seen++;
 
     // All stock rows in this block
-    const { data: stockRows } = await supabaseAdmin
+    const { data: stockRowsRaw } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, external_proxy_id, expires_at")
+      .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, provider_order_id")
       .eq("provider_order_id", block.id);
-    const stockIds = (stockRows ?? []).map((s) => s.id);
-    const externalIds = (stockRows ?? []).map((s) => s.external_proxy_id).filter((x): x is string => !!x);
+    let stockRows = (stockRowsRaw ?? []) as ProviderStockRow[];
+
+    try {
+      const reconciled = await reconcileStockRowsFromProviderList(kind, stockRows);
+      stockRows = reconciled.rows;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      out.errors.push(`${block.id}: provider sync failed before renewal: ${msg}`);
+    }
+
+    const stockIds = stockRows.map((s) => s.id);
+    const externalIds = stockRows.map((s) => s.external_proxy_id).filter((x): x is string => !!x);
     const blockSize = stockIds.length;
 
     // Effective expiry: use provider_orders.expires_at when set, otherwise
@@ -1206,6 +1446,25 @@ export async function runRenewalSweep(opts: {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       out.errors.push(`${block.id}: ${msg}`);
+      if (!dryRun && shouldReissueAfterRenewalFailure(msg, effectiveExpiryMs)) {
+        try {
+          const reissue = await reissuePaidOrdersForStock(stockIds, msg);
+          if (reissue.orders > 0) {
+            out.details.push({
+              block: block.id,
+              country: block.country_code,
+              occupancy,
+              block_size: blockSize,
+              action: "skipped",
+              reason: reissue.short > 0
+                ? `renewal failed; replacement incomplete (${reissue.short} short)`
+                : "renewal failed; replaced with fresh stock",
+            });
+          }
+        } catch (reissueErr) {
+          out.errors.push(`${block.id}: replacement failed: ${reissueErr instanceof Error ? reissueErr.message : String(reissueErr)}`);
+        }
+      }
       // Alerta por bloco — dedupe diário, então repete todo dia até resolver.
       void notifyAllAdmins({
         title: "🛑 Falha ao renovar bloco — AÇÃO NECESSÁRIA",

@@ -279,8 +279,20 @@ export async function listProxies(
 export async function replaceProxyIp(externalProxyId: string): Promise<PsProxyItem | null> {
   const data = await psPost<{ items?: PsProxyItem[] }>("/proxy/replace", {
     ids: [externalProxyId],
+    type: "NOT_WORK",
   });
   return data.items?.[0] ?? null;
+}
+
+export async function checkProxy(proxy: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${BASE}/${getApiKey()}/tools/proxy/check?proxy=${encodeURIComponent(proxy)}`);
+    const parsed = (await res.json()) as PsResponse<unknown>;
+    if (parsed.status === "success" && parsed.data) return { ok: true };
+    return { ok: false, error: parsed.errors?.[0]?.message ?? "proxy_check_failed" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 // ─────────────────────────── Prolong (extend expiration) ───────────────────────────

@@ -282,7 +282,7 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
           "Sem IP substituto em estoque no momento. Nossa equipe foi avisada para preparar um novo IP em minutos — tente de novo em breve.",
         );
       }
-      const { replaceProxyIp } = await import("@/lib/proxyseller.server");
+      const { replaceProxyIp, psDateToIso } = await import("@/lib/proxyseller.server");
       let newItem;
       try {
         newItem = await replaceProxyIp(ext);
@@ -305,8 +305,9 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
           port: newItem.port_http ?? newItem.port_socks,
           username: newItem.login,
           password: newItem.password,
-          protocol: newItem.protocol,
+          protocol: (newItem.protocol || "http").toLowerCase(),
           external_proxy_id: newItem.id,
+          expires_at: psDateToIso(newItem.date_end),
         } as never)
         .eq("id", currentStock.id);
       if (stockErr) throw new Error(stockErr.message);

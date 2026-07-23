@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { listProxies, type PsProxyKind } from "@/lib/proxyseller.server";
+import { listProxies, psDateToIso, type PsProxyItem, type PsProxyKind } from "@/lib/proxyseller.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
 
 /**
@@ -40,14 +40,15 @@ async function runHealthcheck(): Promise<number> {
   // 1. Pega todos os proxies do estoque ainda em uso (allocated) ou disponíveis
   const { data: stockRows } = await supabaseAdmin
     .from("proxy_stock")
-    .select("id, external_proxy_id, expires_at, status, country_code")
+    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, status, country_code")
     .in("status", ["allocated", "available"]);
 
   if (!stockRows || stockRows.length === 0) return 0;
 
   // 2. Busca lista de proxies vivos no provedor (uma chamada por kind)
   const kinds: PsProxyKind[] = ["ipv4", "ipv6", "isp", "mobile"];
-  const providerAlive = new Set<string>();
+  const providerById = new Map<string, PsProxyItem>();
+  const providerByEndpoint = new Map<string, PsProxyItem>();
   const providerStart = Date.now();
   let providerLatency = 0;
 
@@ -57,7 +58,9 @@ async function runHealthcheck(): Promise<number> {
       const list = await listProxies(kind);
       providerLatency = Math.max(providerLatency, Date.now() - t0);
       for (const p of list) {
-        if (p.id) providerAlive.add(String(p.id));
+        if (p.id) providerById.set(String(p.id), p);
+        const key = endpointKey(p.ip_only || p.ip, p.port_http);
+        if (key) providerByEndpoint.set(key, p);
       }
     } catch {
       // ignora: alguns kinds podem não estar habilitados
@@ -67,10 +70,30 @@ async function runHealthcheck(): Promise<number> {
 
   // 3. Gera snapshots
   const now = Date.now();
-  const snapshots = stockRows.map((r) => {
+  const snapshots = await Promise.all(stockRows.map(async (r) => {
     const ext = r.external_proxy_id ?? "";
-    const aliveAtProvider = ext ? providerAlive.has(ext) : true; // sem id externo, considera ok
-    const expired = r.expires_at ? new Date(r.expires_at).getTime() < now : false;
+    const endpoint = endpointKey(r.host, r.port);
+    const providerMatch = (ext ? providerById.get(ext) : undefined) ?? (endpoint ? providerByEndpoint.get(endpoint) : undefined);
+
+    if (providerMatch) {
+      const nextHost = hostOnly(providerMatch.ip_only || providerMatch.ip);
+      const nextExpiry = psDateToIso(providerMatch.date_end);
+      const patch: Record<string, unknown> = {};
+      if (providerMatch.id && providerMatch.id !== r.external_proxy_id) patch.external_proxy_id = providerMatch.id;
+      if (nextHost && nextHost !== r.host) patch.host = nextHost;
+      if (providerMatch.port_http && providerMatch.port_http !== r.port) patch.port = providerMatch.port_http;
+      if (providerMatch.login && providerMatch.login !== r.username) patch.username = providerMatch.login;
+      if (providerMatch.password && providerMatch.password !== r.password) patch.password = providerMatch.password;
+      if (providerMatch.protocol && providerMatch.protocol.toLowerCase() !== r.protocol) patch.protocol = providerMatch.protocol.toLowerCase();
+      if (nextExpiry && (!r.expires_at || new Date(nextExpiry).getTime() !== new Date(r.expires_at).getTime())) patch.expires_at = nextExpiry;
+      if (Object.keys(patch).length > 0) {
+        await supabaseAdmin.from("proxy_stock").update(patch as never).eq("id", r.id);
+      }
+    }
+
+    const aliveAtProvider = !!providerMatch || !ext; // sem id externo, considera ok
+    const effectiveExpiry = providerMatch ? psDateToIso(providerMatch.date_end) : r.expires_at;
+    const expired = effectiveExpiry ? new Date(effectiveExpiry).getTime() < now : false;
     const ok = aliveAtProvider && !expired;
     return {
       stock_id: r.id,
@@ -86,7 +109,7 @@ async function runHealthcheck(): Promise<number> {
             : null
         : null,
     };
-  });
+  }));
 
   // 4. Insere em batch
   const { error } = await supabaseAdmin.from("proxy_metrics").insert(snapshots);
@@ -104,4 +127,23 @@ async function runHealthcheck(): Promise<number> {
   });
 
   return snapshots.length;
+}
+
+function endpointKey(host: string | null | undefined, port: number | string | null | undefined): string | null {
+  const cleanHost = hostOnly(host);
+  if (!cleanHost || port === null || port === undefined) return null;
+  return `${cleanHost}:${String(port)}`;
+}
+
+function hostOnly(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  if (value.startsWith("[")) {
+    const end = value.indexOf("]");
+    return end > 0 ? value.slice(1, end) : value.replace(/^\[|\]$/g, "");
+  }
+  if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(value)) {
+    return value.split(":")[0] ?? value;
+  }
+  return value.replace(/^\[|\]$/g, "");
 }

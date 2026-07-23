@@ -1046,15 +1046,16 @@ export async function runRenewalSweep(opts: {
   };
 
   const cutoff = new Date(Date.now() + windowDays * 86400 * 1000).toISOString();
-  const nowIso = new Date().toISOString();
 
   // IPv6, IPv4 and ISP blocks are all renewable through prolong/make.
   // Mobile is provider-managed, skip.
+  // NOTE: we no longer filter by `provider_orders.expires_at` here — many blocks
+  // have NULL there and the real expiry is stored on `proxy_stock.expires_at`.
+  // We fetch all active/pending blocks and compute the effective expiry from
+  // the stock rows below.
   const { data: blocks } = await supabaseAdmin
     .from("provider_orders")
     .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
-    .lte("expires_at", cutoff)
-    .gte("expires_at", nowIso)
     .in("status", ["active", "pending"]);
 
   for (const block of blocks ?? []) {

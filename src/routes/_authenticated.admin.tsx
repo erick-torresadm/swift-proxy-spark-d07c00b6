@@ -51,6 +51,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/equipe", label: "Equipe", icon: Users2, roles: ["admin"] },
   { to: "/admin/blog", label: "Blog & SEO", icon: FileText, roles: ["admin", "editor", "moderator"] },
   { to: "/admin/provider", label: "Provedor", icon: ServerCog, roles: ["admin"] },
+  { to: "/admin/vps", label: "VPS IPv6 BR", icon: ServerCog, roles: ["admin"] },
   { to: "/admin/emails", label: "Emails", icon: Mail, roles: ["admin"] },
   { to: "/admin/cloud", label: "Saúde do Cloud", icon: Cloud, roles: ["admin"] },
 ];

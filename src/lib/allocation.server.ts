@@ -62,13 +62,6 @@ type ProviderStockRow = {
   provider_order_id?: string | null;
 };
 
-type PaidStockAllocation = {
-  allocationId: string;
-  orderId: string;
-  stockId: string;
-  customerEmail: string | null;
-};
-
 function providerHost(raw: string | null | undefined): string | null {
   const value = (raw ?? "").trim();
   if (!value) return null;
@@ -86,42 +79,6 @@ function endpointKey(host: string | null | undefined, port: number | string | nu
   const cleanHost = providerHost(host);
   if (!cleanHost || port === null || port === undefined) return null;
   return `${cleanHost}:${String(port)}`;
-}
-
-function shouldReissueAfterRenewalFailure(message: string, effectiveExpiryMs?: number): boolean {
-  if (effectiveExpiryMs && effectiveExpiryMs < Date.now()) return true;
-  return /orders? not found|not found|no data|empty result|expired/i.test(message);
-}
-
-async function getPaidAllocationsForStock(stockIds: string[]): Promise<PaidStockAllocation[]> {
-  if (stockIds.length === 0) return [];
-
-  const { data: allocations } = await supabaseAdmin
-    .from("customer_proxies")
-    .select("id, order_id, stock_id")
-    .in("stock_id", stockIds)
-    .eq("status", "active");
-
-  const allocationRows = (allocations ?? []) as Array<{ id: string; order_id: string | null; stock_id: string | null }>;
-  const orderIds = Array.from(new Set(allocationRows.map((a) => a.order_id).filter((x): x is string => !!x)));
-  if (orderIds.length === 0) return [];
-
-  const { data: orders } = await supabaseAdmin
-    .from("orders")
-    .select("id, status, customer_email")
-    .in("id", orderIds)
-    .eq("status", "paid");
-
-  const paidOrders = new Map((orders ?? []).map((o) => [o.id as string, (o.customer_email as string | null) ?? null]));
-
-  return allocationRows
-    .filter((a) => !!a.order_id && paidOrders.has(a.order_id))
-    .map((a) => ({
-      allocationId: a.id,
-      orderId: a.order_id as string,
-      stockId: a.stock_id as string,
-      customerEmail: paidOrders.get(a.order_id as string) ?? null,
-    }));
 }
 
 export async function restoreHiddenProxiesForPaidOrder(orderId: string): Promise<number> {
@@ -292,49 +249,6 @@ async function reconcileStockRowsFromProviderList(
   }
 
   return { rows: reconciled, updates, missing };
-}
-
-async function reissuePaidOrdersForStock(
-  stockIds: string[],
-  reason: string,
-): Promise<{ orders: number; released: number; allocated: number; short: number; errors: string[] }> {
-  const out = { orders: 0, released: 0, allocated: 0, short: 0, errors: [] as string[] };
-  const allocations = await getPaidAllocationsForStock(stockIds);
-  const allocationIds = allocations.map((a) => a.allocationId);
-  const orderIds = Array.from(new Set(allocations.map((a) => a.orderId)));
-  if (allocationIds.length === 0 || orderIds.length === 0) return out;
-
-  await supabaseAdmin
-    .from("customer_proxies")
-    .update({ status: "released", released_at: new Date().toISOString() } as never)
-    .in("id", allocationIds);
-  await supabaseAdmin.from("proxy_stock").update({ status: "expired" as never }).in("id", stockIds);
-
-  out.released = allocationIds.length;
-  out.orders = orderIds.length;
-
-  for (const orderId of orderIds) {
-    try {
-      const result = await allocateProxiesForOrder(orderId);
-      if (result.short === 0) out.allocated++;
-      out.short += Math.max(0, result.short);
-      if (result.error) out.errors.push(`${orderId}: ${result.error}`);
-    } catch (e) {
-      out.errors.push(`${orderId}: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }
-
-  void notifyAllAdmins({
-    title: out.short > 0 ? "🛑 Proxy vencido sem substituição total" : "🚑 Proxy vencido substituído",
-    body: out.short > 0
-      ? `${out.orders} pedido(s) pago(s) tinham proxy irrecuperável (${reason}). Liberei ${out.released} proxy(s), mas ainda faltam ${out.short} IP(s). Ação necessária.`
-      : `${out.orders} pedido(s) pago(s) tinham proxy irrecuperável (${reason}). Liberei ${out.released} proxy(s) antigo(s) e realoquei automaticamente.`,
-    link: "/admin/orders",
-    metadata: { stockIds, reason, ...out } as never,
-    dedupeKey: `proxy-reissue:${stockIds.slice(0, 3).join(":")}:${Math.floor(Date.now() / 3600000)}`,
-  });
-
-  return out;
 }
 
 /**

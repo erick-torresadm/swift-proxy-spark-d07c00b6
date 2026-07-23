@@ -564,7 +564,7 @@ export const listAvailableStockForOrder = createServerFn({ method: "GET" })
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     let q = supabaseAdmin
       .from("proxy_stock")

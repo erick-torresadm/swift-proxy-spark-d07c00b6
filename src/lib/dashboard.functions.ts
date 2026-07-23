@@ -224,11 +224,12 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       );
     }
 
-    // Rotação por SWAP de estoque: pega um proxy disponível do mesmo produto
-    // e libera o atual de volta (status released). Não chama a API do provedor.
+    // Rotação: 1º tenta SWAP de estoque local (mesmo produto).
+    // Se não houver, chama /proxy/replace no ProxySeller para trocar o IP
+    // externamente (recurso incluído no plano Facebook Ads).
     const { data: currentStock } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, product_id")
+      .select("id, product_id, external_proxy_id, provider_order_id, products(category)")
       .eq("id", row.stock_id as string)
       .maybeSingle();
 
@@ -247,35 +248,80 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (availErr) throw new Error(availErr.message);
-    if (!available) {
-      throw new Error("Sem IPs disponíveis em estoque para rotação no momento.");
+
+    if (available) {
+      // Caminho rápido: troca por outro IP em estoque
+      const { error: newStockErr } = await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "allocated" })
+        .eq("id", available.id)
+        .eq("status", "available");
+      if (newStockErr) throw new Error(newStockErr.message);
+
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "available" })
+        .eq("id", currentStock.id);
+
+      const { error: updErr } = await supabaseAdmin
+        .from("customer_proxies")
+        .update({
+          stock_id: available.id,
+          ip_rotations_used: usedNow + 1,
+          rotations_reset_at: shouldReset
+            ? new Date().toISOString()
+            : row.rotations_reset_at,
+        })
+        .eq("id", row.id);
+      if (updErr) throw new Error(updErr.message);
+    } else {
+      // Fallback: pede /proxy/replace ao ProxySeller (rotação real do bloco).
+      const ext = (currentStock as { external_proxy_id?: string | null }).external_proxy_id;
+      if (!ext) {
+        throw new Error(
+          "Sem IP substituto em estoque no momento. Nossa equipe foi avisada para preparar um novo IP em minutos — tente de novo em breve.",
+        );
+      }
+      const { replaceProxyIp } = await import("@/lib/proxyseller.server");
+      let newItem;
+      try {
+        newItem = await replaceProxyIp(ext);
+      } catch (e) {
+        throw new Error(
+          "Não conseguimos trocar o IP com o provedor agora. Tente novamente em alguns minutos — a rotação não foi contabilizada.",
+        );
+      }
+      if (!newItem) {
+        throw new Error(
+          "O provedor não retornou um novo IP. Tente de novo em alguns minutos — a rotação não foi contabilizada.",
+        );
+      }
+
+      // Atualiza o próprio estoque com o novo IP mantendo o mesmo stock_id
+      const { error: stockErr } = await supabaseAdmin
+        .from("proxy_stock")
+        .update({
+          host: newItem.ip_only,
+          port: newItem.port_http ?? newItem.port_socks,
+          username: newItem.login,
+          password: newItem.password,
+          protocol: newItem.protocol,
+          external_proxy_id: newItem.id,
+        } as never)
+        .eq("id", currentStock.id);
+      if (stockErr) throw new Error(stockErr.message);
+
+      const { error: updErr } = await supabaseAdmin
+        .from("customer_proxies")
+        .update({
+          ip_rotations_used: usedNow + 1,
+          rotations_reset_at: shouldReset
+            ? new Date().toISOString()
+            : row.rotations_reset_at,
+        })
+        .eq("id", row.id);
+      if (updErr) throw new Error(updErr.message);
     }
-
-    // Aloca o novo estoque ao cliente e libera o anterior
-    const { error: newStockErr } = await supabaseAdmin
-      .from("proxy_stock")
-      .update({ status: "allocated" })
-      .eq("id", available.id)
-      .eq("status", "available");
-    if (newStockErr) throw new Error(newStockErr.message);
-
-    const { error: relErr } = await supabaseAdmin
-      .from("proxy_stock")
-      .update({ status: "available" })
-      .eq("id", currentStock.id);
-    if (relErr) throw new Error(relErr.message);
-
-    const { error: updErr } = await supabaseAdmin
-      .from("customer_proxies")
-      .update({
-        stock_id: available.id,
-        ip_rotations_used: usedNow + 1,
-        rotations_reset_at: shouldReset
-          ? new Date().toISOString()
-          : row.rotations_reset_at,
-      })
-      .eq("id", row.id);
-    if (updErr) throw new Error(updErr.message);
 
 
     return {

@@ -20,8 +20,8 @@ export const getVpsStatus = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
 
     const [health, blocks, settings, dbBlocks] = await Promise.all([
-      vps.getHealth().catch((e) => ({ error: e instanceof Error ? e.message : String(e) })),
-      vps.listBlocks().catch(() => []),
+      vps.getHealth().then((h) => ({ ok: true as const, data: h as Record<string, unknown> })).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) })),
+      vps.listBlocks().then((bs) => bs as unknown as Record<string, unknown>[]).catch(() => [] as Record<string, unknown>[]),
       supabaseAdmin
         .from("provider_settings")
         .select("dry_run")

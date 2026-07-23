@@ -279,6 +279,7 @@ export async function listProxies(
 export async function replaceProxyIp(externalProxyId: string): Promise<PsProxyItem | null> {
   const data = await psPost<{ items?: PsProxyItem[] }>("/proxy/replace", {
     ids: [externalProxyId],
+    type: "NOT_WORK",
   });
   return data.items?.[0] ?? null;
 }

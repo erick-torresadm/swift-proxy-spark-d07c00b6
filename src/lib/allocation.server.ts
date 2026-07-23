@@ -794,10 +794,37 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
   }
 
   // Todos os IPs (alocados + livres) que pertencem a esses blocos
-  const { data: blockStock } = await supabaseAdmin
+  const { data: blockStockRaw } = await supabaseAdmin
     .from("proxy_stock")
-    .select("id, external_proxy_id")
+    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, provider_order_id")
     .in("provider_order_id", blockIds);
+  let blockStock = (blockStockRaw ?? []) as ProviderStockRow[];
+
+  const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
+  if (blockStock.length > 0) {
+    try {
+      const reconciled = await reconcileStockRowsFromProviderList(kind, blockStock);
+      blockStock = reconciled.rows;
+      if (reconciled.updates > 0) {
+        void notifyAllAdmins({
+          title: "🔄 Proxies sincronizados com o provedor",
+          body: `Atualizei ${reconciled.updates} proxy(s) do pedido ${orderId.slice(0, 8)} com os dados atuais do provedor antes da renovação.`,
+          link: `/admin/orders/${orderId}`,
+          metadata: { orderId, updates: reconciled.updates, missing: reconciled.missing },
+          dedupeKey: `renewal-sync:${orderId}:${Math.floor(Date.now() / 3600000)}`,
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      void notifyAllAdmins({
+        title: "⚠️ Sync antes da renovação falhou",
+        body: `Não consegui conferir os proxies do pedido ${orderId.slice(0, 8)} no provedor: ${msg}. Vou tentar renovar mesmo assim.`,
+        link: `/admin/orders/${orderId}`,
+        metadata: { orderId, error: msg },
+        dedupeKey: `renewal-presync-fail:${orderId}:${Math.floor(Date.now() / 3600000)}`,
+      });
+    }
+  }
   const externalIds = (blockStock ?? [])
     .map((r) => r.external_proxy_id)
     .filter((x): x is string => !!x);
@@ -805,7 +832,6 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: blockIds.length, cost_usd: 0, dry_run: false, skipped_reason: "no external_proxy_id (dry-run/sim block)" };
   }
 
-  const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
   const { data: settings } = await supabaseAdmin
     .from("provider_settings")
     .select("dry_run")
@@ -814,12 +840,35 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
   const dryRun = !!(settings as { dry_run?: boolean } | null)?.dry_run;
 
   let costUsd = 0;
-  if (dryRun) {
-    const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
-    costUsd = Number(calc.total) || 0;
-  } else {
-    const result = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
-    costUsd = Number(result.total) || 0;
+  try {
+    if (dryRun) {
+      const calc = await prolongCalc(kind, { ids: externalIds, periodId: cfg.periodId });
+      costUsd = Number(calc.total) || 0;
+    } else {
+      const result = await prolongMake(kind, { ids: externalIds, periodId: cfg.periodId });
+      costUsd = Number(result.total) || 0;
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const stockIdAll = (blockStock ?? []).map((r) => r.id);
+    const expiredMs = (blockStock ?? [])
+      .map((r) => (r.expires_at ? new Date(r.expires_at).getTime() : 0))
+      .filter((n) => n > 0);
+    const effectiveExpiryMs = expiredMs.length ? Math.min(...expiredMs) : undefined;
+
+    if (!dryRun && shouldReissueAfterRenewalFailure(msg, effectiveExpiryMs)) {
+      const reissue = await reissuePaidOrdersForStock(stockIdAll, msg);
+      if (reissue.orders > 0 && reissue.short === 0) {
+        return {
+          renewed_proxies: reissue.released,
+          renewed_blocks: blockIds.length,
+          cost_usd: 0,
+          dry_run: dryRun,
+        };
+      }
+    }
+
+    throw new Error(`${msg}. Tentei substituir automaticamente os proxies pagos quando possível.`);
   }
 
   // Estende expires_at local em 30 dias (período mensal padrão) — o sync do provedor reconcilia depois

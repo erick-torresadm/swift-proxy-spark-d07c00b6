@@ -113,11 +113,13 @@ async function vpsCall<T>(
       source: "fastproxy_vps",
       action: `${method} ${path}`,
       status: errMsg ? "error" : "ok",
-      http_status: status,
-      duration_ms: Date.now() - started,
       request: (body ?? null) as never,
-      response: (parsed ?? null) as never,
-      error: errMsg ?? null,
+      response: {
+        http_status: status,
+        duration_ms: Date.now() - started,
+        body: parsed ?? null,
+        error: errMsg ?? null,
+      } as never,
     });
   } catch {
     /* ignore audit failure */

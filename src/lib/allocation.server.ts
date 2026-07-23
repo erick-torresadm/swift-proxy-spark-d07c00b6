@@ -284,7 +284,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
 
   const { data: product } = await supabaseAdmin
     .from("products")
-    .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold")
+    .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold, provider")
     .eq("id", order.product_id)
     .maybeSingle();
   if (!product) throw new Error("product not found");

@@ -15,7 +15,7 @@ export const getMyProxiesHealth = createServerFn({ method: "GET" })
       .from("customer_proxies")
       .select("stock_id")
       .eq("user_id", context.userId)
-      .neq("status", "released");
+      .eq("status", "active");
 
     const stockIds = (mine ?? [])
       .map((r) => r.stock_id)
@@ -103,6 +103,7 @@ export const getProxyHealthHistory = createServerFn({ method: "POST" })
       .select("stock_id")
       .eq("id", data.proxyId)
       .eq("user_id", context.userId)
+      .eq("status", "active")
       .maybeSingle();
 
     if (!cp?.stock_id) return [];

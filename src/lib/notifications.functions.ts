@@ -99,7 +99,7 @@ export const getExpiringCount = createServerFn({ method: "GET" })
       .from("customer_proxies")
       .select("orders!inner(current_period_end)", { count: "exact", head: true })
       .eq("user_id", context.userId)
-      .neq("status", "released")
+      .eq("status", "active")
       .lte("orders.current_period_end", horizon);
     return { count: count ?? 0 };
   });

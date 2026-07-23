@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
-import { allocateProxiesForOrder } from "./allocation.server";
+import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder } from "./allocation.server";
 import { reconcileOrderWithStripe } from "./reconcile.server";
 
 /**
@@ -49,7 +49,7 @@ export const getOrderPublicStatus = createServerFn({ method: "POST" })
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     return {
       id: order.id,
@@ -129,7 +129,7 @@ export const listMyProxies = createServerFn({ method: "GET" })
         "id, stock_id, status, allocated_at, order_id, ip_rotations_used, rotations_reset_at, proxy_stock(host, port, username, password, protocol, country_code), orders(grace_until, products(name, slug, ip_rotations_per_month))",
       )
       .eq("user_id", context.userId)
-      .neq("status", "released")
+      .eq("status", "active")
       .order("allocated_at", { ascending: false });
 
     return (data ?? []).map((r) => ({
@@ -413,7 +413,7 @@ export const syncMyAllocations = createServerFn({ method: "POST" })
       .from("orders")
       .select("id")
       .eq("user_id", userId)
-      .in("status", ["paid", "past_due", "grace"]);
+      .eq("status", "paid");
 
     const ids = (orders ?? []).map((o) => o.id);
     if (ids.length === 0) {
@@ -490,7 +490,7 @@ export const listMyCancellableOrders = createServerFn({ method: "GET" })
         .from("customer_proxies")
         .select("*", { count: "exact", head: true })
         .eq("order_id", o.id)
-        .neq("status", "released");
+        .eq("status", "active");
 
       let cancelAtPeriodEnd = false;
       if (stripe && o.stripe_subscription_id) {
@@ -617,25 +617,7 @@ export const cancelMySubscription = createServerFn({ method: "POST" })
         .eq("id", order.id);
       if (upErr) throw new Error(upErr.message);
 
-      const { data: allocs } = await supabaseAdmin
-        .from("customer_proxies")
-        .select("id, stock_id")
-        .eq("order_id", order.id)
-        .neq("status", "released");
-
-      for (const a of allocs ?? []) {
-        await supabaseAdmin
-          .from("customer_proxies")
-          .update({ status: "released", released_at: new Date().toISOString() })
-          .eq("id", a.id);
-        if (a.stock_id) {
-          await supabaseAdmin
-            .from("proxy_stock")
-            .update({ status: "available" })
-            .eq("id", a.stock_id)
-            .eq("status", "allocated");
-        }
-      }
+      await hideOrReleaseProxiesForOrder(order.id);
     }
 
     await supabaseAdmin.from("audit_log").insert({

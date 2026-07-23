@@ -34,6 +34,10 @@ function categoryToKind(category: string | null | undefined): PsProxyKind {
   }
 }
 
+function isIpv6Category(category: string | null | undefined): boolean {
+  return category === "ipv6" || category === "ipv6_fb";
+}
+
 const PURCHASE_LOCK_TTL_MS = 90_000;
 // ProxySeller IPv6 minimum purchase block size
 const PROXYSELLER_IPV6_MIN_BLOCK = 10;
@@ -58,13 +62,6 @@ type ProviderStockRow = {
   provider_order_id?: string | null;
 };
 
-type PaidStockAllocation = {
-  allocationId: string;
-  orderId: string;
-  stockId: string;
-  customerEmail: string | null;
-};
-
 function providerHost(raw: string | null | undefined): string | null {
   const value = (raw ?? "").trim();
   if (!value) return null;
@@ -84,40 +81,110 @@ function endpointKey(host: string | null | undefined, port: number | string | nu
   return `${cleanHost}:${String(port)}`;
 }
 
-function shouldReissueAfterRenewalFailure(message: string, effectiveExpiryMs?: number): boolean {
-  if (effectiveExpiryMs && effectiveExpiryMs < Date.now()) return true;
-  return /orders? not found|not found|no data|empty result|expired/i.test(message);
+export async function restoreHiddenProxiesForPaidOrder(orderId: string): Promise<number> {
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select("id, status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (!order || order.status !== "paid") return 0;
+
+  const { data: rows } = await supabaseAdmin
+    .from("customer_proxies")
+    .select("id, stock_id")
+    .eq("order_id", orderId)
+    .in("status", ["grace", "cancelled"]);
+
+  const ids = (rows ?? []).map((row) => row.id as string).filter(Boolean);
+  if (ids.length === 0) return 0;
+
+  const stockIds = (rows ?? [])
+    .map((row) => row.stock_id as string | null)
+    .filter((id): id is string => !!id);
+
+  const { error } = await supabaseAdmin
+    .from("customer_proxies")
+    .update({ status: "active", released_at: null } as never)
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+
+  if (stockIds.length > 0) {
+    await supabaseAdmin
+      .from("proxy_stock")
+      .update({ status: "allocated" as never })
+      .in("id", stockIds);
+  }
+
+  return ids.length;
 }
 
-async function getPaidAllocationsForStock(stockIds: string[]): Promise<PaidStockAllocation[]> {
-  if (stockIds.length === 0) return [];
-
-  const { data: allocations } = await supabaseAdmin
+export async function hideOrReleaseProxiesForOrder(orderId: string): Promise<{
+  hidden_ipv6: number;
+  released: number;
+}> {
+  const { data: allocs } = await supabaseAdmin
     .from("customer_proxies")
-    .select("id, order_id, stock_id")
-    .in("stock_id", stockIds)
+    .select("id, stock_id, proxy_stock(product_id, products(category))")
+    .eq("order_id", orderId)
     .in("status", ["active", "grace"]);
 
-  const allocationRows = (allocations ?? []) as Array<{ id: string; order_id: string | null; stock_id: string | null }>;
-  const orderIds = Array.from(new Set(allocationRows.map((a) => a.order_id).filter((x): x is string => !!x)));
-  if (orderIds.length === 0) return [];
+  const hiddenIds: string[] = [];
+  const hiddenStockIds: string[] = [];
+  const releasedIds: string[] = [];
+  const releasedStockIds: string[] = [];
 
-  const { data: orders } = await supabaseAdmin
-    .from("orders")
-    .select("id, status, customer_email")
-    .in("id", orderIds)
-    .eq("status", "paid");
+  for (const allocation of allocs ?? []) {
+    const shaped = allocation as unknown as {
+      id?: string | null;
+      stock_id?: string | null;
+      proxy_stock?: { products?: { category?: string | null } | null } | null;
+    };
+    const allocationId = shaped.id;
+    if (!allocationId) continue;
 
-  const paidOrders = new Map((orders ?? []).map((o) => [o.id as string, (o.customer_email as string | null) ?? null]));
+    const category = shaped.proxy_stock?.products?.category ?? null;
+    if (isIpv6Category(category)) {
+      hiddenIds.push(allocationId);
+      if (shaped.stock_id) hiddenStockIds.push(shaped.stock_id);
+    } else {
+      releasedIds.push(allocationId);
+      if (shaped.stock_id) releasedStockIds.push(shaped.stock_id);
+    }
+  }
 
-  return allocationRows
-    .filter((a) => !!a.order_id && paidOrders.has(a.order_id))
-    .map((a) => ({
-      allocationId: a.id,
-      orderId: a.order_id as string,
-      stockId: a.stock_id as string,
-      customerEmail: paidOrders.get(a.order_id as string) ?? null,
-    }));
+  const now = new Date().toISOString();
+
+  if (hiddenIds.length > 0) {
+    await supabaseAdmin
+      .from("customer_proxies")
+      .update({ status: "cancelled", released_at: now } as never)
+      .in("id", hiddenIds);
+
+    if (hiddenStockIds.length > 0) {
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "allocated" as never })
+        .in("id", hiddenStockIds);
+    }
+  }
+
+  if (releasedIds.length > 0) {
+    await supabaseAdmin
+      .from("customer_proxies")
+      .update({ status: "released", released_at: now } as never)
+      .in("id", releasedIds);
+
+    if (releasedStockIds.length > 0) {
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "available" as never })
+        .in("id", releasedStockIds)
+        .eq("status", "allocated");
+    }
+  }
+
+  return { hidden_ipv6: hiddenIds.length, released: releasedIds.length };
 }
 
 async function reconcileStockRowsFromProviderList(
@@ -184,49 +251,6 @@ async function reconcileStockRowsFromProviderList(
   return { rows: reconciled, updates, missing };
 }
 
-async function reissuePaidOrdersForStock(
-  stockIds: string[],
-  reason: string,
-): Promise<{ orders: number; released: number; allocated: number; short: number; errors: string[] }> {
-  const out = { orders: 0, released: 0, allocated: 0, short: 0, errors: [] as string[] };
-  const allocations = await getPaidAllocationsForStock(stockIds);
-  const allocationIds = allocations.map((a) => a.allocationId);
-  const orderIds = Array.from(new Set(allocations.map((a) => a.orderId)));
-  if (allocationIds.length === 0 || orderIds.length === 0) return out;
-
-  await supabaseAdmin
-    .from("customer_proxies")
-    .update({ status: "released", released_at: new Date().toISOString() } as never)
-    .in("id", allocationIds);
-  await supabaseAdmin.from("proxy_stock").update({ status: "expired" as never }).in("id", stockIds);
-
-  out.released = allocationIds.length;
-  out.orders = orderIds.length;
-
-  for (const orderId of orderIds) {
-    try {
-      const result = await allocateProxiesForOrder(orderId);
-      if (result.short === 0) out.allocated++;
-      out.short += Math.max(0, result.short);
-      if (result.error) out.errors.push(`${orderId}: ${result.error}`);
-    } catch (e) {
-      out.errors.push(`${orderId}: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }
-
-  void notifyAllAdmins({
-    title: out.short > 0 ? "🛑 Proxy vencido sem substituição total" : "🚑 Proxy vencido substituído",
-    body: out.short > 0
-      ? `${out.orders} pedido(s) pago(s) tinham proxy irrecuperável (${reason}). Liberei ${out.released} proxy(s), mas ainda faltam ${out.short} IP(s). Ação necessária.`
-      : `${out.orders} pedido(s) pago(s) tinham proxy irrecuperável (${reason}). Liberei ${out.released} proxy(s) antigo(s) e realoquei automaticamente.`,
-    link: "/admin/orders",
-    metadata: { stockIds, reason, ...out } as never,
-    dedupeKey: `proxy-reissue:${stockIds.slice(0, 3).join(":")}:${Math.floor(Date.now() / 3600000)}`,
-  });
-
-  return out;
-}
-
 /**
  * Allocates proxies from stock to a paid order.
  * - quantityNeeded = order.quantity * product.block_size
@@ -255,6 +279,8 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     return { allocated: 0, short: 0 };
   }
 
+  await restoreHiddenProxiesForPaidOrder(order.id);
+
   const { data: product } = await supabaseAdmin
     .from("products")
     .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold")
@@ -269,7 +295,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     .from("customer_proxies")
     .select("*", { count: "exact", head: true })
     .eq("order_id", order.id)
-    .neq("status", "released");
+    .eq("status", "active");
 
   if ((existing ?? 0) >= totalNeeded) {
     return { allocated: existing ?? 0, short: 0 };
@@ -772,12 +798,13 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "provider_tariff_id missing periodId" };
   }
 
-  // Blocos (provider_orders) que contêm os proxies ATIVOS deste pedido
+  // Blocos (provider_orders) que contêm proxies de pedido realmente pago.
+  // Proxies em grace/cancelled ficam ocultos para o cliente e não acionam renovação.
   const { data: activeAllocs } = await supabaseAdmin
     .from("customer_proxies")
     .select("stock_id")
     .eq("order_id", orderId)
-    .in("status", ["active", "grace"]);
+    .eq("status", "active");
 
   const stockIds = (activeAllocs ?? []).map((r) => r.stock_id).filter((x): x is string => !!x);
   if (stockIds.length === 0) {
@@ -850,25 +877,7 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const stockIdAll = (blockStock ?? []).map((r) => r.id);
-    const expiredMs = (blockStock ?? [])
-      .map((r) => (r.expires_at ? new Date(r.expires_at).getTime() : 0))
-      .filter((n) => n > 0);
-    const effectiveExpiryMs = expiredMs.length ? Math.min(...expiredMs) : undefined;
-
-    if (!dryRun && shouldReissueAfterRenewalFailure(msg, effectiveExpiryMs)) {
-      const reissue = await reissuePaidOrdersForStock(stockIdAll, msg);
-      if (reissue.orders > 0 && reissue.short === 0) {
-        return {
-          renewed_proxies: reissue.released,
-          renewed_blocks: blockIds.length,
-          cost_usd: 0,
-          dry_run: dryRun,
-        };
-      }
-    }
-
-    throw new Error(`${msg}. Tentei substituir automaticamente os proxies pagos quando possível.`);
+    throw new Error(`${msg}. Mantive os IPs atuais para preservar estabilidade; admin deve resolver saldo/provedor e tentar renovar novamente.`);
   }
 
   // Estende expires_at local em 30 dias (período mensal padrão) — o sync do provedor reconcilia depois
@@ -1215,7 +1224,7 @@ export async function runFullProviderSync(): Promise<{
 
 /**
  * Walks every IPv6 provider_orders (block) expiring within `windowDays`.
- * If the block has at least one paying customer (active|grace), it renews
+ * If the block has at least one paying customer (customer_proxies.status=active), it renews
  * all IPs in the block via `prolong/make`. Empty blocks are skipped so they
  * naturally expire — that's the cost-saver.
  *
@@ -1355,17 +1364,18 @@ export async function runRenewalSweep(opts: {
       continue;
     }
 
-    // Occupancy: how many of this block's IPs are tied to a paying customer
+    // Occupancy: how many of this block's IPs are tied to a paying customer.
+    // `grace`/`cancelled` allocations are hidden/non-paying and must not spend renewal balance.
     const { count: occ } = await supabaseAdmin
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .in("stock_id", stockIds)
-      .in("status", ["active", "grace"]);
+      .eq("status", "active");
     const occupancy = occ ?? 0;
 
     if (occupancy === 0) {
-      // ABANDON — let the block expire. Mark stock as expired so it's not
-      // picked by future allocations.
+      // ABANDON — let the block expire. Mark only free rows as expired so
+      // hidden IPv6 customer rows remain reserved/hidden and are not resold.
       if (!dryRun) {
         await supabaseAdmin
           .from("proxy_stock")
@@ -1446,31 +1456,20 @@ export async function runRenewalSweep(opts: {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       out.errors.push(`${block.id}: ${msg}`);
-      if (!dryRun && shouldReissueAfterRenewalFailure(msg, effectiveExpiryMs)) {
-        try {
-          const reissue = await reissuePaidOrdersForStock(stockIds, msg);
-          if (reissue.orders > 0) {
-            out.details.push({
-              block: block.id,
-              country: block.country_code,
-              occupancy,
-              block_size: blockSize,
-              action: "skipped",
-              reason: reissue.short > 0
-                ? `renewal failed; replacement incomplete (${reissue.short} short)`
-                : "renewal failed; replaced with fresh stock",
-            });
-          }
-        } catch (reissueErr) {
-          out.errors.push(`${block.id}: replacement failed: ${reissueErr instanceof Error ? reissueErr.message : String(reissueErr)}`);
-        }
-      }
+      out.details.push({
+        block: block.id,
+        country: block.country_code,
+        occupancy,
+        block_size: blockSize,
+        action: "skipped",
+        reason: "renewal failed; same IPs preserved for manual retry",
+      });
       // Alerta por bloco — dedupe diário, então repete todo dia até resolver.
       void notifyAllAdmins({
         title: "🛑 Falha ao renovar bloco — AÇÃO NECESSÁRIA",
-        body: `Bloco ${block.id.slice(0, 8)} (${block.country_code ?? "?"}, ${occupancy} cliente(s) ativos) NÃO foi renovado: ${msg}. Alerta se repete diariamente até resolver.`,
+        body: `Bloco ${block.id.slice(0, 8)} (${block.country_code ?? "?"}, ${occupancy} cliente(s) ativos) NÃO foi renovado: ${msg}. Mantive os mesmos IPs; resolva saldo/provedor e rode a renovação novamente.`,
         link: "/admin/inventory",
-        metadata: { blockId: block.id, country: block.country_code, occupancy, error: msg },
+        metadata: { blockId: block.id, country: block.country_code, occupancy, error: msg, sameIpPreserved: true },
         dedupeKey: `renewal-fail:${block.id}:${new Date().toISOString().slice(0, 10)}`,
       });
     }
@@ -1547,7 +1546,7 @@ export async function runFulfillmentSweep(opts: { alertAfterMinutes?: number } =
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     if ((allocated ?? 0) >= needed) continue;
     out.scanned++;

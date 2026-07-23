@@ -1,5 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
-import { allocateProxiesForOrder, renewProxyBlocksForOrder } from "@/lib/allocation.server";
+import {
+  allocateProxiesForOrder,
+  hideOrReleaseProxiesForOrder,
+  renewProxyBlocksForOrder,
+  restoreHiddenProxiesForPaidOrder,
+} from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 import { getStripe } from "@/lib/stripe.server";
 import type Stripe from "stripe";
@@ -133,19 +138,41 @@ async function markOrderPaid(opts: {
   else return [];
 
   const { data } = await query;
-  return (data ?? []).map((row) => row.id as string);
+  const ids = (data ?? []).map((row) => row.id as string);
+  for (const id of ids) {
+    await restoreHiddenProxiesForPaidOrder(id);
+  }
+  return ids;
 }
 
 async function markOrderPastDue(subscriptionId: string) {
   const graceUntil = new Date(Date.now() + 7 * 86400000).toISOString();
-  await supabaseAdmin
+  const { data: orders } = await supabaseAdmin
     .from("orders")
     .update({ status: "past_due", grace_until: graceUntil, last_payment_check_at: new Date().toISOString() })
-    .eq("stripe_subscription_id", subscriptionId);
+    .eq("stripe_subscription_id", subscriptionId)
+    .select("id");
+
+  const ids = (orders ?? []).map((row) => row.id as string);
+  if (ids.length > 0) {
+    await supabaseAdmin
+      .from("customer_proxies")
+      .update({ status: "grace" as never })
+      .in("order_id", ids)
+      .eq("status", "active");
+  }
 }
 
 async function markOrderCanceled(subscriptionId: string) {
-  await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("stripe_subscription_id", subscriptionId);
+  const { data: orders } = await supabaseAdmin
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("stripe_subscription_id", subscriptionId)
+    .select("id");
+
+  for (const order of orders ?? []) {
+    await hideOrReleaseProxiesForOrder(order.id as string);
+  }
 }
 
 async function notifySale(orderId: string, via: string) {
@@ -440,7 +467,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
           await markOrderPastDue(subscriptionId);
           await notifyAllAdmins({
             title: "⚠️ Pagamento falhou — cliente em atraso",
-            body: `A cobrança de ${inv.customer_email ?? "um cliente"} não foi aprovada (cartão recusado, saldo insuficiente ou 3DS não finalizado). O acesso continua por até 7 dias (período de graça). Depois disso os proxies são liberados.`,
+            body: `A cobrança de ${inv.customer_email ?? "um cliente"} não foi aprovada (cartão recusado, saldo insuficiente ou 3DS não finalizado). O acesso continua por até 7 dias. Depois disso IPv6 é apenas ocultado do painel; IPv4/ISP pode voltar ao estoque.`,
             link: "/admin/inadimplentes",
             metadata: { invoiceId: inv.id, subscriptionId },
             dedupeKey: `payment-failed:${inv.id}`,
@@ -456,7 +483,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         await markOrderCanceled(sub.id);
         await notifyAllAdmins({
           title: "⛔ Assinatura encerrada",
-          body: `A assinatura foi encerrada no Stripe e os proxies do cliente foram liberados. Motivo comum: cancelamento pelo cliente ou pagamento não recuperado após o período de graça.`,
+          body: `A assinatura foi encerrada. IPv6 fica preservado no fornecedor e oculto do painel; IPv4/ISP pode voltar ao estoque quando aplicável.`,
           link: "/admin/cancelados",
           metadata: { subscriptionId: sub.id },
           dedupeKey: `subscription-canceled:${sub.id}`,

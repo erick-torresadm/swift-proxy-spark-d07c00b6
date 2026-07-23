@@ -315,7 +315,7 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
           .from("customer_proxies")
           .select("*", { count: "exact", head: true })
           .eq("order_id", o.id)
-          .neq("status", "released");
+      .eq("status", "active");
 
         const blockSize = o.billing_cycle === "manual" ? 1 : (product?.block_size ?? 1);
         const needed =
@@ -442,7 +442,7 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
       }
     }
 
-    const allowedStatuses = ["paid", "past_due", "grace"];
+    const allowedStatuses = ["paid"];
     if (!allowedStatuses.includes(order.status as string)) {
       throw new Error(
         `Pedido com status "${order.status}" não tem direito a proxy. Sincronize com Stripe primeiro.`,
@@ -461,7 +461,7 @@ export const adminManualAllocate = createServerFn({ method: "POST" })
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     if ((allocated ?? 0) >= needed) {
       throw new Error(`Pedido já tem ${allocated} de ${needed} proxies alocados.`);
@@ -564,7 +564,7 @@ export const listAvailableStockForOrder = createServerFn({ method: "GET" })
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     let q = supabaseAdmin
       .from("proxy_stock")
@@ -666,7 +666,7 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
     if (!order) throw new Error("Pedido não encontrado");
     if (!order.user_id) throw new Error("Pedido sem user_id");
 
-    const allowed = ["paid", "past_due", "grace"];
+    const allowed = ["paid"];
     if (!allowed.includes(order.status as string)) {
       throw new Error(`Pedido com status "${order.status}" não tem direito a proxy.`);
     }
@@ -683,7 +683,7 @@ export const adminManualAllocateBulk = createServerFn({ method: "POST" })
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     const remaining = Math.max(0, needed - (allocated ?? 0));
     if (!data.ignoreShortageLimit && data.stockIds.length > remaining) {

@@ -165,21 +165,7 @@ function DashboardHome() {
         </div>
       )}
 
-      {hasProxies && (
-        <div className="mt-8 pt-6 border-t border-border flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-sm font-semibold">Precisa cancelar uma assinatura?</p>
-            <p className="text-xs text-muted-foreground">Sem fidelidade. Cancele em 1 clique e mantenha acesso até o fim do período.</p>
-          </div>
-          <Link
-            to="/dashboard/cancelar"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40 transition"
-          >
-            <XCircle className="w-4 h-4" />
-            Cancelar assinatura
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
+

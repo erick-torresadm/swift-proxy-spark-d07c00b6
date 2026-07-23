@@ -1298,12 +1298,22 @@ export async function runRenewalSweep(opts: {
     out.blocks_seen++;
 
     // All stock rows in this block
-    const { data: stockRows } = await supabaseAdmin
+    const { data: stockRowsRaw } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, external_proxy_id, expires_at")
+      .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, provider_order_id")
       .eq("provider_order_id", block.id);
-    const stockIds = (stockRows ?? []).map((s) => s.id);
-    const externalIds = (stockRows ?? []).map((s) => s.external_proxy_id).filter((x): x is string => !!x);
+    let stockRows = (stockRowsRaw ?? []) as ProviderStockRow[];
+
+    try {
+      const reconciled = await reconcileStockRowsFromProviderList(kind, stockRows);
+      stockRows = reconciled.rows;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      out.errors.push(`${block.id}: provider sync failed before renewal: ${msg}`);
+    }
+
+    const stockIds = stockRows.map((s) => s.id);
+    const externalIds = stockRows.map((s) => s.external_proxy_id).filter((x): x is string => !!x);
     const blockSize = stockIds.length;
 
     // Effective expiry: use provider_orders.expires_at when set, otherwise
@@ -1436,6 +1446,25 @@ export async function runRenewalSweep(opts: {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       out.errors.push(`${block.id}: ${msg}`);
+      if (!dryRun && shouldReissueAfterRenewalFailure(msg, effectiveExpiryMs)) {
+        try {
+          const reissue = await reissuePaidOrdersForStock(stockIds, msg);
+          if (reissue.orders > 0) {
+            out.details.push({
+              block: block.id,
+              country: block.country_code,
+              occupancy,
+              block_size: blockSize,
+              action: "skipped",
+              reason: reissue.short > 0
+                ? `renewal failed; replacement incomplete (${reissue.short} short)`
+                : "renewal failed; replaced with fresh stock",
+            });
+          }
+        } catch (reissueErr) {
+          out.errors.push(`${block.id}: replacement failed: ${reissueErr instanceof Error ? reissueErr.message : String(reissueErr)}`);
+        }
+      }
       // Alerta por bloco — dedupe diário, então repete todo dia até resolver.
       void notifyAllAdmins({
         title: "🛑 Falha ao renovar bloco — AÇÃO NECESSÁRIA",

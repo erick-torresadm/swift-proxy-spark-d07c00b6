@@ -895,6 +895,43 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "active proxies have no provider_order_id (legacy import)" };
   }
 
+  // VPS branch: renew each self-hosted block through our own API.
+  const { data: blockMeta } = await supabaseAdmin
+    .from("provider_orders")
+    .select("id, provider, external_order_id")
+    .in("id", blockIds);
+  const vpsBlocks = (blockMeta ?? []).filter(
+    (b) => (b as { provider?: string }).provider === "fastproxy_vps",
+  );
+  if (vpsBlocks.length > 0 && vpsBlocks.length === (blockMeta ?? []).length) {
+    let renewedIps = 0;
+    for (const b of vpsBlocks) {
+      const extId = (b as { external_order_id?: string | null }).external_order_id;
+      if (!extId) continue;
+      const res = await vps.renewBlock(extId, 30);
+      const newExpiry = res.expires_at ?? new Date(Date.now() + 30 * 86400 * 1000).toISOString();
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ expires_at: newExpiry } as never)
+        .eq("provider_order_id", (b as { id: string }).id);
+      await supabaseAdmin
+        .from("provider_orders")
+        .update({ expires_at: newExpiry, purchased_at: new Date().toISOString() } as never)
+        .eq("id", (b as { id: string }).id);
+      const { count } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("*", { count: "exact", head: true })
+        .eq("provider_order_id", (b as { id: string }).id);
+      renewedIps += count ?? 0;
+    }
+    return {
+      renewed_proxies: renewedIps,
+      renewed_blocks: vpsBlocks.length,
+      cost_usd: 0,
+      dry_run: false,
+    };
+  }
+
   // Todos os IPs (alocados + livres) que pertencem a esses blocos
   const { data: blockStockRaw } = await supabaseAdmin
     .from("proxy_stock")

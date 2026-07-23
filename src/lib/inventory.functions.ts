@@ -117,7 +117,7 @@ export const getInventoryByProduct = createServerFn({ method: "GET" })
             .from("customer_proxies")
             .select("stock_id")
             .in("stock_id", stockIds)
-            .in("status", ["active", "grace"]);
+            .eq("status", "active");
           const occupiedStockIds = new Set((allocs ?? []).map((a) => a.stock_id));
           const occupiedBlocks = new Set<string>();
           for (const s of stockInBlocks ?? []) {
@@ -361,7 +361,7 @@ export const listProductStock = createServerFn({ method: "GET" })
         .from("customer_proxies")
         .select("stock_id, user_id, order_id, allocated_at, status")
         .in("stock_id", stockIds)
-        .in("status", ["active", "grace"]);
+        .in("status", ["active", "grace", "cancelled"]);
       const userIds = Array.from(new Set((allocs ?? []).map((a) => a.user_id)));
       const profMap = new Map<string, string | null>();
       if (userIds.length) {
@@ -428,7 +428,7 @@ export const deleteStockItem = createServerFn({ method: "POST" })
       .from("customer_proxies")
       .select("id")
       .eq("stock_id", data.id)
-      .in("status", ["active", "grace"])
+      .in("status", ["active", "grace", "cancelled"])
       .maybeSingle();
     if (alloc) throw new Error("Proxy alocado a um cliente. Libere antes de excluir.");
     const { error } = await supabaseAdmin.from("proxy_stock").delete().eq("id", data.id);
@@ -512,7 +512,7 @@ export const bulkDeleteStock = createServerFn({ method: "POST" })
       .from("customer_proxies")
       .select("stock_id")
       .in("stock_id", data.ids)
-      .in("status", ["active", "grace"]);
+      .in("status", ["active", "grace", "cancelled"]);
     const blocked = new Set((allocs ?? []).map((a) => a.stock_id));
     const deletable = data.ids.filter((id) => !blocked.has(id));
     if (!deletable.length) throw new Error("Todos os proxies selecionados estão alocados a clientes.");

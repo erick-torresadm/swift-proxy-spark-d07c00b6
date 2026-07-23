@@ -34,6 +34,10 @@ function categoryToKind(category: string | null | undefined): PsProxyKind {
   }
 }
 
+function isIpv6Category(category: string | null | undefined): boolean {
+  return category === "ipv6" || category === "ipv6_fb";
+}
+
 const PURCHASE_LOCK_TTL_MS = 90_000;
 // ProxySeller IPv6 minimum purchase block size
 const PROXYSELLER_IPV6_MIN_BLOCK = 10;
@@ -96,7 +100,7 @@ async function getPaidAllocationsForStock(stockIds: string[]): Promise<PaidStock
     .from("customer_proxies")
     .select("id, order_id, stock_id")
     .in("stock_id", stockIds)
-    .in("status", ["active", "grace"]);
+    .eq("status", "active");
 
   const allocationRows = (allocations ?? []) as Array<{ id: string; order_id: string | null; stock_id: string | null }>;
   const orderIds = Array.from(new Set(allocationRows.map((a) => a.order_id).filter((x): x is string => !!x)));
@@ -118,6 +122,112 @@ async function getPaidAllocationsForStock(stockIds: string[]): Promise<PaidStock
       stockId: a.stock_id as string,
       customerEmail: paidOrders.get(a.order_id as string) ?? null,
     }));
+}
+
+export async function restoreHiddenProxiesForPaidOrder(orderId: string): Promise<number> {
+  const { data: order } = await supabaseAdmin
+    .from("orders")
+    .select("id, status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (!order || order.status !== "paid") return 0;
+
+  const { data: rows } = await supabaseAdmin
+    .from("customer_proxies")
+    .select("id, stock_id")
+    .eq("order_id", orderId)
+    .in("status", ["grace", "cancelled"]);
+
+  const ids = (rows ?? []).map((row) => row.id as string).filter(Boolean);
+  if (ids.length === 0) return 0;
+
+  const stockIds = (rows ?? [])
+    .map((row) => row.stock_id as string | null)
+    .filter((id): id is string => !!id);
+
+  const { error } = await supabaseAdmin
+    .from("customer_proxies")
+    .update({ status: "active", released_at: null } as never)
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+
+  if (stockIds.length > 0) {
+    await supabaseAdmin
+      .from("proxy_stock")
+      .update({ status: "allocated" as never })
+      .in("id", stockIds);
+  }
+
+  return ids.length;
+}
+
+export async function hideOrReleaseProxiesForOrder(orderId: string): Promise<{
+  hidden_ipv6: number;
+  released: number;
+}> {
+  const { data: allocs } = await supabaseAdmin
+    .from("customer_proxies")
+    .select("id, stock_id, proxy_stock(product_id, products(category))")
+    .eq("order_id", orderId)
+    .in("status", ["active", "grace"]);
+
+  const hiddenIds: string[] = [];
+  const hiddenStockIds: string[] = [];
+  const releasedIds: string[] = [];
+  const releasedStockIds: string[] = [];
+
+  for (const allocation of allocs ?? []) {
+    const shaped = allocation as unknown as {
+      id?: string | null;
+      stock_id?: string | null;
+      proxy_stock?: { products?: { category?: string | null } | null } | null;
+    };
+    const allocationId = shaped.id;
+    if (!allocationId) continue;
+
+    const category = shaped.proxy_stock?.products?.category ?? null;
+    if (isIpv6Category(category)) {
+      hiddenIds.push(allocationId);
+      if (shaped.stock_id) hiddenStockIds.push(shaped.stock_id);
+    } else {
+      releasedIds.push(allocationId);
+      if (shaped.stock_id) releasedStockIds.push(shaped.stock_id);
+    }
+  }
+
+  const now = new Date().toISOString();
+
+  if (hiddenIds.length > 0) {
+    await supabaseAdmin
+      .from("customer_proxies")
+      .update({ status: "cancelled", released_at: now } as never)
+      .in("id", hiddenIds);
+
+    if (hiddenStockIds.length > 0) {
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "allocated" as never })
+        .in("id", hiddenStockIds);
+    }
+  }
+
+  if (releasedIds.length > 0) {
+    await supabaseAdmin
+      .from("customer_proxies")
+      .update({ status: "released", released_at: now } as never)
+      .in("id", releasedIds);
+
+    if (releasedStockIds.length > 0) {
+      await supabaseAdmin
+        .from("proxy_stock")
+        .update({ status: "available" as never })
+        .in("id", releasedStockIds)
+        .eq("status", "allocated");
+    }
+  }
+
+  return { hidden_ipv6: hiddenIds.length, released: releasedIds.length };
 }
 
 async function reconcileStockRowsFromProviderList(
@@ -255,6 +365,8 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     return { allocated: 0, short: 0 };
   }
 
+  await restoreHiddenProxiesForPaidOrder(order.id);
+
   const { data: product } = await supabaseAdmin
     .from("products")
     .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold")
@@ -269,7 +381,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     .from("customer_proxies")
     .select("*", { count: "exact", head: true })
     .eq("order_id", order.id)
-    .neq("status", "released");
+    .eq("status", "active");
 
   if ((existing ?? 0) >= totalNeeded) {
     return { allocated: existing ?? 0, short: 0 };

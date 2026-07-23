@@ -884,12 +884,13 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
     return { renewed_proxies: 0, renewed_blocks: 0, cost_usd: 0, dry_run: false, skipped_reason: "provider_tariff_id missing periodId" };
   }
 
-  // Blocos (provider_orders) que contêm os proxies ATIVOS deste pedido
+  // Blocos (provider_orders) que contêm proxies de pedido realmente pago.
+  // Proxies em grace/cancelled ficam ocultos para o cliente e não acionam renovação.
   const { data: activeAllocs } = await supabaseAdmin
     .from("customer_proxies")
     .select("stock_id")
     .eq("order_id", orderId)
-    .in("status", ["active", "grace"]);
+    .eq("status", "active");
 
   const stockIds = (activeAllocs ?? []).map((r) => r.stock_id).filter((x): x is string => !!x);
   if (stockIds.length === 0) {
@@ -1327,7 +1328,7 @@ export async function runFullProviderSync(): Promise<{
 
 /**
  * Walks every IPv6 provider_orders (block) expiring within `windowDays`.
- * If the block has at least one paying customer (active|grace), it renews
+ * If the block has at least one paying customer (customer_proxies.status=active), it renews
  * all IPs in the block via `prolong/make`. Empty blocks are skipped so they
  * naturally expire — that's the cost-saver.
  *
@@ -1467,17 +1468,18 @@ export async function runRenewalSweep(opts: {
       continue;
     }
 
-    // Occupancy: how many of this block's IPs are tied to a paying customer
+    // Occupancy: how many of this block's IPs are tied to a paying customer.
+    // `grace`/`cancelled` allocations are hidden/non-paying and must not spend renewal balance.
     const { count: occ } = await supabaseAdmin
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .in("stock_id", stockIds)
-      .in("status", ["active", "grace"]);
+      .eq("status", "active");
     const occupancy = occ ?? 0;
 
     if (occupancy === 0) {
-      // ABANDON — let the block expire. Mark stock as expired so it's not
-      // picked by future allocations.
+      // ABANDON — let the block expire. Mark only free rows as expired so
+      // hidden IPv6 customer rows remain reserved/hidden and are not resold.
       if (!dryRun) {
         await supabaseAdmin
           .from("proxy_stock")
@@ -1659,7 +1661,7 @@ export async function runFulfillmentSweep(opts: { alertAfterMinutes?: number } =
       .from("customer_proxies")
       .select("*", { count: "exact", head: true })
       .eq("order_id", order.id)
-      .neq("status", "released");
+      .eq("status", "active");
 
     if ((allocated ?? 0) >= needed) continue;
     out.scanned++;

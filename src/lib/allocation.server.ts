@@ -1406,7 +1406,7 @@ export async function runRenewalSweep(opts: {
   // the stock rows below.
   const { data: blocks } = await supabaseAdmin
     .from("provider_orders")
-    .select("id, country_code, expires_at, product_id, products(slug, category, provider_tariff_id)")
+    .select("id, country_code, expires_at, product_id, external_order_id, provider, products(slug, category, provider_tariff_id)")
     .in("status", ["active", "pending"]);
 
   for (const block of blocks ?? []) {
@@ -1414,9 +1414,103 @@ export async function runRenewalSweep(opts: {
     const cat = prod?.category ?? "";
     const isRenewable = cat.startsWith("ipv6") || cat === "ipv4" || cat === "isp";
     if (!prod || !isRenewable) continue;
+    const blockProvider = (block as { provider?: string }).provider ?? "proxyseller";
     const kind: PsProxyKind = cat === "ipv4" ? "ipv4" : cat === "isp" ? "isp" : "ipv6";
 
     out.blocks_seen++;
+
+    // VPS-hosted block: renew via our own API and skip ProxySeller-specific logic.
+    if (blockProvider === "fastproxy_vps") {
+      const { data: stockRowsRaw } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("id, expires_at")
+        .eq("provider_order_id", block.id);
+      const stockRows = stockRowsRaw ?? [];
+      const blockSize = stockRows.length;
+
+      const stockExpiryMs = stockRows
+        .map((s) => (s.expires_at ? new Date(s.expires_at).getTime() : 0))
+        .filter((n) => n > 0);
+      const effectiveExpiryMs = block.expires_at
+        ? new Date(block.expires_at).getTime()
+        : stockExpiryMs.length
+          ? Math.min(...stockExpiryMs)
+          : 0;
+      if (!effectiveExpiryMs || effectiveExpiryMs > new Date(cutoff).getTime()) continue;
+
+      const stockIds = stockRows.map((s) => s.id);
+      const { count: occ } = await supabaseAdmin
+        .from("customer_proxies")
+        .select("*", { count: "exact", head: true })
+        .in("stock_id", stockIds.length ? stockIds : ["00000000-0000-0000-0000-000000000000"])
+        .eq("status", "active");
+      const occupancy = occ ?? 0;
+
+      if (occupancy === 0) {
+        if (!dryRun) {
+          const extId = (block as { external_order_id?: string | null }).external_order_id;
+          if (extId) {
+            try {
+              await vps.cancelBlock(extId);
+            } catch (e) {
+              out.errors.push(`${block.id}: vps cancel failed: ${e instanceof Error ? e.message : String(e)}`);
+            }
+          }
+          await supabaseAdmin
+            .from("proxy_stock")
+            .update({ status: "expired" as never })
+            .in("id", stockIds)
+            .neq("status", "allocated");
+        }
+        out.blocks_abandoned++;
+        out.details.push({
+          block: block.id,
+          country: block.country_code,
+          occupancy: 0,
+          block_size: blockSize,
+          action: "abandoned",
+        });
+        continue;
+      }
+
+      try {
+        const extId = (block as { external_order_id?: string | null }).external_order_id;
+        if (!extId) throw new Error("no external_order_id on VPS block");
+        if (!dryRun) {
+          const res = await vps.renewBlock(extId, 30);
+          const newExpiry = res.expires_at ?? new Date(Date.now() + 30 * 86400 * 1000).toISOString();
+          if (stockIds.length > 0) {
+            await supabaseAdmin.from("proxy_stock").update({ expires_at: newExpiry }).in("id", stockIds);
+          }
+          await supabaseAdmin
+            .from("provider_orders")
+            .update({ expires_at: newExpiry, purchased_at: new Date().toISOString() })
+            .eq("id", block.id);
+        }
+        out.blocks_renewed++;
+        out.ips_renewed += blockSize;
+        out.details.push({
+          block: block.id,
+          country: block.country_code,
+          occupancy,
+          block_size: blockSize,
+          action: "renewed",
+          cost_usd: 0,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        out.errors.push(`${block.id}: ${msg}`);
+        void notifyAllAdmins({
+          title: "🛑 Falha ao renovar bloco VPS — AÇÃO NECESSÁRIA",
+          body: `Bloco VPS ${block.id.slice(0, 8)} (${block.country_code ?? "?"}, ${occupancy} cliente(s)) NÃO renovou: ${msg}. Verifique a VPS em /admin/vps.`,
+          link: "/admin/vps",
+          metadata: { blockId: block.id, occupancy, error: msg },
+          dedupeKey: `renewal-fail-vps:${block.id}:${new Date().toISOString().slice(0, 10)}`,
+        });
+      }
+      continue;
+    }
+
 
     // All stock rows in this block
     const { data: stockRowsRaw } = await supabaseAdmin

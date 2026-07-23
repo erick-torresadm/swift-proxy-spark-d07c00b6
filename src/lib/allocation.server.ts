@@ -158,8 +158,8 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
           pendingInFlight = true;
         } else {
           void notifyAllAdmins({
-            title: "⚠️ Estoque insuficiente",
-            body: `Pedido ${order.id.slice(0, 8)} precisa de ${remaining} IPs do produto ${product.category}/${product.country_code ?? "?"}. Faltam ${stillShortAfterReuse}. Comprando bloco na ProxySeller…`,
+            title: "📉 Estoque baixo — comprando bloco novo",
+            body: `Um cliente pagou e precisa de ${remaining} IP(s) do plano ${product.category}/${product.country_code ?? "?"}, mas faltam ${stillShortAfterReuse} no estoque. Estamos comprando um bloco novo na ProxySeller agora — leva ~1 min. Nada a fazer, só acompanhar.`,
             link: "/admin/inventory",
             metadata: { orderId: order.id, productId: product.id, shortBy: stillShortAfterReuse },
             dedupeKey: `stock-short:${order.id}`,

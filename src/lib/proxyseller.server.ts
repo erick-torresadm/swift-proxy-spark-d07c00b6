@@ -284,6 +284,10 @@ export async function replaceProxyIp(externalProxyId: string): Promise<PsProxyIt
   return data.items?.[0] ?? null;
 }
 
+export async function checkProxy(proxy: string): Promise<unknown> {
+  return psGet(`/tools/proxy/check?proxy=${encodeURIComponent(proxy)}`);
+}
+
 // ─────────────────────────── Prolong (extend expiration) ───────────────────────────
 
 export async function prolongCalc(

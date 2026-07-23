@@ -531,6 +531,20 @@ async function autoPurchaseIntoStock(
   needed: number,
   triggeredByOrderId: string,
 ): Promise<number> {
+  // Route to VPS when the product is provisioned by our own infra.
+  const { data: prodMeta } = await supabaseAdmin
+    .from("products")
+    .select("provider")
+    .eq("id", product.id)
+    .maybeSingle();
+  const provider = (prodMeta as { provider?: string } | null)?.provider ?? "proxyseller";
+  if (provider === "fastproxy_vps") {
+    if (!(await vps.isVpsEnabled())) {
+      throw new Error("fastproxy_vps disabled: flip provider_settings.fastproxy_vps.dry_run to false to enable");
+    }
+    return await vpsPurchaseIntoStock(product, needed, triggeredByOrderId);
+  }
+
   if (!product.provider_tariff_id) {
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }

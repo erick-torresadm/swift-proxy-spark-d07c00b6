@@ -39,15 +39,23 @@ export const Route = createFileRoute("/api/public/cron/healthcheck")({
 });
 
 async function runHealthcheck(): Promise<number> {
-  // 1. Pega todos os proxies do estoque ainda em uso (allocated) ou disponíveis
+  // 1. Pega todos os proxies do estoque ainda em uso (allocated) ou disponíveis,
+  // incluindo o provider do bloco para saber qual API consultar.
   const { data: stockRows } = await supabaseAdmin
     .from("proxy_stock")
-    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, status, country_code")
+    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, status, country_code, provider_order_id, provider_orders(provider, external_order_id)")
     .in("status", ["allocated", "available"]);
 
   if (!stockRows || stockRows.length === 0) return 0;
 
-  // 2. Busca lista de proxies vivos no provedor (uma chamada por kind)
+  const psRows: typeof stockRows = [];
+  const vpsRows: typeof stockRows = [];
+  for (const r of stockRows) {
+    const p = (r as unknown as { provider_orders?: { provider?: string | null } | null }).provider_orders?.provider;
+    if (p === "fastproxy_vps") vpsRows.push(r); else psRows.push(r);
+  }
+
+  // 2. ProxySeller: uma chamada por kind
   const kinds: PsProxyKind[] = ["ipv4", "ipv6", "isp", "mobile"];
   const providerById = new Map<string, PsProxyItem>();
   const providerByEndpoint = new Map<string, PsProxyItem>();
@@ -65,14 +73,60 @@ async function runHealthcheck(): Promise<number> {
         if (key) providerByEndpoint.set(key, p);
       }
     } catch {
-      // ignora: alguns kinds podem não estar habilitados
+      // ignora
     }
   }
   const totalProviderLatency = Date.now() - providerStart;
 
-  // 3. Gera snapshots
+  // 2b. VPS: uma chamada listBlocks + getBlock por bloco distinto (com cache)
+  const vpsBlockCache = new Map<string, Awaited<ReturnType<typeof vps.getBlock>> | null>();
+  let vpsLatency = 0;
+  if (vpsRows.length > 0) {
+    const distinctExt = new Set<string>();
+    for (const r of vpsRows) {
+      const ext = (r as unknown as { provider_orders?: { external_order_id?: string | null } | null }).provider_orders?.external_order_id;
+      if (ext) distinctExt.add(ext);
+    }
+    for (const ext of distinctExt) {
+      try {
+        const t0 = Date.now();
+        const block = await vps.getBlock(ext);
+        vpsLatency = Math.max(vpsLatency, Date.now() - t0);
+        vpsBlockCache.set(ext, block);
+      } catch {
+        vpsBlockCache.set(ext, null);
+      }
+    }
+  }
+
+  // 3. Snapshots
   const now = Date.now();
   const snapshots = await Promise.all(stockRows.map(async (r) => {
+    const providerName = (r as unknown as { provider_orders?: { provider?: string | null } | null }).provider_orders?.provider;
+
+    if (providerName === "fastproxy_vps") {
+      const extOrder = (r as unknown as { provider_orders?: { external_order_id?: string | null } | null }).provider_orders?.external_order_id ?? null;
+      const block = extOrder ? vpsBlockCache.get(extOrder) : null;
+      const proxies = block?.proxies ?? [];
+      const match = proxies.find((p) => hostOnly(p.ip) === hostOnly(r.host) && p.port === r.port)
+        || proxies.find((p) => p.username && p.username === r.username);
+      const alive = !!block && !!match;
+      const effectiveExpiry = block?.expires_at ?? r.expires_at;
+      const expired = effectiveExpiry ? new Date(effectiveExpiry).getTime() < now : false;
+      const ok = alive && !expired;
+      if (block && block.expires_at && (!r.expires_at || new Date(block.expires_at).getTime() !== new Date(r.expires_at).getTime())) {
+        await supabaseAdmin.from("proxy_stock").update({ expires_at: block.expires_at } as never).eq("id", r.id);
+      }
+      return {
+        stock_id: r.id,
+        ok,
+        latency_ms: vpsLatency || null,
+        country_seen: r.country_code ?? null,
+        source: "vps",
+        error: !ok ? (expired ? "expired" : !alive ? "not_in_vps_inventory" : null) : null,
+      };
+    }
+
     const ext = r.external_proxy_id ?? "";
     const endpoint = endpointKey(r.host, r.port);
     const providerMatch = (ext ? providerById.get(ext) : undefined) ?? (endpoint ? providerByEndpoint.get(endpoint) : undefined);
@@ -93,7 +147,7 @@ async function runHealthcheck(): Promise<number> {
       }
     }
 
-    const aliveAtProvider = !!providerMatch || !ext; // sem id externo, considera ok
+    const aliveAtProvider = !!providerMatch || !ext;
     const effectiveExpiry = providerMatch ? psDateToIso(providerMatch.date_end) : r.expires_at;
     const expired = effectiveExpiry ? new Date(effectiveExpiry).getTime() < now : false;
     const ok = aliveAtProvider && !expired;
@@ -103,33 +157,24 @@ async function runHealthcheck(): Promise<number> {
       latency_ms: providerLatency || null,
       country_seen: r.country_code ?? null,
       source: "provider",
-      error: !ok
-        ? expired
-          ? "expired"
-          : !aliveAtProvider
-            ? "not_in_provider_inventory"
-            : null
-        : null,
+      error: !ok ? (expired ? "expired" : !aliveAtProvider ? "not_in_provider_inventory" : null) : null,
     };
   }));
 
-  // 4. Insere em batch
   const { error } = await supabaseAdmin.from("proxy_metrics").insert(snapshots);
-  if (error) {
-    console.error("[healthcheck] insert failed", error.message);
-  }
+  if (error) console.error("[healthcheck] insert failed", error.message);
 
-  // 5. Registra latência média global
   await supabaseAdmin.from("audit_log").insert({
     source: "cron",
     action: "proxy_healthcheck",
     status: error ? "error" : "ok",
-    request: { stocks: stockRows.length, provider_latency_ms: totalProviderLatency },
+    request: { stocks: stockRows.length, ps_rows: psRows.length, vps_rows: vpsRows.length, provider_latency_ms: totalProviderLatency, vps_latency_ms: vpsLatency },
     response: { inserted: snapshots.length, error: error?.message ?? null },
   });
 
   return snapshots.length;
 }
+
 
 function endpointKey(host: string | null | undefined, port: number | string | null | undefined): string | null {
   const cleanHost = hostOnly(host);

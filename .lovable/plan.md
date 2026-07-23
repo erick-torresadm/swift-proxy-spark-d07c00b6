@@ -1,69 +1,93 @@
 
-# Plano — Hardening contra pentest
+# Integração da VPS própria como provedor "fastproxy-vps" (IPv6 BR self-hosted)
 
-Baseado no relatório enviado. Vou tratar cada item com uma correção concreta no código, sem mexer em regras de negócio.
+Objetivo: rotear **novos pedidos de IPv6 BR** para a sua VPS `104.234.186.95:8888`, mantendo ProxySeller para IPv6 US, IPv4 e ISP. Blocos ProxySeller existentes continuam ativos e expiram naturalmente — nenhum cliente atual quebra.
 
-## 1. Rate limit (login/signup/reset/checkout/chat/blog-ingest)
-- Criar `src/lib/rate-limit.server.ts` com bucket por **IP + chave (email/user_id/rota)** usando uma tabela nova `public.rate_limit_hits (bucket text, key text, window_start timestamptz, count int, primary key(bucket,key,window_start))` + função SQL `bump_rate_hit(_bucket, _key, _window_seconds, _limit)` (padrão do `bump_blog_ingest_rate` que já existe).
-- Aplicar em:
-  - `auth` (login, signup, reset) — 5/min por IP e 10/hora por email.
-  - `checkout.functions.ts` (create order) — 20/min por user, 60/min por IP.
-  - `chat.functions.ts` (send message) — 30/min por user.
-  - `/api/public/blog/ingest` — reforçar o já existente.
-- Retornar 429 com `Retry-After`.
+## 1. Secrets (backend)
 
-## 2. CORS refletindo Origin
-- Criar `src/lib/cors.server.ts` com **allowlist** fixa: `fastproxy.com.br`, `www.fastproxy.com.br`, `swift-proxy-spark.lovable.app`, `*.lovable.app` (preview), `localhost:8080`.
-- Substituir qualquer `Access-Control-Allow-Origin: *` ou eco cru de `Origin` nas rotas `/api/public/*` por `withCors(request, response, ALLOWED)` que só devolve o header se a origem estiver na lista.
-- Manter `OPTIONS` retornando 204 com os mesmos headers.
+Adicionar via `add_secret`:
+- `FASTPROXY_VPS_API_URL` = `http://104.234.186.95:8888` (trocar para HTTPS quando você apontar o domínio)
+- `FASTPROXY_VPS_API_TOKEN` = `***REMOVED***`
 
-## 3. PII/dado a mais nas respostas
-- Auditar todas `createServerFn` e rotas em `/api/public/*` para nunca retornar `password_hash`, `email` de terceiros, `stripe_customer_id`, `provider_credentials`, tokens ou colunas `auth.*`.
-- Introduzir helpers `toPublicUser()`, `toPublicOrder()`, `toPublicProxy()` em `src/lib/dto.ts` e trocar os `select('*')` sensíveis por projeções explícitas.
-- Alvos principais: `admin-*`, `dashboard.functions.ts`, `notifications.functions.ts`, `chat.functions.ts`.
+## 2. Novo adapter: `src/lib/fastproxy-vps.server.ts`
 
-## 4. JWT na URL e token vivo pós-logout
-- Verificar que nenhum link/fetch coloca `access_token` na querystring (buscar `?token=` / `#access_token=` e mover para `Authorization: Bearer`).
-- No logout do cliente:
-  - `queryClient.cancelQueries(); queryClient.clear(); await supabase.auth.signOut({ scope: 'global' }); navigate('/auth', { replace: true })`.
-  - `scope: 'global'` revoga o refresh token em todos os dispositivos.
-- Encurtar `access_token` para 1h (já é padrão Supabase) e garantir que o middleware server rejeita tokens expirados (`requireSupabaseAuth` já faz).
+Cliente HTTP tipado espelhando a API da VPS:
+- `createBlock({ size, duration_days, customer_ref })` → `POST /blocks`
+- `getBlock(id)` / `listBlocks()` → `GET /blocks[/:id]`
+- `renewBlock(id, days)` → `POST /blocks/:id/renew`
+- `cancelBlock(id)` → `POST /blocks/:id/cancel`
+- `upsertCredential({ username, password, block_id })` → `POST /credentials`
+- `suspendCredential(username)` → `DELETE /credentials/:username`
+- `rotateCredential(username)` → `POST /credentials/:username/rotate`
+- `getAudit()` → `GET /audit`
 
-## 5. Enumeração de usuário
-- Padronizar respostas de `/auth/login`, `/auth/signup` e `/auth/reset` para uma única mensagem: *"Se as credenciais estiverem corretas, você receberá acesso/instruções."*
-- Nunca diferenciar "email não existe" de "senha errada" no client — mapear os erros do Supabase para essa mensagem genérica em `src/routes/auth.tsx`.
+Todos com `Authorization: Bearer <token>`, timeouts, retry único em 5xx, e erros mapeados para strings amigáveis usadas pelas notificações admin.
 
-## 6. Clickjacking + headers de segurança
-- Adicionar middleware global em `src/start.ts` (`requestMiddleware`) que injeta em toda resposta:
-  - `X-Frame-Options: DENY`
-  - `X-Content-Type-Options: nosniff`
-  - `Referrer-Policy: strict-origin-when-cross-origin`
-  - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
-  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
-  - `Content-Security-Policy` moderado (permitindo Stripe, Supabase, Meta Pixel, self).
+## 3. Roteamento por provider no `allocation.server.ts`
 
-## 7. SQL Injection e IDOR — varredura
-- **SQLi**: buscar qualquer `supabase.rpc` ou concatenação em queries; garantir que tudo usa parâmetros nomeados. Revisar funções em `src/lib/*.server.ts` que aceitam input do usuário (`blog-ingest`, `chat`, `checkout`, `admin-ops`).
-- **IDOR**: revisar toda rota que aceita `id` do cliente (order_id, proxy_id, conversation_id, notification_id) e confirmar que o `where` inclui `user_id = auth.uid()` OU que a RLS cobre. Rodar `supabase--linter` e listar tabelas sem policy adequada.
-- Adicionar testes em `src/lib/__tests__/security.test.ts`:
-  - tentar buscar `order` de outro user → deve falhar.
-  - tentar `notifications` de outro user → deve falhar.
-  - login com email inexistente vs. senha errada → mesma resposta.
-  - rate-limit dispara após N tentativas.
-  - `Origin` fora da allowlist não recebe CORS.
-  - Resposta de `/auth/me` não contém `password_hash` nem `email` de terceiros.
+Introduzir campo lógico `provider` derivado do produto:
+- produto tem novo campo `provider` (`'proxyseller' | 'fastproxy_vps'`) — default `proxyseller`.
+- Migração: `ALTER TABLE public.products ADD COLUMN provider text NOT NULL DEFAULT 'proxyseller'`; marcar **apenas** `ipv6-br` (e `ipv6-fb-br` se existir como SKU separado) como `fastproxy_vps` **somente para novos pedidos** (flag lida no momento da alocação, não retroativa).
+
+Nas funções principais:
+- `allocateProxiesForOrder` → se `product.provider === 'fastproxy_vps'`, chamar novo `allocateFromVps(order, product)`; caso contrário, fluxo atual ProxySeller.
+- `runRenewalSweep` → separar loops por provider; blocos com `provider_order_id` prefixado `vps:` vão pelo adapter VPS.
+- `hideOrReleaseProxiesForOrder` e `restoreHiddenProxiesForPaidOrder` → chamar `suspendCredential`/`upsertCredential` na VPS para bloquear/reativar o cliente sem apagar o bloco (mesma regra de "não devolver IP ao estoque" já existente para IPv6).
+
+`provider_orders` ganha `provider text default 'proxyseller'` e aceita IDs no formato `vps:<block_id>` para não colidir com IDs numéricos do ProxySeller.
+
+## 4. Fluxo de compra IPv6 BR (VPS)
+
+Quando Stripe confirma pagamento de um pedido `ipv6-br`:
+1. Reaproveitar bloco VPS existente com vaga (mesma lógica `pick_consolidated_stock` já usada), OU
+2. `createBlock({ size: 10, duration_days: 30 or 365, customer_ref: order.id })`.
+3. Para cada IP retornado, inserir em `proxy_stock` (host/porta/credenciais).
+4. Chamar `upsertCredential` com o par `username/password` do cliente e vincular ao bloco.
+5. Popular `customer_proxies` como hoje.
+
+Inadimplência: `suspendCredential(username)` (3proxy passa a rejeitar auth). Ao voltar a pagar: `upsertCredential` reativa. Bloco só é `cancelBlock`-ado quando **nenhum** cliente pagante resta nele.
+
+## 5. Healthcheck / reconciliação
+
+`cron.healthcheck.ts` passa a consultar `GET /blocks` da VPS além do ProxySeller e reconcilia `proxy_stock` por `host:port` (mesmo padrão já implementado para ProxySeller). Painel admin ganha seção "Provider: fastproxy-vps" com contagem de blocos, IPs livres, próximos vencimentos, e link para `/audit`.
+
+## 6. Migração/rollout seguro
+
+- Feature flag em `provider_settings`: `fastproxy_vps.enabled` (default `false`). Enquanto `false`, tudo continua indo pro ProxySeller mesmo com produto marcado.
+- Ativar via admin quando o smoke test passar.
+- Nenhum bloco ProxySeller ativo é tocado. Renovações ProxySeller de `ipv6-br` continuam funcionando até os clientes migrarem naturalmente (ou você forçar em massa depois, fora do escopo desta task).
+
+## 7. Painel admin
+
+Nova rota `/admin/vps` (dentro de `_authenticated.admin.*`):
+- Status da VPS (`/health`), lista de blocos, IPs por bloco, vencimentos.
+- Botões: renovar bloco, cancelar bloco vazio, rotacionar IP, suspender/reativar credencial.
+- Log recente do `/audit`.
+
+## 8. Testes de fumaça
+
+Após deploy, chamar via `stack_modern--invoke-server-function` (ou manualmente no admin):
+1. Criar pedido de teste `ipv6-br` → bloco criado na VPS, 10 IPs em stock, credenciais funcionam.
+2. Simular inadimplência → auth passa a falhar (curl no proxy retorna 407).
+3. Reconciliar pagamento → auth volta a funcionar, IPs iguais.
+4. Renewal sweep → bloco estende expiração.
+5. Rotação de IP no dashboard do cliente → `rotateCredential`, IP muda, porta preservada.
 
 ## Detalhes técnicos
-- Migração nova: tabela `rate_limit_hits` + função `bump_rate_hit` (com GRANTs + RLS bloqueando leitura, só service_role).
-- Middleware de headers em `src/start.ts` via `requestMiddleware`, sem quebrar o `attachSupabaseAuth` existente.
-- CORS helper reutilizável para todas as rotas `/api/public/*` (hooks, stripe-webhook, blog/ingest).
-- Rodar `supabase--linter` no fim e executar `bunx vitest run` para validar.
+
+- Todos os novos módulos ficam em `src/lib/*.server.ts` (nunca importar direto de rotas/componentes; usar via `createServerFn`).
+- HTTP para a VPS é feito só do server; adicionar `FASTPROXY_VPS_API_URL/TOKEN` como secrets, ler dentro dos handlers.
+- HTTPS: enquanto o endpoint for HTTP puro, aceitar mas logar warning; assim que apontar domínio + LE, mudar o secret.
+- Schema changes numa única migration com GRANTs padrão.
+- Sem quebra de compatibilidade: campos novos têm default; código antigo continua compilando.
 
 ## Entregáveis
-1. Migração SQL (rate_limit_hits + função).
-2. `src/lib/rate-limit.server.ts`, `src/lib/cors.server.ts`, `src/lib/dto.ts`, `src/lib/security-headers.server.ts`.
-3. Ajustes nas rotas/functions listadas acima.
-4. Ajuste no logout e nas mensagens de auth.
-5. Suite de testes de segurança + relatório final do linter.
 
-Confirma que posso implementar tudo isso?
+1. Migration: `products.provider`, `provider_orders.provider`, `provider_settings` flag.
+2. `src/lib/fastproxy-vps.server.ts` (adapter).
+3. Ajustes em `src/lib/allocation.server.ts` e `cron.healthcheck.ts` para branch por provider.
+4. Rota admin `/admin/vps`.
+5. Secrets `FASTPROXY_VPS_API_URL` + `FASTPROXY_VPS_API_TOKEN`.
+6. Smoke test end-to-end com um pedido real de baixo valor.
+
+Confirma que sigo por esse caminho? Se sim, quer que eu já marque **apenas o SKU `ipv6-br`** como `fastproxy_vps` (deixando `ipv6-fb-br` no ProxySeller por enquanto), ou os dois de uma vez?

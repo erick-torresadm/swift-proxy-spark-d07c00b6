@@ -1025,6 +1025,7 @@ export type Database = {
           notify_expiry_days: number[]
           price_monthly_cents: number
           price_yearly_cents: number | null
+          provider: string
           provider_tariff_id: string | null
           restock_threshold: number
           slug: string
@@ -1049,6 +1050,7 @@ export type Database = {
           notify_expiry_days?: number[]
           price_monthly_cents: number
           price_yearly_cents?: number | null
+          provider?: string
           provider_tariff_id?: string | null
           restock_threshold?: number
           slug: string
@@ -1073,6 +1075,7 @@ export type Database = {
           notify_expiry_days?: number[]
           price_monthly_cents?: number
           price_yearly_cents?: number | null
+          provider?: string
           provider_tariff_id?: string | null
           restock_threshold?: number
           slug?: string
@@ -1198,6 +1201,7 @@ export type Database = {
           external_order_id: string | null
           id: string
           product_id: string | null
+          provider: string
           purchased_at: string
           quantity: number
           raw_payload: Json | null
@@ -1213,6 +1217,7 @@ export type Database = {
           external_order_id?: string | null
           id?: string
           product_id?: string | null
+          provider?: string
           purchased_at?: string
           quantity: number
           raw_payload?: Json | null
@@ -1228,6 +1233,7 @@ export type Database = {
           external_order_id?: string | null
           id?: string
           product_id?: string | null
+          provider?: string
           purchased_at?: string
           quantity?: number
           raw_payload?: Json | null

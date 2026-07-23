@@ -49,6 +49,7 @@ import { Route as AuthenticatedDashboardProxiesRouteImport } from './routes/_aut
 import { Route as AuthenticatedDashboardOrdersRouteImport } from './routes/_authenticated.dashboard.orders'
 import { Route as AuthenticatedDashboardNotificacoesRouteImport } from './routes/_authenticated.dashboard.notificacoes'
 import { Route as AuthenticatedDashboardCancelarRouteImport } from './routes/_authenticated.dashboard.cancelar'
+import { Route as AuthenticatedAdminVpsRouteImport } from './routes/_authenticated.admin.vps'
 import { Route as AuthenticatedAdminStripeRouteImport } from './routes/_authenticated.admin.stripe'
 import { Route as AuthenticatedAdminProviderRouteImport } from './routes/_authenticated.admin.provider'
 import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated.admin.pricing'
@@ -296,6 +297,11 @@ const AuthenticatedDashboardCancelarRoute =
     path: '/dashboard/cancelar',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdminVpsRoute = AuthenticatedAdminVpsRouteImport.update({
+  id: '/vps',
+  path: '/vps',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminStripeRoute =
   AuthenticatedAdminStripeRouteImport.update({
     id: '/stripe',
@@ -581,6 +587,7 @@ export interface FileRoutesByFullPath {
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/admin/stripe': typeof AuthenticatedAdminStripeRoute
+  '/admin/vps': typeof AuthenticatedAdminVpsRoute
   '/dashboard/cancelar': typeof AuthenticatedDashboardCancelarRoute
   '/dashboard/notificacoes': typeof AuthenticatedDashboardNotificacoesRoute
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
@@ -660,6 +667,7 @@ export interface FileRoutesByTo {
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/admin/stripe': typeof AuthenticatedAdminStripeRoute
+  '/admin/vps': typeof AuthenticatedAdminVpsRoute
   '/dashboard/cancelar': typeof AuthenticatedDashboardCancelarRoute
   '/dashboard/notificacoes': typeof AuthenticatedDashboardNotificacoesRoute
   '/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
@@ -744,6 +752,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/_authenticated/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/_authenticated/admin/stripe': typeof AuthenticatedAdminStripeRoute
+  '/_authenticated/admin/vps': typeof AuthenticatedAdminVpsRoute
   '/_authenticated/dashboard/cancelar': typeof AuthenticatedDashboardCancelarRoute
   '/_authenticated/dashboard/notificacoes': typeof AuthenticatedDashboardNotificacoesRoute
   '/_authenticated/dashboard/orders': typeof AuthenticatedDashboardOrdersRoute
@@ -828,6 +837,7 @@ export interface FileRouteTypes {
     | '/admin/pricing'
     | '/admin/provider'
     | '/admin/stripe'
+    | '/admin/vps'
     | '/dashboard/cancelar'
     | '/dashboard/notificacoes'
     | '/dashboard/orders'
@@ -907,6 +917,7 @@ export interface FileRouteTypes {
     | '/admin/pricing'
     | '/admin/provider'
     | '/admin/stripe'
+    | '/admin/vps'
     | '/dashboard/cancelar'
     | '/dashboard/notificacoes'
     | '/dashboard/orders'
@@ -990,6 +1001,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/pricing'
     | '/_authenticated/admin/provider'
     | '/_authenticated/admin/stripe'
+    | '/_authenticated/admin/vps'
     | '/_authenticated/dashboard/cancelar'
     | '/_authenticated/dashboard/notificacoes'
     | '/_authenticated/dashboard/orders'
@@ -1356,6 +1368,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardCancelarRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/vps': {
+      id: '/_authenticated/admin/vps'
+      path: '/vps'
+      fullPath: '/admin/vps'
+      preLoaderRoute: typeof AuthenticatedAdminVpsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/stripe': {
       id: '/_authenticated/admin/stripe'
       path: '/stripe'
@@ -1690,6 +1709,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
   AuthenticatedAdminProviderRoute: typeof AuthenticatedAdminProviderRoute
   AuthenticatedAdminStripeRoute: typeof AuthenticatedAdminStripeRoute
+  AuthenticatedAdminVpsRoute: typeof AuthenticatedAdminVpsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminCustomersUserIdRoute: typeof AuthenticatedAdminCustomersUserIdRoute
   AuthenticatedAdminInventoryProductIdRoute: typeof AuthenticatedAdminInventoryProductIdRoute
@@ -1712,6 +1732,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
   AuthenticatedAdminProviderRoute: AuthenticatedAdminProviderRoute,
   AuthenticatedAdminStripeRoute: AuthenticatedAdminStripeRoute,
+  AuthenticatedAdminVpsRoute: AuthenticatedAdminVpsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminCustomersUserIdRoute:
     AuthenticatedAdminCustomersUserIdRoute,
@@ -1830,13 +1851,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

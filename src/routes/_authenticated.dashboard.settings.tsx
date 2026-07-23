@@ -102,6 +102,16 @@ function SettingsPage() {
           </button>
         </form>
       )}
+
+      <div className="mt-16 pt-6 border-t border-border/40 text-center">
+        <Link
+          to="/dashboard/cancelar"
+          className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground underline underline-offset-2"
+        >
+          Encerrar conta ou assinatura
+        </Link>
+      </div>
     </div>
   );
 }
+

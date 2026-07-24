@@ -356,7 +356,8 @@ async function handlePaidInvoice(inv: Stripe.Invoice) {
 
   for (const id of paidOrderIds) {
     await allocateOrder(id);
-    await notifySale(id, eventType);
+    await notifySale(id, "invoice.paid");
+
   }
 
 

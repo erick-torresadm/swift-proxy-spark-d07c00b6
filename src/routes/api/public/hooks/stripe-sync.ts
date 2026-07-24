@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
 import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder, restoreHiddenProxiesForPaidOrder } from "@/lib/allocation.server";
 import { reconcileOrderWithStripe } from "@/lib/reconcile.server";
+import { blockOrderOnVps, provisionOrderOnVps } from "@/lib/vps-user-sync.server";
 
 function subscriptionPeriodEnd(subscription: unknown): string | null {
   const sub = subscription as {
@@ -141,6 +142,9 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
               const r = await allocateProxiesForOrder(o.id);
               summary.allocated += r.allocated;
               if (r.error) summary.errors.push(`${o.id}: allocation ${r.error}`);
+              // VPS 3proxy (só age no plano rotativo; no-op enquanto dry_run=true)
+              const vps = await provisionOrderOnVps(o.id);
+              if (!vps.ok && vps.error) summary.errors.push(`${o.id}: vps provision ${vps.error}`);
             } else if (newStatus === "past_due") {
               await supabaseAdmin
                 .from("customer_proxies")
@@ -150,6 +154,8 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
             } else if (newStatus === "cancelled") {
               const changed = await hideOrReleaseProxiesForOrder(o.id);
               summary.released += changed.hidden_ipv6 + changed.released;
+              const vps = await blockOrderOnVps(o.id);
+              if (!vps.ok && vps.error) summary.errors.push(`${o.id}: vps block ${vps.error}`);
             }
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);

@@ -23,7 +23,11 @@ import {
 const PORT_START = 30000;
 const PORT_END = 30499;
 
-const IPV6_CATEGORIES = new Set(["ipv6", "ipv6_fb", "ipv6_rot"]);
+// A VPS 3proxy hoje serve o plano rotativo (500 portas SOCKS5 por usuário).
+// IPv6 estático (BR/US) e IPv6 p/ Facebook continuam vindo do estoque manual (proxy_stock)
+// para não entregar dois proxies para o mesmo pedido. Se algum dia quisermos entregar
+// rotativo também nos outros IPv6, é só reabrir esse Set.
+const IPV6_CATEGORIES = new Set(["ipv6_rot"]);
 
 type OrderRow = {
   id: string;

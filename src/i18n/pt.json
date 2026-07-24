@@ -81,6 +81,15 @@
       "f2": "Entrega instantânea",
       "f3": "Reposição garantida"
     },
+    "ipv6rot": {
+      "name": "IPv6 Rotativo",
+      "tagline": "Troca IP a cada 10 min",
+      "best_for": "Scraping e anti-ban com rotação automática",
+      "highlight": "Rotação automática 10 em 10 min",
+      "f1": "Troca de IP automática a cada 10 minutos",
+      "f2": "Pool IPv6 Brasil ilimitado",
+      "f3": "HTTP/S e SOCKS5"
+    },
     "ipv4": {
       "name": "IPv4 Dedicado",
       "tagline": "Compatibilidade máxima",

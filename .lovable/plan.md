@@ -1,48 +1,66 @@
-# Estoque manual de IPv6 BR (modo híbrido API ↔ Estoque)
+# Estratégia: manter mensal + adicionar aba de "Pagamento único" (pacotes prépagos)
 
-Objetivo: além do modo VPS/API que já existe, criar um **modo Estoque Manual** para IPv6 BR. Você cola/importa IPs gerados na sua máquina, o painel guarda como estoque, entrega ao cliente na compra, renova junto com a assinatura e avisa via PWA quando o estoque estiver baixo. Um toggle no `/admin/vps` decide qual fonte usar para novas alocações.
+Vamos manter tudo que já existe hoje (planos mensais e anuais em `/#planos`, checkout recorrente via `checkout.functions.ts`) **sem tocar em nada dessa parte**. Em paralelo, dar destaque à aba nova de **pagamento único** (pacotes prépagos IPv6 BR) que já existe em `/pacotes` mas hoje está escondida.
 
-## Como vai funcionar
+Como o IPv6 BR agora é infra própria (custo marginal ~zero), a aba prépaga vira o principal motor de aumento de ticket e redução de churn — sem canibalizar o recorrente.
 
-**Toggle de fonte (por produto IPv6 BR)**
-- `/admin/vps` ganha um seletor de **modo de fornecimento**: `api` (VPS) ou `stock` (manual). Persistido em `provider_settings` (linha `fastproxy_vps`, campo novo `source_mode`).
-- `api` (ligado) → aloca chamando a VPS, como hoje.
-- `stock` (desligado) → aloca puxando linhas livres de `proxy_stock` que eu inseri manualmente. **Nada bate na VPS.**
-- Alternar não mexe em ninguém que já tá com proxy — só muda a fonte das **próximas** alocações e renovações.
+## O que muda na experiência
 
-**Importar IPs manualmente (modo estoque)**
-- Nova aba `/admin/vps/estoque` (ou seção dentro de `/admin/vps`) com:
-  - Textarea que aceita colar em lote nos formatos comuns: `ip:port:user:pass`, `user:pass@ip:port`, `ip:port` (aí user/pass vem em campos separados no topo do lote).
-  - Escolher produto destino (IPv6 BR padrão, IPv6 FB Ads, etc.), país, protocolo (http/socks5), validade padrão (ex.: 30 dias).
-  - Preview do que vai entrar + botão "Importar N IPs".
-  - Deduplicação por `host:port` (skipa duplicados, mostra quantos foram ignorados).
-- Cada linha vira `proxy_stock` com `status='available'`, `provider_order_id=NULL` (estoque manual, sem pedido no fornecedor), `expires_at` = agora + validade.
-- Ao lado, tabela do estoque atual com filtro por produto, status, e ação **Excluir** / **Marcar como quebrado**.
+1. **Home `/`** ganha um bloco novo abaixo dos planos mensais: "Prefere pagar uma vez só? Veja pacotes prépagos" com CTA para `/pacotes`.
+2. **Página `/planos` (ou seção `#planos` da home)** ganha um toggle no topo:
+   - `Mensal` · `Anual` · **`Pagamento único (novo)`** → o terceiro leva pra `/pacotes`.
+3. **Página `/pacotes`** (já existe) recebe:
+   - Comparativo lado-a-lado "Mensal vs Pacote prépago" mostrando quanto economiza.
+   - Selo "MAIS VENDIDO" no combo 5 IPs / 3 meses e "MELHOR CUSTO" no 25 IPs / 12 meses.
+   - Bloco de confiança: "IPv6 brasileiros próprios · Estoque ilimitado · Troca imediata".
+4. **Navbar**: link "Pacotes" já está lá — só reforçar visualmente com badge "novo".
+5. **Fluxo de cancelamento `/dashboard/cancelar`**: antes do cupom 30% que já existe, oferecer "Migre para um pacote prépago e trave o preço" com link direto pra `/pacotes`.
 
-**Alocação no modo estoque**
-- Reusar o caminho normal de `allocation.server.ts`: quando `source_mode='stock'` para o produto, pula a chamada VPS e só faz `SELECT ... FROM proxy_stock WHERE status='available'` (comportamento que já existe para IPv4/ISP). Não muda nada no cliente final: ele recebe IP igual, com credencial dele.
-- Rotação FB Ads no modo estoque: troca por outra linha `available` do mesmo produto (é o comportamento atual do fallback).
+## Grade de pacotes recomendada (IPv6 BR)
 
-**Renovação no modo estoque**
-- `runRenewalSweep` para linhas com `provider_order_id=NULL`: só estende `expires_at` do `proxy_stock` + do `customer_proxies` para +30 dias quando a `orders` correspondente tá `active`. **Não chama VPS**, não gasta nada. Pedido cancelado/inadimplente: libera a linha de volta pra `available` (igual IPv4/ISP hoje).
+Preencher via admin `/admin/pacotes` (CRUD já existe). Base sugerida:
 
-**Alertas de estoque baixo (PWA)**
-- Cron `fulfillment-sweep` já roda de minuto em minuto. Adicionar checagem: se `available` de um produto em modo `stock` cair abaixo do `restock_rules.min_stock` (ou default 10), disparar **push admin** ("Estoque IPv6 BR abaixo de 10, adicione mais IPs") — com throttle de 1 alerta a cada 6h por produto pra não spammar.
-- Também aparece um banner amarelo em `/admin/vps` e em `/admin/inventory` quando estoque < mínimo.
+```text
+QTD IPs │ 1 mês │ 3 meses (-15%) │ 6 meses (-25%) │ 12 meses (-40%)
+────────┼───────┼────────────────┼────────────────┼─────────────────
+   5    │   ✓   │ MAIS VENDIDO   │       ✓        │        ✓
+  10    │   ✓   │      ✓         │  RECOMENDADO   │        ✓
+  25    │       │      ✓         │       ✓        │  MELHOR CUSTO
+  50    │       │      ✓         │       ✓        │        ✓
+```
 
-**Auditoria**
-- Cada importação em lote loga em `audit_log` com `source='vps_manual_stock'`, quantos IPs entraram, quem importou.
+Você define os preços exatos no admin — o plano só entrega a estrutura visual.
 
-## Detalhes técnicos
+## Gatilhos anti-churn embutidos no pacote
 
-- `provider_settings.fastproxy_vps` ganha coluna `source_mode text default 'api'` (`api` | `stock`). Migração cria coluna + default.
-- Adapter `fastproxy-vps.server.ts` não muda. `allocation.server.ts` lê `source_mode` antes de decidir chamar `vps.createBlock` vs. seguir pelo caminho de estoque.
-- Parser do textarea é tolerante: divide por linhas, aceita `,` `;` `:` `@` como separadores comuns, ignora linhas vazias/começadas por `#`.
-- Não altera nada de IPv4, ISP, IPv6 EUA — segue tudo em ProxySeller.
+- Cobrança única → não tem o "boleto/cartão do mês" que gera cancelamento.
+- Bônus visível: 12 meses = "14 meses pelo preço de 12" (2 meses grátis).
+- Trava de preço até 2027 (texto no card).
+- Substituição gratuita em caso de bloqueio (já é a realidade da sua infra).
 
-## Fora do escopo agora
+## O que NÃO muda
 
-- Não vou criar planos novos ainda; quando você mandar os planos, ajusto `products` numa segunda passada.
-- Não vou mexer no OpenCode/VPS. Modo API continua chamando a URL que tá em `FASTPROXY_VPS_API_URL`.
+- Planos mensais e anuais recorrentes continuam funcionando exatamente igual.
+- `checkout.functions.ts`, order bumps, cupons, upsell — nada disso é mexido.
+- Webhook Stripe e alocação de proxies — sem alterações.
 
-Se estiver ok, aplico a migração + o admin de estoque + o ajuste no allocation/renewal + o alerta PWA.
+## Escopo técnico
+
+Apenas frontend/apresentação, sem lógica de negócio nova:
+
+1. **`src/components/site/Plans.tsx`**: adicionar terceira aba "Pagamento único" no toggle mensal/anual, que ao clicar navega pra `/pacotes` (não renderiza pacotes inline pra não duplicar código).
+2. **`src/routes/index.tsx`** (ou onde a home monta as seções): inserir um bloco curto "Prefere pagar uma vez?" com CTA pra `/pacotes` logo depois de `<Plans />`.
+3. **`src/routes/pacotes.tsx`**:
+   - Adicionar hero com comparativo mensal × pacote (economia em %).
+   - Adicionar badges "MAIS VENDIDO" / "MELHOR CUSTO" (campo `highlight` opcional, ou hardcode por `quantity+term_months` se `product_packages` ainda não tiver esse campo — verifico antes de codar).
+   - Bloco de trust logo abaixo do hero: 3 selos (Próprio · Ilimitado · Troca imediata).
+4. **`src/components/site/Navbar.tsx`**: badge "novo" ao lado do link "Pacotes".
+5. **`src/routes/_authenticated.dashboard.cancelar.tsx`**: inserir card "Migre para prépago" como primeira oferta de retenção, antes do cupom.
+
+Sem migração de banco (a menos que a gente decida adicionar `highlight_label` em `product_packages` — te pergunto abaixo).
+
+## Perguntas antes de codar
+
+1. **Selos "MAIS VENDIDO / MELHOR CUSTO"**: prefere que eu **adicione uma coluna `highlight_label`** em `product_packages` (você controla no admin) ou **hardcode** por regra fixa (5×3m = mais vendido, 25×12m = melhor custo)?
+2. **Toggle na home**: a terceira aba do toggle "Mensal · Anual · Pagamento único" deve **navegar** pra `/pacotes` ou **renderizar os pacotes inline** dentro da seção `#planos`? (navegar é mais simples e evita duplicação.)
+3. **Cancelamento**: quer que o card de retenção "migre para prépago" apareça **antes** do cupom 30% (ou seja, tentamos vender pacote primeiro, cupom só se recusar), ou **depois**?

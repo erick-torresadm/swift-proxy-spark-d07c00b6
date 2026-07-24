@@ -346,6 +346,13 @@ function Feat({ text }: { text: string }) {
   );
 }
 
+function getHighlight(qty: number, term: number): { label: string; className: string } | null {
+  if (qty >= 25 && term >= 12) return { label: "Melhor custo", className: "bg-amber-400 text-black" };
+  if (qty >= 10 && term >= 6) return { label: "Recomendado", className: "bg-primary text-primary-foreground" };
+  if (qty === 5 && term === 3) return { label: "Mais vendido", className: "bg-primary text-primary-foreground" };
+  return null;
+}
+
 function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", {
     style: "currency",

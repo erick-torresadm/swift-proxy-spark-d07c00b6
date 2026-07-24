@@ -23,6 +23,7 @@ import { Route as ProxyIpv4RouteImport } from './routes/proxy-ipv4'
 import { Route as ProxyFacebookAdsRouteImport } from './routes/proxy-facebook-ads'
 import { Route as PrivacidadeDothtmlRouteImport } from './routes/privacidade[.]html'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as PacotesRouteImport } from './routes/pacotes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -53,6 +54,7 @@ import { Route as AuthenticatedAdminVpsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminStripeRouteImport } from './routes/_authenticated.admin.stripe'
 import { Route as AuthenticatedAdminProviderRouteImport } from './routes/_authenticated.admin.provider'
 import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated.admin.pricing'
+import { Route as AuthenticatedAdminPacotesRouteImport } from './routes/_authenticated.admin.pacotes'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated.admin.orders'
 import { Route as AuthenticatedAdminInadimplentesRouteImport } from './routes/_authenticated.admin.inadimplentes'
 import { Route as AuthenticatedAdminEquipeRouteImport } from './routes/_authenticated.admin.equipe'
@@ -160,6 +162,11 @@ const PrivacidadeDothtmlRoute = PrivacidadeDothtmlRouteImport.update({
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PacotesRoute = PacotesRouteImport.update({
+  id: '/pacotes',
+  path: '/pacotes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -318,6 +325,12 @@ const AuthenticatedAdminPricingRoute =
   AuthenticatedAdminPricingRouteImport.update({
     id: '/pricing',
     path: '/pricing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPacotesRoute =
+  AuthenticatedAdminPacotesRouteImport.update({
+    id: '/pacotes',
+    path: '/pacotes',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminOrdersRoute =
@@ -552,6 +565,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
+  '/pacotes': typeof PacotesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -584,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/inadimplentes': typeof AuthenticatedAdminInadimplentesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pacotes': typeof AuthenticatedAdminPacotesRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/admin/stripe': typeof AuthenticatedAdminStripeRoute
@@ -634,6 +649,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
+  '/pacotes': typeof PacotesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -664,6 +680,7 @@ export interface FileRoutesByTo {
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/inadimplentes': typeof AuthenticatedAdminInadimplentesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pacotes': typeof AuthenticatedAdminPacotesRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/admin/stripe': typeof AuthenticatedAdminStripeRoute
@@ -717,6 +734,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
+  '/pacotes': typeof PacotesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -749,6 +767,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/_authenticated/admin/inadimplentes': typeof AuthenticatedAdminInadimplentesRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/pacotes': typeof AuthenticatedAdminPacotesRoute
   '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/_authenticated/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/_authenticated/admin/stripe': typeof AuthenticatedAdminStripeRoute
@@ -802,6 +821,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/index.html'
     | '/login'
+    | '/pacotes'
     | '/privacidade'
     | '/privacidade.html'
     | '/proxy-facebook-ads'
@@ -834,6 +854,7 @@ export interface FileRouteTypes {
     | '/admin/equipe'
     | '/admin/inadimplentes'
     | '/admin/orders'
+    | '/admin/pacotes'
     | '/admin/pricing'
     | '/admin/provider'
     | '/admin/stripe'
@@ -884,6 +905,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/index.html'
     | '/login'
+    | '/pacotes'
     | '/privacidade'
     | '/privacidade.html'
     | '/proxy-facebook-ads'
@@ -914,6 +936,7 @@ export interface FileRouteTypes {
     | '/admin/equipe'
     | '/admin/inadimplentes'
     | '/admin/orders'
+    | '/admin/pacotes'
     | '/admin/pricing'
     | '/admin/provider'
     | '/admin/stripe'
@@ -966,6 +989,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/index.html'
     | '/login'
+    | '/pacotes'
     | '/privacidade'
     | '/privacidade.html'
     | '/proxy-facebook-ads'
@@ -998,6 +1022,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/equipe'
     | '/_authenticated/admin/inadimplentes'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/pacotes'
     | '/_authenticated/admin/pricing'
     | '/_authenticated/admin/provider'
     | '/_authenticated/admin/stripe'
@@ -1051,6 +1076,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IndexDothtmlRoute: typeof IndexDothtmlRoute
   LoginRoute: typeof LoginRoute
+  PacotesRoute: typeof PacotesRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   PrivacidadeDothtmlRoute: typeof PrivacidadeDothtmlRoute
   ProxyFacebookAdsRoute: typeof ProxyFacebookAdsRoute
@@ -1184,6 +1210,13 @@ declare module '@tanstack/react-router' {
       path: '/privacidade'
       fullPath: '/privacidade'
       preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pacotes': {
+      id: '/pacotes'
+      path: '/pacotes'
+      fullPath: '/pacotes'
+      preLoaderRoute: typeof PacotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -1394,6 +1427,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/admin/pricing'
       preLoaderRoute: typeof AuthenticatedAdminPricingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/pacotes': {
+      id: '/_authenticated/admin/pacotes'
+      path: '/pacotes'
+      fullPath: '/admin/pacotes'
+      preLoaderRoute: typeof AuthenticatedAdminPacotesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/orders': {
@@ -1706,6 +1746,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
   AuthenticatedAdminInadimplentesRoute: typeof AuthenticatedAdminInadimplentesRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminPacotesRoute: typeof AuthenticatedAdminPacotesRoute
   AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
   AuthenticatedAdminProviderRoute: typeof AuthenticatedAdminProviderRoute
   AuthenticatedAdminStripeRoute: typeof AuthenticatedAdminStripeRoute
@@ -1729,6 +1770,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,
   AuthenticatedAdminInadimplentesRoute: AuthenticatedAdminInadimplentesRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+  AuthenticatedAdminPacotesRoute: AuthenticatedAdminPacotesRoute,
   AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
   AuthenticatedAdminProviderRoute: AuthenticatedAdminProviderRoute,
   AuthenticatedAdminStripeRoute: AuthenticatedAdminStripeRoute,
@@ -1811,6 +1853,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   IndexDothtmlRoute: IndexDothtmlRoute,
   LoginRoute: LoginRoute,
+  PacotesRoute: PacotesRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   PrivacidadeDothtmlRoute: PrivacidadeDothtmlRoute,
   ProxyFacebookAdsRoute: ProxyFacebookAdsRoute,

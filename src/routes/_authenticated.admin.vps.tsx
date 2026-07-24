@@ -393,7 +393,7 @@ function VpsAdmin() {
       </div>
 
       {/* API-mode specifics */}
-      <div className={`rounded-lg border p-4 flex items-center justify-between ${isStockMode ? "opacity-60" : ""}`}>
+      <div className={`rounded-lg border p-4 flex items-center justify-between ${(isStockMode || isProxySellerForIpv6Br) ? "opacity-60" : ""}`}>
         <div>
           <div className="font-medium">Status da API</div>
           <div className="text-sm text-muted-foreground">
@@ -421,7 +421,7 @@ function VpsAdmin() {
         </button>
       </div>
 
-      <div className={`rounded-lg border p-4 space-y-3 ${isStockMode ? "opacity-60" : ""}`}>
+      <div className={`rounded-lg border p-4 space-y-3 ${(isStockMode || isProxySellerForIpv6Br) ? "opacity-60" : ""}`}>
         <div className="font-medium flex items-center gap-2">
           <PlusCircle className="h-4 w-4" /> Emitir novo bloco IPv6 na VPS
         </div>
@@ -465,14 +465,14 @@ function VpsAdmin() {
         </div>
         <button
           className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm disabled:opacity-50"
-          disabled={!productId || issueMut.isPending || size < 1 || days < 1 || isStockMode}
+          disabled={!productId || issueMut.isPending || size < 1 || days < 1 || isStockMode || isProxySellerForIpv6Br}
           onClick={() => issueMut.mutate()}
         >
           {issueMut.isPending ? "Emitindo…" : "Emitir bloco"}
         </button>
       </div>
 
-      <div className={`rounded-lg border p-4 ${isStockMode ? "opacity-60" : ""}`}>
+      <div className={`rounded-lg border p-4 ${(isStockMode || isProxySellerForIpv6Br) ? "opacity-60" : ""}`}>
         <div className="font-medium mb-2">Saúde da API</div>
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Carregando…</div>
@@ -483,7 +483,7 @@ function VpsAdmin() {
         )}
       </div>
 
-      <div className={`rounded-lg border p-4 ${isStockMode ? "opacity-60" : ""}`}>
+      <div className={`rounded-lg border p-4 ${(isStockMode || isProxySellerForIpv6Br) ? "opacity-60" : ""}`}>
         <div className="flex items-center justify-between mb-2">
           <div className="font-medium">Blocos na VPS ({vpsBlocks.length})</div>
           <button className="text-xs underline" onClick={() => refetch()}>Atualizar</button>

@@ -151,10 +151,7 @@ export async function isVpsUserSyncEnabled(): Promise<boolean> {
 }
 
 export function vpsBaseUrlForClientFormat(): string {
-  try {
-    const u = new URL(baseUrl());
-    return u.hostname; // cliente vê socks5://user:pass@host:30000-30499
-  } catch {
-    return "104.234.186.95";
-  }
+  // Host que o cliente final conecta via SOCKS5 (não é o mesmo do painel/API, que fica atrás de HTTPS).
+  // Override opcional: FASTPROXY_VPS_PROXY_HOST.
+  return (process.env.FASTPROXY_VPS_PROXY_HOST ?? "104.234.186.95").trim();
 }

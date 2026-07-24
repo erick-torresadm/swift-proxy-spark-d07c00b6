@@ -1144,7 +1144,7 @@ type StockPick = { id: string };
  * accounting stays clean. See docs/PROXY-CATALOG.md.
  */
 async function pickAvailableStockWithSiblings(
-  product: { id: string; category?: string | null; country_code: string | null },
+  product: { id: string; category?: string | null; country_code: string | null; provider?: string | null },
   remaining: number,
   orderId: string,
 ): Promise<StockPick[]> {
@@ -1163,22 +1163,60 @@ async function pickAvailableStockWithSiblings(
     poolIds = Array.from(new Set([product.id, ...((siblings ?? []).map((s) => s.id as string))]));
   }
 
+  // STRICT VPS mode: quando o admin marca IPv6 BR como "API VPS", só entregamos
+  // proxies que a própria VPS emitiu (provider_orders.provider='fastproxy_vps').
+  // Nada de estoque manual colado, nada de sobras da ProxySeller — a família toda
+  // migra pra VPS. Se faltar IP, o auto-purchase chama a VPS e ela emite novo bloco.
+  const isIpv6BrFamily =
+    (product.category === "ipv6" || product.category === "ipv6_fb") &&
+    (product.country_code?.toUpperCase() === "BR");
+  let strictAllowed: Set<string> | null = null;
+  if (isIpv6BrFamily && (product.provider ?? "fastproxy_vps") === "fastproxy_vps") {
+    const { data: vpsSettings } = await supabaseAdmin
+      .from("provider_settings")
+      .select("source_mode")
+      .eq("provider", "fastproxy_vps")
+      .maybeSingle();
+    const isVpsApiMode = (vpsSettings as { source_mode?: string } | null)?.source_mode !== "stock";
+    if (isVpsApiMode) {
+      const { data: strictStock } = await supabaseAdmin
+        .from("proxy_stock")
+        .select("id, provider_order_id, provider_orders!inner(provider)")
+        .in("product_id", poolIds)
+        .eq("status", "available")
+        .eq("provider_orders.provider", "fastproxy_vps");
+      strictAllowed = new Set(
+        (strictStock ?? []).map((r) => (r as { id: string }).id),
+      );
+      if (strictAllowed.size === 0) {
+        console.log(
+          `[allocation] order=${orderId} STRICT VPS mode: 0 VPS-emitted IPs available in pool ` +
+            `(${product.category}/${product.country_code}) — auto-purchase deve emitir novo bloco na VPS.`,
+        );
+        return [];
+      }
+    }
+  }
+
   // Consolidation RPC: returns available IPs ordered by block-occupancy DESC,
   // then expires_at ASC. Fills partially-used blocks first so empty blocks
   // stay empty and can be abandoned at renewal time.
   const { data: ranked, error: rankErr } = await supabaseAdmin.rpc(
     "pick_consolidated_stock",
-    { _product_ids: poolIds, _limit: remaining },
+    { _product_ids: poolIds, _limit: strictAllowed ? strictAllowed.size : remaining },
   );
 
   if (rankErr) {
     console.error("[allocation] pick_consolidated_stock failed, fallback:", rankErr);
-    const { data: fb } = await supabaseAdmin
+    let fbQ = supabaseAdmin
       .from("proxy_stock")
       .select("id, product_id")
       .in("product_id", poolIds)
-      .eq("status", "available")
-      .limit(remaining);
+      .eq("status", "available");
+    if (strictAllowed) {
+      fbQ = fbQ.in("id", Array.from(strictAllowed));
+    }
+    const { data: fb } = await fbQ.limit(remaining);
     const ids = (fb ?? []).map((r) => r.id as string);
     const borrowed = (fb ?? [])
       .filter((r) => r.product_id !== product.id)
@@ -1189,7 +1227,10 @@ async function pickAvailableStockWithSiblings(
     return ids.map((id) => ({ id }));
   }
 
-  const rows = (ranked ?? []) as Array<{ stock_id: string }>;
+  let rows = (ranked ?? []) as Array<{ stock_id: string }>;
+  if (strictAllowed) {
+    rows = rows.filter((r) => strictAllowed!.has(r.stock_id)).slice(0, remaining);
+  }
   if (rows.length === 0) return [];
   const pickedIds = rows.map((r) => r.stock_id);
 
@@ -1203,11 +1244,12 @@ async function pickAvailableStockWithSiblings(
 
   console.log(
     `[allocation] order=${orderId} consolidated pick ${pickedIds.length} IPs ` +
-      `(${product.category}/${product.country_code}) — prioritized occupied blocks`,
+      `(${product.category}/${product.country_code})${strictAllowed ? " [STRICT VPS]" : ""} — prioritized occupied blocks`,
   );
 
   return pickedIds.map((id) => ({ id }));
 }
+
 
 /**
  * Calls ProxySeller `/proxy/list/{kind}` and ingests any IP that is NOT yet

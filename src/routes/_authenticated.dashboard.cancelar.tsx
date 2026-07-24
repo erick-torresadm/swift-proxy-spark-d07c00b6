@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, CheckCircle2, ShieldCheck, Sparkles, Gift } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ShieldCheck, Sparkles, Gift, Package } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMyCancellableOrders,
@@ -354,10 +354,42 @@ function CancelPage() {
             </div>
             <div className="text-center mb-5 mt-2">
               <Gift className="w-12 h-12 text-primary mx-auto mb-3" />
-              <h2 className="text-2xl font-black mb-2">Espera! Que tal 30% OFF?</h2>
+              <h2 className="text-2xl font-black mb-2">Espera! Antes de cancelar…</h2>
               <p className="text-sm text-muted-foreground">
-                Sabemos que cada centavo conta. Aplicamos <strong className="text-primary">30% de desconto</strong> automaticamente na sua <strong>próxima fatura</strong> — sem letras miúdas, sem precisar de cupom.
+                Temos duas alternativas que podem ser melhores pra você. Escolha uma:
               </p>
+            </div>
+
+            {/* Opção 1: migrar pra pacote prépago */}
+            <Link
+              to="/pacotes"
+              className="block rounded-xl border border-primary/40 bg-primary/5 p-4 mb-3 hover:border-primary transition"
+            >
+              <div className="flex items-start gap-3">
+                <Package className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-bold text-sm mb-0.5 flex items-center gap-2">
+                    Migre para pacote prépago
+                    <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-black text-[9px] font-black uppercase tracking-wider">Novo</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Pague uma vez, use por 3, 6 ou 12 meses. Sem renovação, preço travado, até <strong className="text-primary">-40%</strong> vs mensal.
+                  </p>
+                </div>
+              </div>
+            </Link>
+
+            {/* Opção 2: 30% off */}
+            <div className="rounded-xl border border-border p-4 mb-3">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-bold text-sm mb-0.5">Ganhe 30% OFF na próxima fatura</div>
+                  <p className="text-xs text-muted-foreground">
+                    Aplicado automaticamente, sem cupom. Continue mensal com desconto.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-5 text-sm">

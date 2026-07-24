@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Package, Sparkles } from "lucide-react";
+import { Check, Package, Sparkles, ShieldCheck, Infinity as InfinityIcon, Zap } from "lucide-react";
 import {
   listPackagesPublic,
   createPackageCheckoutSession,
@@ -51,9 +51,9 @@ function PackagesPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-10 md:py-16">
-        <header className="text-center mb-10">
+        <header className="text-center mb-8">
           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-bold uppercase tracking-wide">
-            <Sparkles className="w-3 h-3" /> Pacotes prépagos
+            <Sparkles className="w-3 h-3" /> Pacotes prépagos · Pagamento único
           </span>
           <h1 className="text-3xl md:text-5xl font-black mt-4">
             Compre em volume, pague menos, esqueça a renovação
@@ -63,6 +63,25 @@ function PackagesPage() {
             Quanto mais IPs e mais tempo, maior o desconto.
           </p>
         </header>
+
+        {/* Trust bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
+          {[
+            { Icon: InfinityIcon, label: "IPv6 brasileiros próprios", sub: "Estoque ilimitado, sem fila" },
+            { Icon: Zap, label: "Ativação imediata", sub: "Proxies liberados após pagar" },
+            { Icon: ShieldCheck, label: "Troca gratuita", sub: "Substituição em caso de bloqueio" },
+          ].map(({ Icon, label, sub }) => (
+            <div key={label} className="rounded-2xl border border-border bg-card p-4 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-bold text-sm">{label}</div>
+                <div className="text-xs text-muted-foreground">{sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {groups.length === 0 && (
           <div className="rounded-2xl border border-border bg-card p-10 text-center text-muted-foreground">
@@ -218,8 +237,15 @@ function SelectedPackageCard({
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
+  const highlight = getHighlight(pkg.quantity, pkg.term_months);
+
   return (
-    <div className="rounded-2xl border border-primary/40 bg-primary/5 p-6">
+    <div className="rounded-2xl border border-primary/40 bg-primary/5 p-6 relative">
+      {highlight && (
+        <div className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${highlight.className}`}>
+          {highlight.label}
+        </div>
+      )}
       <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
         <div>
           <p className="text-xs uppercase tracking-wide font-bold text-primary">
@@ -318,6 +344,13 @@ function Feat({ text }: { text: string }) {
       <span>{text}</span>
     </li>
   );
+}
+
+function getHighlight(qty: number, term: number): { label: string; className: string } | null {
+  if (qty >= 25 && term >= 12) return { label: "Melhor custo", className: "bg-amber-400 text-black" };
+  if (qty >= 10 && term >= 6) return { label: "Recomendado", className: "bg-primary text-primary-foreground" };
+  if (qty === 5 && term === 3) return { label: "Mais vendido", className: "bg-primary text-primary-foreground" };
+  return null;
 }
 
 function formatBRL(cents: number): string {

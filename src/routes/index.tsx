@@ -6,6 +6,7 @@ import { Marquee } from "@/components/site/Marquee";
 import { Solution } from "@/components/site/Solution";
 import { Features } from "@/components/site/Features";
 import { Plans } from "@/components/site/Plans";
+import { PackagesCTA } from "@/components/site/PackagesCTA";
 import { FAQ } from "@/components/site/FAQ";
 import { CTA } from "@/components/site/CTA";
 import { Footer } from "@/components/site/Footer";
@@ -107,6 +108,7 @@ function Index() {
         <Testimonials />
 
         <Plans />
+        <PackagesCTA />
         <FAQ />
         <CTA />
       </main>

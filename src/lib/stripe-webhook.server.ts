@@ -7,6 +7,10 @@ import {
 } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 import { getStripe } from "@/lib/stripe.server";
+import {
+  safeBlockManyBySubscription,
+  safeProvisionMany,
+} from "@/lib/vps-user-sync.server";
 import type Stripe from "stripe";
 
 async function logAudit(action: string, status: string, payload: unknown, error?: string) {

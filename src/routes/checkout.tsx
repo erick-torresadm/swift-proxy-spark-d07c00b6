@@ -125,7 +125,7 @@ const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] 
 ];
 
 const searchSchema = z.object({
-  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us"]).optional(),
+  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us", "ipv6-rot-br"]).optional(),
   billing: z.enum(["monthly", "yearly"]).optional(),
   qty: z.coerce.number().int().min(1).max(500).optional(),
   canceled: z.coerce.boolean().optional(),

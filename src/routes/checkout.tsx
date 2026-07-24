@@ -19,6 +19,7 @@ import {
   Shield,
   Users,
   CalendarClock,
+  Phone,
 } from "lucide-react";
 import { z } from "zod";
 import { createCheckoutSession } from "@/lib/checkout.functions";
@@ -229,6 +230,7 @@ function CheckoutPage() {
   const [qty, setQty] = useState<number>(search.qty ?? 1);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -399,12 +401,17 @@ function CheckoutPage() {
     setError(null);
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
+    const cleanPhone = whatsapp.replace(/\D/g, "");
     if (!cleanName || cleanName.length < 2) {
       setError("Informe seu nome completo");
       return;
     }
     if (!emailRegex.test(cleanEmail)) {
       setError("Informe um email válido");
+      return;
+    }
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      setError("Informe um WhatsApp válido com DDD");
       return;
     }
     setSubmitting(true);
@@ -425,6 +432,7 @@ function CheckoutPage() {
           billing,
           email: cleanEmail,
           name: cleanName,
+          whatsapp: cleanPhone,
           couponCode: appliedCoupon?.code ?? null,
           bumps: {
             extraProxies: bumps.extraProxies ?? 0,
@@ -733,6 +741,27 @@ function CheckoutPage() {
                   />
                 </div>
               </div>
+            </div>
+            <div className="mt-3">
+              <label className="text-xs font-semibold text-muted-foreground">
+                WhatsApp <span className="text-primary">(obrigatório)</span>
+              </label>
+              <div className="mt-1.5 relative">
+                <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="tel"
+                  required
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  maxLength={20}
+                  autoComplete="tel"
+                  className="w-full h-11 pl-9 pr-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none transition"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Usamos para suporte e avisos importantes sobre seus proxies. Não enviamos spam.
+              </p>
             </div>
           </section>
 

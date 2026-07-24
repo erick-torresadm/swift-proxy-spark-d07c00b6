@@ -604,6 +604,7 @@ export type Database = {
           current_period_end: string | null
           customer_email: string | null
           customer_name: string | null
+          customer_phone: string | null
           discount_cents: number
           grace_until: string | null
           id: string
@@ -632,6 +633,7 @@ export type Database = {
           current_period_end?: string | null
           customer_email?: string | null
           customer_name?: string | null
+          customer_phone?: string | null
           discount_cents?: number
           grace_until?: string | null
           id?: string
@@ -660,6 +662,7 @@ export type Database = {
           current_period_end?: string | null
           customer_email?: string | null
           customer_name?: string | null
+          customer_phone?: string | null
           discount_cents?: number
           grace_until?: string | null
           id?: string

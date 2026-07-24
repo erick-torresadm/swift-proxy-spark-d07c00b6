@@ -284,6 +284,11 @@ const CheckoutPackageSchema = z.object({
   packageId: z.string().uuid(),
   email: z.string().trim().toLowerCase().email().max(255),
   name: z.string().trim().min(1).max(120),
+  whatsapp: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/\D/g, ""))
+    .pipe(z.string().min(10).max(15)),
   couponCode: z.string().trim().min(1).max(40).optional().nullable(),
 });
 
@@ -346,11 +351,18 @@ export const createPackageCheckoutSession = createServerFn({ method: "POST" })
     const stripe = getStripe();
 
     // Reuse Stripe customer by email
+    const phoneE164 = data.whatsapp.startsWith("55") || data.whatsapp.length > 11
+      ? `+${data.whatsapp}`
+      : `+55${data.whatsapp}`;
     let customerId: string | undefined;
     const found = await stripe.customers.list({ email: data.email, limit: 1 });
-    if (found.data[0]) customerId = found.data[0].id;
-    else {
-      const created = await stripe.customers.create({ email: data.email, name: data.name });
+    if (found.data[0]) {
+      customerId = found.data[0].id;
+      try {
+        await stripe.customers.update(customerId, { phone: phoneE164, name: data.name });
+      } catch { /* ignore */ }
+    } else {
+      const created = await stripe.customers.create({ email: data.email, name: data.name, phone: phoneE164 });
       customerId = created.id;
     }
 
@@ -414,6 +426,7 @@ export const createPackageCheckoutSession = createServerFn({ method: "POST" })
         user_id: existingUserId,
         customer_email: data.email,
         customer_name: data.name,
+        customer_phone: phoneE164,
         product_id: raw.product_id,
         package_id: raw.id,
         quantity: raw.quantity,
@@ -428,6 +441,13 @@ export const createPackageCheckoutSession = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (orderErr || !order) throw new Error(orderErr?.message || "Falha ao criar pedido");
+
+    if (existingUserId) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ phone: phoneE164 } as never)
+        .eq("user_id", existingUserId);
+    }
 
     const origin = originFromRequest();
     const label =

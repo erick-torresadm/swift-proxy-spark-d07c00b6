@@ -217,20 +217,27 @@ function SelectedPackageCard({
   const perIpMonth = pkg.price_cents / pkg.quantity / pkg.term_months;
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [coupon, setCoupon] = useState("");
   const [showForm, setShowForm] = useState(false);
   const buyFn = useServerFn(createPackageCheckoutSession);
 
   const buy = useMutation({
-    mutationFn: () =>
-      buyFn({
+    mutationFn: () => {
+      const cleanPhone = whatsapp.replace(/\D/g, "");
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        throw new Error("Informe um WhatsApp válido com DDD");
+      }
+      return buyFn({
         data: {
           packageId: pkg.id,
           email: email.trim(),
           name: name.trim() || email.split("@")[0],
+          whatsapp: cleanPhone,
           couponCode: coupon.trim() || null,
         },
-      }),
+      });
+    },
     onSuccess: (r) => {
       if (r.url) window.location.href = r.url;
     },
@@ -307,6 +314,14 @@ function SelectedPackageCard({
             />
           </div>
           <input
+            type="tel"
+            required
+            placeholder="WhatsApp com DDD — obrigatório"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
+          />
+          <input
             type="text"
             placeholder="Cupom (opcional)"
             value={coupon}
@@ -316,7 +331,7 @@ function SelectedPackageCard({
           <div className="flex gap-2">
             <button
               onClick={() => buy.mutate()}
-              disabled={buy.isPending || !email.includes("@")}
+              disabled={buy.isPending || !email.includes("@") || whatsapp.replace(/\D/g, "").length < 10}
               className="flex-1 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-black hover:opacity-90 disabled:opacity-50"
             >
               {buy.isPending ? "Redirecionando…" : "Ir para pagamento"}

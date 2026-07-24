@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Server, Receipt, Clock, TrendingUp, ArrowRight, ShoppingCart } from "lucide-react";
+import { Server, Receipt, Clock, TrendingUp, ArrowRight, ShoppingCart, Package, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getMyOverview } from "@/lib/dashboard.functions";
 import { BuyMoreDialog } from "@/components/buy-more-dialog";
@@ -93,6 +93,22 @@ function DashboardHome() {
             </button>
           </BuyMoreDialog>
         </div>
+        <div className="flex flex-wrap gap-2 mb-8 -mt-4">
+          <a
+            href="/#planos"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card hover:border-primary hover:bg-primary/5 text-sm font-semibold transition"
+          >
+            <Sparkles className="w-4 h-4 text-primary" />
+            Ver todos os planos
+          </a>
+          <Link
+            to="/pacotes"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card hover:border-primary hover:bg-primary/5 text-sm font-semibold transition"
+          >
+            <Package className="w-4 h-4 text-primary" />
+            Pacotes pré-pagos (PIX)
+          </Link>
+        </div>
       </motion.div>
 
 
@@ -152,16 +168,25 @@ function DashboardHome() {
         <div className="bg-card border border-border rounded-2xl p-8 text-center">
           <Server className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <h2 className="font-bold mb-1">Você ainda não tem proxies</h2>
-          <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">
-            Assim que você contratar um plano, seus proxies aparecem aqui com
-            host, porta, usuário, senha.
+          <p className="text-sm text-muted-foreground mb-5 max-w-lg mx-auto">
+            Escolha um plano para começar. Temos proxies mensais, anuais e pacotes pré-pagos via PIX.
           </p>
-          <BuyMoreDialog>
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition">
-              <ShoppingCart className="w-4 h-4" />
-              Comprar proxies agora
-            </button>
-          </BuyMoreDialog>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <a
+              href="/#planos"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition"
+            >
+              <Sparkles className="w-4 h-4" />
+              Ver todos os planos
+            </a>
+            <Link
+              to="/pacotes"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-card hover:border-primary font-bold text-sm transition"
+            >
+              <Package className="w-4 h-4 text-primary" />
+              Pacotes pré-pagos
+            </Link>
+          </div>
         </div>
       )}
 

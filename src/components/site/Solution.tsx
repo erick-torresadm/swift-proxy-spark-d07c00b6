@@ -17,7 +17,10 @@ const solutions = [
 
 export function Solution() {
   return (
-    <section id="solucao" className="py-24 md:py-32">
+    <section id="solucao" className="py-24 md:py-32 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-hero opacity-40 pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none" />
       <div className="max-w-7xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

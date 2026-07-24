@@ -108,6 +108,12 @@ export function BuyMoreDialog({
     code: string;
     discount_cents: number;
   } | null>(null);
+  const initialPhone =
+    (user?.user_metadata?.whatsapp as string | undefined) ||
+    (user?.user_metadata?.phone as string | undefined) ||
+    (user?.phone as string | undefined) ||
+    "";
+  const [whatsapp, setWhatsapp] = useState<string>(initialPhone);
 
   const plansForCountry = useMemo(
     () => (Object.values(CATALOG) as CatalogItem[]).filter((p) => p.country === country),
@@ -164,6 +170,11 @@ export function BuyMoreDialog({
       setError("Sessão expirada. Faça login novamente.");
       return;
     }
+    const cleanPhone = whatsapp.replace(/\D/g, "");
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      setError("Informe seu WhatsApp com DDD");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await startCheckout({
@@ -173,6 +184,7 @@ export function BuyMoreDialog({
           billing,
           email,
           name,
+          whatsapp: cleanPhone,
           couponCode: appliedCoupon?.code ?? null,
         },
       });
@@ -379,6 +391,25 @@ export function BuyMoreDialog({
               {couponMsg.text}
             </p>
           )}
+        </section>
+
+        {/* WhatsApp */}
+        <section>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">
+            WhatsApp <span className="text-primary normal-case">(obrigatório)</span>
+          </label>
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="(11) 99999-9999"
+            maxLength={20}
+            autoComplete="tel"
+            className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none transition"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Usamos para suporte e avisos sobre seus proxies.
+          </p>
         </section>
 
         {/* Resumo */}

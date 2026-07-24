@@ -149,6 +149,66 @@ export const setVpsSourceMode = createServerFn({ method: "POST" })
     return { ok: true, mode: data.mode };
   });
 
+/**
+ * Alterna a fonte da família IPv6 BR (produtos ipv6-br e ipv6-fb-br) entre:
+ *  - "stock"        → provider=fastproxy_vps, source_mode=stock (pool manual)
+ *  - "vps"          → provider=fastproxy_vps, source_mode=api   (VPS emite ao vivo)
+ *  - "proxyseller"  → provider=proxyseller                       (compra na ProxySeller)
+ */
+export const setIpv6BrSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { source: Ipv6BrSource }) => {
+    if (d.source !== "stock" && d.source !== "vps" && d.source !== "proxyseller") {
+      throw new Error("source inválido");
+    }
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+
+    const targetProvider = data.source === "proxyseller" ? "proxyseller" : "fastproxy_vps";
+    const { error: pErr } = await supabaseAdmin
+      .from("products")
+      .update({ provider: targetProvider } as never)
+      .in("slug", IPV6_BR_SLUGS as unknown as string[]);
+    if (pErr) throw new Error(pErr.message);
+
+    if (data.source !== "proxyseller") {
+      const nextMode: VpsSourceMode = data.source === "stock" ? "stock" : "api";
+      const { error: sErr } = await supabaseAdmin
+        .from("provider_settings")
+        .upsert(
+          { provider: "fastproxy_vps", source_mode: nextMode } as never,
+          { onConflict: "provider" },
+        );
+      if (sErr) throw new Error(sErr.message);
+    }
+    return { ok: true, source: data.source };
+  });
+
+/** Alterna a fonte dos produtos ProxySeller (IPv4/ISP/USA IPv6) entre Estoque manual e API. */
+export const setProxySellerSourceMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { mode: ProxySellerSource }) => {
+    if (d.mode !== "api" && d.mode !== "stock") throw new Error("mode inválido");
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const { error } = await supabaseAdmin
+      .from("provider_settings")
+      .upsert(
+        { provider: "proxyseller", source_mode: data.mode } as never,
+        { onConflict: "provider" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true, mode: data.mode };
+  });
+
+
+
 
 export const setVpsEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

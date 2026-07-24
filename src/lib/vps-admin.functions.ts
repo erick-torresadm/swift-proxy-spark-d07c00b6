@@ -73,6 +73,17 @@ export const getVpsStatus = createServerFn({ method: "GET" })
       .eq("provider", "fastproxy_vps")
       .maybeSingle();
 
+    const { data: psSettings } = await supabaseAdmin
+      .from("provider_settings")
+      .select("source_mode")
+      .eq("provider", "proxyseller")
+      .maybeSingle();
+
+    const { data: ipv6BrProducts } = await supabaseAdmin
+      .from("products")
+      .select("slug, provider")
+      .in("slug", IPV6_BR_SLUGS as unknown as string[]);
+
     const { data: dbBlocksRaw } = await supabaseAdmin
       .from("provider_orders")
       .select("id, external_order_id, expires_at, quantity, status, created_at")
@@ -83,9 +94,26 @@ export const getVpsStatus = createServerFn({ method: "GET" })
     const s = settings as { dry_run?: boolean; source_mode?: string } | null;
     const enabled = !(s?.dry_run ?? true);
     const sourceMode: VpsSourceMode = s?.source_mode === "stock" ? "stock" : "api";
+
+    // Determinar fonte efetiva IPv6 BR: se algum produto da família estiver como proxyseller → proxyseller.
+    // Senão segue source_mode do fastproxy_vps (api/stock).
+    const anyOnProxySeller = (ipv6BrProducts ?? []).some(
+      (p) => (p as { provider?: string }).provider === "proxyseller",
+    );
+    const ipv6BrSource: Ipv6BrSource = anyOnProxySeller
+      ? "proxyseller"
+      : sourceMode === "stock"
+        ? "stock"
+        : "vps";
+
+    const psMode = (psSettings as { source_mode?: string } | null)?.source_mode ?? "api";
+    const proxysellerSource: ProxySellerSource = psMode === "stock" ? "stock" : "api";
+
     return {
       enabled,
       sourceMode,
+      ipv6BrSource,
+      proxysellerSource,
       apiBaseUrl,
       healthOk,
       healthError,

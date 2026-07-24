@@ -168,16 +168,25 @@ function DashboardHome() {
         <div className="bg-card border border-border rounded-2xl p-8 text-center">
           <Server className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <h2 className="font-bold mb-1">Você ainda não tem proxies</h2>
-          <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">
-            Assim que você contratar um plano, seus proxies aparecem aqui com
-            host, porta, usuário, senha.
+          <p className="text-sm text-muted-foreground mb-5 max-w-lg mx-auto">
+            Escolha um plano para começar. Temos proxies mensais, anuais e pacotes pré-pagos via PIX.
           </p>
-          <BuyMoreDialog>
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition">
-              <ShoppingCart className="w-4 h-4" />
-              Comprar proxies agora
-            </button>
-          </BuyMoreDialog>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <a
+              href="/#planos"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-glow hover:bg-primary/90 transition"
+            >
+              <Sparkles className="w-4 h-4" />
+              Ver todos os planos
+            </a>
+            <Link
+              to="/pacotes"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-card hover:border-primary font-bold text-sm transition"
+            >
+              <Package className="w-4 h-4 text-primary" />
+              Pacotes pré-pagos
+            </Link>
+          </div>
         </div>
       )}
 

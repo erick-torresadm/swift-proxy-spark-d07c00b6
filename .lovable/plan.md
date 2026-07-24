@@ -1,44 +1,48 @@
-## Objetivo
+# Estoque manual de IPv6 BR (modo híbrido API ↔ Estoque)
 
-Passar pro opencode (IA da VPS) exatamente o contrato que o painel FastProxy já espera, pra ele reconstruir a API Flask sobre o novo setup (IPv6 nativo HostZone + Temporalitas) sem quebrar nada do lado do painel. Não há mudança de código no painel exceto trocar a URL da VPS quando ela subir.
+Objetivo: além do modo VPS/API que já existe, criar um **modo Estoque Manual** para IPv6 BR. Você cola/importa IPs gerados na sua máquina, o painel guarda como estoque, entrega ao cliente na compra, renova junto com a assinatura e avisa via PWA quando o estoque estiver baixo. Um toggle no `/admin/vps` decide qual fonte usar para novas alocações.
 
-## Decisões (respostas às 4 perguntas do opencode)
+## Como vai funcionar
 
-1. **Modelo por cliente:** username/senha/porta **próprios** por cliente (opção A). Pool compartilhado não permite suspender inadimplente individual nem rotacionar IP do Facebook Ads.
-2. **Quantidades por plano:**
-   - IPv6 BR R$29,90/mês → 10 IPs, sem rotação.
-   - IPv6 Facebook Ads R$80/mês → 10 IPs + 10 rotações/mês.
-   - IPv4 e ISP continuam no ProxySeller, **não** entram na VPS.
-3. **Painel:** Lovable + Supabase gerenciado; IA da VPS não precisa acessar. Toda integração é HTTP.
-4. **Caminho:** opção A — opencode sobe a API na VPS e me passa URL pública em 80/443.
+**Toggle de fonte (por produto IPv6 BR)**
+- `/admin/vps` ganha um seletor de **modo de fornecimento**: `api` (VPS) ou `stock` (manual). Persistido em `provider_settings` (linha `fastproxy_vps`, campo novo `source_mode`).
+- `api` (ligado) → aloca chamando a VPS, como hoje.
+- `stock` (desligado) → aloca puxando linhas livres de `proxy_stock` que eu inseri manualmente. **Nada bate na VPS.**
+- Alternar não mexe em ninguém que já tá com proxy — só muda a fonte das **próximas** alocações e renovações.
 
-## Contrato HTTP obrigatório
+**Importar IPs manualmente (modo estoque)**
+- Nova aba `/admin/vps/estoque` (ou seção dentro de `/admin/vps`) com:
+  - Textarea que aceita colar em lote nos formatos comuns: `ip:port:user:pass`, `user:pass@ip:port`, `ip:port` (aí user/pass vem em campos separados no topo do lote).
+  - Escolher produto destino (IPv6 BR padrão, IPv6 FB Ads, etc.), país, protocolo (http/socks5), validade padrão (ex.: 30 dias).
+  - Preview do que vai entrar + botão "Importar N IPs".
+  - Deduplicação por `host:port` (skipa duplicados, mostra quantos foram ignorados).
+- Cada linha vira `proxy_stock` com `status='available'`, `provider_order_id=NULL` (estoque manual, sem pedido no fornecedor), `expires_at` = agora + validade.
+- Ao lado, tabela do estoque atual com filtro por produto, status, e ação **Excluir** / **Marcar como quebrado**.
 
-Auth: `Authorization: Bearer ***REMOVED***` em todas as rotas.
+**Alocação no modo estoque**
+- Reusar o caminho normal de `allocation.server.ts`: quando `source_mode='stock'` para o produto, pula a chamada VPS e só faz `SELECT ... FROM proxy_stock WHERE status='available'` (comportamento que já existe para IPv4/ISP). Não muda nada no cliente final: ele recebe IP igual, com credencial dele.
+- Rotação FB Ads no modo estoque: troca por outra linha `available` do mesmo produto (é o comportamento atual do fallback).
 
-- `GET /health` → `{ status, uptime_seconds, blocks, proxies }`
-- `POST /blocks` `{ size, duration_days, customer_ref }` → `{ id, size, expires_at, proxies:[{ ip, port, username, password, protocol, block_id }] }`
-- `GET /blocks` → lista com o mesmo shape (`proxies[]` incluso)
-- `GET /blocks/:id` → mesmo shape
-- `POST /blocks/:id/renew` `{ days }` → bloco com `expires_at` estendido
-- `POST /blocks/:id/cancel` → libera bloco (só quando 0 credenciais vinculadas)
-- `POST /credentials` `{ username, password, block_id }` → upsert (usado na reativação de inadimplente que voltou a pagar)
-- `DELETE /credentials/:username` → suspende sem liberar IP
-- `POST /credentials/:username/rotate` → troca IP mantendo `port`+`username`+`password`, retorna proxy atualizado
-- `GET /audit` → últimas ações
+**Renovação no modo estoque**
+- `runRenewalSweep` para linhas com `provider_order_id=NULL`: só estende `expires_at` do `proxy_stock` + do `customer_proxies` para +30 dias quando a `orders` correspondente tá `active`. **Não chama VPS**, não gasta nada. Pedido cancelado/inadimplente: libera a linha de volta pra `available` (igual IPv4/ISP hoje).
 
-## Invariantes que a VPS tem que respeitar
+**Alertas de estoque baixo (PWA)**
+- Cron `fulfillment-sweep` já roda de minuto em minuto. Adicionar checagem: se `available` de um produto em modo `stock` cair abaixo do `restock_rules.min_stock` (ou default 10), disparar **push admin** ("Estoque IPv6 BR abaixo de 10, adicione mais IPs") — com throttle de 1 alerta a cada 6h por produto pra não spammar.
+- Também aparece um banner amarelo em `/admin/vps` e em `/admin/inventory` quando estoque < mínimo.
 
-- `port` do cliente é imutável enquanto a credencial existir.
-- Suspender credencial não devolve o IPv6 ao pool — bloco IPv6 é indivisível até expirar/cancelar.
-- `duration_days`: 30 (mensal) / 365 (anual).
-- Bloco só pode ser cancelado quando não há credenciais vinculadas.
+**Auditoria**
+- Cada importação em lote loga em `audit_log` com `source='vps_manual_stock'`, quantos IPs entraram, quem importou.
 
-## Passos do lado do painel
+## Detalhes técnicos
 
-1. Aguardar opencode subir a API e publicar em 80/443 (preferência HTTPS com Let's Encrypt em `api.fastproxy.com.br`).
-2. Atualizar o secret `FASTPROXY_VPS_API_URL` com a URL pública.
-3. Testar em `/admin/vps`: `/health` deve responder 200 e o botão "Emitir novo bloco" deve criar bloco de 10 IPs.
-4. Smoke test end-to-end: 1 pedido real IPv6 BR de baixo valor → bloco criado, credenciais funcionam via curl.
+- `provider_settings.fastproxy_vps` ganha coluna `source_mode text default 'api'` (`api` | `stock`). Migração cria coluna + default.
+- Adapter `fastproxy-vps.server.ts` não muda. `allocation.server.ts` lê `source_mode` antes de decidir chamar `vps.createBlock` vs. seguir pelo caminho de estoque.
+- Parser do textarea é tolerante: divide por linhas, aceita `,` `;` `:` `@` como separadores comuns, ignora linhas vazias/começadas por `#`.
+- Não altera nada de IPv4, ISP, IPv6 EUA — segue tudo em ProxySeller.
 
-Sem alterações de código previstas — o adapter `src/lib/fastproxy-vps.server.ts` já implementa esse contrato exato.
+## Fora do escopo agora
+
+- Não vou criar planos novos ainda; quando você mandar os planos, ajusto `products` numa segunda passada.
+- Não vou mexer no OpenCode/VPS. Modo API continua chamando a URL que tá em `FASTPROXY_VPS_API_URL`.
+
+Se estiver ok, aplico a migração + o admin de estoque + o ajuste no allocation/renewal + o alerta PWA.

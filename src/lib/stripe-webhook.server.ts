@@ -364,6 +364,9 @@ async function handlePaidInvoice(inv: Stripe.Invoice) {
 
   }
 
+  // VPS 3proxy sync (no-op enquanto provider_settings.fastproxy_vps_users.dry_run=true)
+  await safeProvisionMany(paidOrderIds);
+
 
   const billingReason = (inv as unknown as { billing_reason?: string }).billing_reason;
   const oldEnd = before?.current_period_end ? new Date(before.current_period_end).getTime() : 0;

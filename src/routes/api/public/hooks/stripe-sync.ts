@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
 import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder, restoreHiddenProxiesForPaidOrder } from "@/lib/allocation.server";
 import { reconcileOrderWithStripe } from "@/lib/reconcile.server";
+import { blockOrderOnVps, provisionOrderOnVps } from "@/lib/vps-user-sync.server";
 
 function subscriptionPeriodEnd(subscription: unknown): string | null {
   const sub = subscription as {

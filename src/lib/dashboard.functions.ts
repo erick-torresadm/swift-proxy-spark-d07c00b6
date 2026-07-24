@@ -229,7 +229,7 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
     // externamente (recurso incluído no plano Facebook Ads).
     const { data: currentStock } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, product_id, external_proxy_id, provider_order_id, products(category)")
+      .select("id, product_id, external_proxy_id, provider_order_id, products(category, country_code)")
       .eq("id", row.stock_id as string)
       .maybeSingle();
 
@@ -237,10 +237,25 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       throw new Error("Estoque atual não encontrado");
     }
 
+    // Para IPv6 FB Ads, permitimos swap dentro do mesmo país entre pools
+    // 'ipv6_fb' e 'ipv6' (temos estoque farto de IPv6 BR/US).
+    const curCategory = (currentStock as { products?: { category?: string; country_code?: string } }).products?.category ?? "";
+    const curCountry = (currentStock as { products?: { category?: string; country_code?: string } }).products?.country_code ?? "BR";
+    const siblingCategories = curCategory === "ipv6_fb" || curCategory === "ipv6"
+      ? ["ipv6_fb", "ipv6"]
+      : [curCategory];
+
+    const { data: siblingProducts } = await supabaseAdmin
+      .from("products")
+      .select("id")
+      .in("category", siblingCategories as never)
+      .eq("country_code", curCountry);
+    const siblingIds = (siblingProducts ?? []).map((p) => p.id);
+
     const { data: available, error: availErr } = await supabaseAdmin
       .from("proxy_stock")
       .select("id")
-      .eq("product_id", currentStock.product_id)
+      .in("product_id", siblingIds.length ? siblingIds : [currentStock.product_id])
       .eq("status", "available")
       .neq("id", currentStock.id)
       .order("created_at", { ascending: true })
@@ -248,6 +263,7 @@ export const rotateProxyIp = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (availErr) throw new Error(availErr.message);
+
 
     if (available) {
       // Caminho rápido: troca por outro IP em estoque

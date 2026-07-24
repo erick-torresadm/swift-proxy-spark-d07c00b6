@@ -93,6 +93,22 @@ function DashboardHome() {
             </button>
           </BuyMoreDialog>
         </div>
+        <div className="flex flex-wrap gap-2 mb-8 -mt-4">
+          <a
+            href="/#planos"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card hover:border-primary hover:bg-primary/5 text-sm font-semibold transition"
+          >
+            <Sparkles className="w-4 h-4 text-primary" />
+            Ver todos os planos
+          </a>
+          <Link
+            to="/pacotes"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-card hover:border-primary hover:bg-primary/5 text-sm font-semibold transition"
+          >
+            <Package className="w-4 h-4 text-primary" />
+            Pacotes pré-pagos (PIX)
+          </Link>
+        </div>
       </motion.div>
 
 

@@ -110,6 +110,7 @@ const META: Record<Slug, CatalogMeta> = {
 const FALLBACK_PRICES: Record<Slug, { monthly: number; yearly: number }> = {
   "ipv6-br":    { monthly: 3000, yearly: 29700 },
   "ipv6-fb-br": { monthly: 8000, yearly: 79200 },
+  "ipv6-rot-br": { monthly: 12000, yearly: 118800 },
   "ipv6-us":    { monthly: 3000, yearly: 29700 },
   "ipv6-fb-us": { monthly: 8000, yearly: 79200 },
   "ipv4-br":    { monthly: 4990, yearly: 49401 },

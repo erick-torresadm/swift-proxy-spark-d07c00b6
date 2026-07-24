@@ -16,7 +16,7 @@ export function Navbar() {
 
   const links = [
     { href: "/#planos", label: t("nav.plans") },
-    { href: "/pacotes", label: "Pacotes" },
+    { href: "/pacotes", label: "Pacotes", badge: "Novo" as const },
     { href: "/#anunciantes", label: "Anunciantes" },
     { href: "/blog", label: t("nav.blog") },
     { href: "/#faq", label: t("nav.faq") },
@@ -61,9 +61,14 @@ export function Navbar() {
               <a
                 key={l.href}
                 href={l.href}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-full transition"
+                className="relative px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-full transition"
               >
                 {l.label}
+                {"badge" in l && l.badge && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-black text-[8px] font-black uppercase tracking-wider">
+                    {l.badge}
+                  </span>
+                )}
               </a>
             ))}
           </nav>

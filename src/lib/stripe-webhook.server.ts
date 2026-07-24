@@ -178,19 +178,41 @@ async function markOrderCanceled(subscriptionId: string) {
 async function notifySale(orderId: string, via: string) {
   const { data: ord } = await supabaseAdmin
     .from("orders")
-    .select("amount_cents, quantity, customer_email, billing_cycle, product_id, products(name, slug)")
+    .select("amount_cents, quantity, customer_email, billing_cycle, product_id, products(name, slug, category, country_code)")
     .eq("id", orderId)
     .maybeSingle();
-  const prod = (ord as unknown as { products?: { name?: string; slug?: string } })?.products ?? null;
+  const prod = (ord as unknown as { products?: { name?: string; slug?: string; category?: string; country_code?: string } })?.products ?? null;
   const amount = ((ord?.amount_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // Snapshot de estoque IPv6 pós-venda (BR/US, pool consolidado ipv6 + ipv6_fb).
+  let stockLine = "";
+  try {
+    const { data: stockRows } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("status, products!inner(category, country_code)")
+      .in("products.category" as never, ["ipv6", "ipv6_fb"] as never)
+      .eq("status", "available");
+    const counts = { BR: 0, US: 0 } as Record<string, number>;
+    for (const r of (stockRows ?? []) as Array<{ products?: { country_code?: string } }>) {
+      const cc = r.products?.country_code ?? "BR";
+      counts[cc] = (counts[cc] ?? 0) + 1;
+    }
+    stockLine = ` · Estoque IPv6 BR: ${counts.BR ?? 0} · US: ${counts.US ?? 0}`;
+  } catch { /* stock snapshot best-effort */ }
+
+  const isIpv6 = prod?.category === "ipv6" || prod?.category === "ipv6_fb";
+  const emoji = isIpv6 ? "🟢" : "💸";
+  const title = isIpv6 ? `${emoji} Venda IPv6 ${prod?.country_code ?? ""}`.trim() : `${emoji} Nova venda`;
+
   await notifyAllAdmins({
-    title: "💸 Nova venda",
-    body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}`,
+    title,
+    body: `${prod?.name ?? "Produto"} × ${ord?.quantity ?? 1} — ${amount} (${ord?.billing_cycle ?? "monthly"}) · ${ord?.customer_email ?? "cliente"}${stockLine}`,
     link: "/admin/orders",
-    metadata: { orderId, productSlug: prod?.slug, via },
+    metadata: { orderId, productSlug: prod?.slug, via, category: prod?.category, country: prod?.country_code },
     dedupeKey: `sale:${orderId}`,
   });
 }
+
 
 async function allocateOrder(orderId: string) {
   try {

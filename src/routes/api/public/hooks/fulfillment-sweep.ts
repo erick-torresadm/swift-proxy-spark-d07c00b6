@@ -5,7 +5,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { checkCronAuth } from "@/lib/cron-auth.server";
-import { runFulfillmentSweep } from "@/lib/allocation.server";
+import { runFulfillmentSweep, checkManualStockLow } from "@/lib/allocation.server";
 
 export const Route = createFileRoute("/api/public/hooks/fulfillment-sweep")({
   server: {
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/api/public/hooks/fulfillment-sweep")({
         const alertAfterMinutes = Number(url.searchParams.get("alert_after_minutes")) || 10;
         try {
           const result = await runFulfillmentSweep({ alertAfterMinutes });
-          return Response.json({ ok: true, ...result });
+          const stockCheck = await checkManualStockLow().catch(() => ({ checked: 0, alerted: 0 }));
+          return Response.json({ ok: true, ...result, manual_stock: stockCheck });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           return Response.json({ ok: false, error: msg }, { status: 500 });
@@ -26,3 +27,4 @@ export const Route = createFileRoute("/api/public/hooks/fulfillment-sweep")({
     },
   },
 });
+

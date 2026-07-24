@@ -54,6 +54,7 @@ import { Route as AuthenticatedAdminVpsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminStripeRouteImport } from './routes/_authenticated.admin.stripe'
 import { Route as AuthenticatedAdminProviderRouteImport } from './routes/_authenticated.admin.provider'
 import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated.admin.pricing'
+import { Route as AuthenticatedAdminPacotesRouteImport } from './routes/_authenticated.admin.pacotes'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated.admin.orders'
 import { Route as AuthenticatedAdminInadimplentesRouteImport } from './routes/_authenticated.admin.inadimplentes'
 import { Route as AuthenticatedAdminEquipeRouteImport } from './routes/_authenticated.admin.equipe'
@@ -326,6 +327,12 @@ const AuthenticatedAdminPricingRoute =
     path: '/pricing',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPacotesRoute =
+  AuthenticatedAdminPacotesRouteImport.update({
+    id: '/pacotes',
+    path: '/pacotes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminOrdersRoute =
   AuthenticatedAdminOrdersRouteImport.update({
     id: '/orders',
@@ -591,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/inadimplentes': typeof AuthenticatedAdminInadimplentesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pacotes': typeof AuthenticatedAdminPacotesRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/admin/stripe': typeof AuthenticatedAdminStripeRoute
@@ -672,6 +680,7 @@ export interface FileRoutesByTo {
   '/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/admin/inadimplentes': typeof AuthenticatedAdminInadimplentesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/pacotes': typeof AuthenticatedAdminPacotesRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/admin/stripe': typeof AuthenticatedAdminStripeRoute
@@ -758,6 +767,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/equipe': typeof AuthenticatedAdminEquipeRoute
   '/_authenticated/admin/inadimplentes': typeof AuthenticatedAdminInadimplentesRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/pacotes': typeof AuthenticatedAdminPacotesRoute
   '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/_authenticated/admin/provider': typeof AuthenticatedAdminProviderRoute
   '/_authenticated/admin/stripe': typeof AuthenticatedAdminStripeRoute
@@ -844,6 +854,7 @@ export interface FileRouteTypes {
     | '/admin/equipe'
     | '/admin/inadimplentes'
     | '/admin/orders'
+    | '/admin/pacotes'
     | '/admin/pricing'
     | '/admin/provider'
     | '/admin/stripe'
@@ -925,6 +936,7 @@ export interface FileRouteTypes {
     | '/admin/equipe'
     | '/admin/inadimplentes'
     | '/admin/orders'
+    | '/admin/pacotes'
     | '/admin/pricing'
     | '/admin/provider'
     | '/admin/stripe'
@@ -1010,6 +1022,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/equipe'
     | '/_authenticated/admin/inadimplentes'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/pacotes'
     | '/_authenticated/admin/pricing'
     | '/_authenticated/admin/provider'
     | '/_authenticated/admin/stripe'
@@ -1416,6 +1429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPricingRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/pacotes': {
+      id: '/_authenticated/admin/pacotes'
+      path: '/pacotes'
+      fullPath: '/admin/pacotes'
+      preLoaderRoute: typeof AuthenticatedAdminPacotesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
       path: '/orders'
@@ -1726,6 +1746,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminEquipeRoute: typeof AuthenticatedAdminEquipeRoute
   AuthenticatedAdminInadimplentesRoute: typeof AuthenticatedAdminInadimplentesRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminPacotesRoute: typeof AuthenticatedAdminPacotesRoute
   AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
   AuthenticatedAdminProviderRoute: typeof AuthenticatedAdminProviderRoute
   AuthenticatedAdminStripeRoute: typeof AuthenticatedAdminStripeRoute
@@ -1749,6 +1770,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminEquipeRoute: AuthenticatedAdminEquipeRoute,
   AuthenticatedAdminInadimplentesRoute: AuthenticatedAdminInadimplentesRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+  AuthenticatedAdminPacotesRoute: AuthenticatedAdminPacotesRoute,
   AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
   AuthenticatedAdminProviderRoute: AuthenticatedAdminProviderRoute,
   AuthenticatedAdminStripeRoute: AuthenticatedAdminStripeRoute,

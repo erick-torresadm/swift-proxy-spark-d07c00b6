@@ -608,6 +608,7 @@ export type Database = {
           grace_until: string | null
           id: string
           last_payment_check_at: string | null
+          package_id: string | null
           product_id: string
           promo_code: string | null
           quantity: number
@@ -635,6 +636,7 @@ export type Database = {
           grace_until?: string | null
           id?: string
           last_payment_check_at?: string | null
+          package_id?: string | null
           product_id: string
           promo_code?: string | null
           quantity?: number
@@ -662,6 +664,7 @@ export type Database = {
           grace_until?: string | null
           id?: string
           last_payment_check_at?: string | null
+          package_id?: string | null
           product_id?: string
           promo_code?: string | null
           quantity?: number
@@ -678,6 +681,13 @@ export type Database = {
           vip_support?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "product_packages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_product_id_fkey"
             columns: ["product_id"]
@@ -1007,6 +1017,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      product_packages: {
+        Row: {
+          active: boolean
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          label: string | null
+          price_cents: number | null
+          product_id: string
+          quantity: number
+          sort_order: number
+          stripe_price_id: string | null
+          term_months: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          label?: string | null
+          price_cents?: number | null
+          product_id: string
+          quantity: number
+          sort_order?: number
+          stripe_price_id?: string | null
+          term_months: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          label?: string | null
+          price_cents?: number | null
+          product_id?: string
+          quantity?: number
+          sort_order?: number
+          stripe_price_id?: string | null
+          term_months?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_packages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_packages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {

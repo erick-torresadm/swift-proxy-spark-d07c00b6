@@ -59,11 +59,13 @@ function VpsAdmin() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
+  // Legacy 2-way toggle usado só pelas mutações herdadas; a UI usa ipv6SrcMut / psModeMut.
   const modeMut = useMutation({
     mutationFn: (mode: "api" | "stock") => setMode({ data: { mode } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-vps"] }),
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
+  void modeMut;
 
   const ipv6SrcMut = useMutation({
     mutationFn: (source: Ipv6BrSource) => setIpv6Src({ data: { source } }),

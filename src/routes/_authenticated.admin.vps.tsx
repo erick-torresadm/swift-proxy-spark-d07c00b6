@@ -29,6 +29,8 @@ function VpsAdmin() {
   const issue = useServerFn(issueVpsBlock);
   const toggle = useServerFn(setVpsEnabled);
   const setMode = useServerFn(setVpsSourceMode);
+  const setIpv6Src = useServerFn(setIpv6BrSource);
+  const setPsMode = useServerFn(setProxySellerSourceMode);
   const importStock = useServerFn(importManualStock);
   const fetchStock = useServerFn(listManualStock);
   const removeStock = useServerFn(deleteManualStock);

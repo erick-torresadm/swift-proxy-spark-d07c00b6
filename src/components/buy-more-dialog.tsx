@@ -393,6 +393,25 @@ export function BuyMoreDialog({
           )}
         </section>
 
+        {/* WhatsApp */}
+        <section>
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">
+            WhatsApp <span className="text-primary normal-case">(obrigatório)</span>
+          </label>
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="(11) 99999-9999"
+            maxLength={20}
+            autoComplete="tel"
+            className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm focus:border-primary focus:outline-none transition"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Usamos para suporte e avisos sobre seus proxies.
+          </p>
+        </section>
+
         {/* Resumo */}
         <div className="rounded-xl border border-border p-4 bg-background/60">
           <div className="flex justify-between text-sm mb-1.5">

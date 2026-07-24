@@ -73,7 +73,9 @@ export function Plans() {
 
   return (
     <section id="planos" className="py-20 md:py-28 relative overflow-hidden">
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[600px] bg-gradient-hero pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-hero opacity-60 pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-5 sm:px-6 relative">
         <motion.div

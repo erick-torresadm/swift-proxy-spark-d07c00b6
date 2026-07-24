@@ -641,6 +641,26 @@ async function autoPurchaseIntoStock(
   }
 
 
+  // ProxySeller path: respect proxyseller.source_mode='stock' → don't purchase, just alert admin.
+  const { data: psSettings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("source_mode")
+    .eq("provider", "proxyseller")
+    .maybeSingle();
+  const psMode = (psSettings as { source_mode?: string } | null)?.source_mode ?? "api";
+  if (psMode === "stock") {
+    try {
+      await notifyAllAdmins({
+        title: "⚠️ Estoque ProxySeller esgotou (modo manual)",
+        body: `Produto ${product.id.slice(0, 8)} precisa de ${needed} IPs mas o modo é 'Estoque' e não há mais IPs. Adicione IPs em /admin/vps ou alterne para 'API ProxySeller'.`,
+        link: "/admin/vps",
+        metadata: { productId: product.id, needed },
+        dedupeKey: `manual-stock-empty-ps:${product.id}:${new Date().toISOString().slice(0, 10)}`,
+      });
+    } catch { /* ignore notify errors */ }
+    return 0;
+  }
+
   if (!product.provider_tariff_id) {
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
   }

@@ -63,6 +63,12 @@ const META: Record<Slug, CatalogMeta> = {
     tagline: "Inclui rotações de IP / mês por proxy",
     blockSize: 1, unitLabel: "proxy",
   },
+  "ipv6-rot-br": {
+    slug: "ipv6-rot-br", country: "BR", kind: "ipv6_fb",
+    name: "IPv6 Rotativo Brasil",
+    tagline: "Troca automática de IP a cada 10 minutos",
+    blockSize: 1, unitLabel: "proxy",
+  },
   "ipv6-us": {
     slug: "ipv6-us", country: "US", kind: "ipv6",
     name: "Proxy IPv6 EUA",

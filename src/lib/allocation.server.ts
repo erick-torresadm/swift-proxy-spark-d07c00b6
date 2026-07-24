@@ -1890,3 +1890,58 @@ export async function runFulfillmentSweep(opts: { alertAfterMinutes?: number } =
   return out;
 }
 
+/**
+ * Checks manual-stock products (source_mode='stock') and pings admins via PWA
+ * push when the available pool falls below the product's min_stock rule
+ * (default 10). Deduped to at most one alert per product per 6h window.
+ * Called from fulfillment-sweep so it piggybacks the minute-by-minute cron.
+ */
+export async function checkManualStockLow(): Promise<{ checked: number; alerted: number }> {
+  const out = { checked: 0, alerted: 0 };
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("source_mode")
+    .eq("provider", "fastproxy_vps")
+    .maybeSingle();
+  const mode = (settings as { source_mode?: string } | null)?.source_mode ?? "api";
+  if (mode !== "stock") return out;
+
+  const { data: products } = await supabaseAdmin
+    .from("products")
+    .select("id, name, category, country_code")
+    .eq("provider", "fastproxy_vps")
+    .eq("active", true);
+
+  for (const p of products ?? []) {
+    out.checked++;
+    const { count } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", p.id)
+      .is("provider_order_id", null)
+      .eq("status", "available");
+    const available = count ?? 0;
+
+    const { data: rule } = await supabaseAdmin
+      .from("restock_rules")
+      .select("min_stock")
+      .eq("product_id", p.id)
+      .maybeSingle();
+    const minStock = (rule as { min_stock?: number } | null)?.min_stock ?? 10;
+
+    if (available >= minStock) continue;
+
+    const bucket = Math.floor(Date.now() / (6 * 3600_000));
+    await notifyAllAdmins({
+      title: "📦 Estoque manual baixo",
+      body: `${p.name ?? p.id.slice(0, 8)} (${p.country_code ?? "?"}): ${available} IPs disponíveis (mínimo ${minStock}). Adicione mais em /admin/vps.`,
+      link: "/admin/vps",
+      metadata: { productId: p.id, available, minStock },
+      dedupeKey: `manual-stock-low:${p.id}:${bucket}`,
+    });
+    out.alerted++;
+  }
+  return out;
+}
+
+

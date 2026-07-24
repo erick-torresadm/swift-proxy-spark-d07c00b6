@@ -12,8 +12,11 @@ async function assertAdmin(userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
+export type VpsSourceMode = "api" | "stock";
+
 export type VpsStatus = {
   enabled: boolean;
+  sourceMode: VpsSourceMode;
   apiBaseUrl: string;
   healthOk: boolean;
   healthError: string | null;
@@ -28,6 +31,7 @@ export type VpsStatus = {
     created_at: string;
   }>;
 };
+
 
 export const getVpsStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

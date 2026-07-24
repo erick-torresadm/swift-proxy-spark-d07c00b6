@@ -9,8 +9,8 @@ import {
   createPackageCheckoutSession,
   type ProductPackageGroup,
 } from "@/lib/packages.functions";
-import Navbar from "@/components/site/Navbar";
-import Footer from "@/components/site/Footer";
+import { Navbar } from "@/components/site/Navbar";
+import { Footer } from "@/components/site/Footer";
 
 export const Route = createFileRoute("/pacotes")({
   head: () => ({

@@ -23,6 +23,7 @@ import { Route as ProxyIpv4RouteImport } from './routes/proxy-ipv4'
 import { Route as ProxyFacebookAdsRouteImport } from './routes/proxy-facebook-ads'
 import { Route as PrivacidadeDothtmlRouteImport } from './routes/privacidade[.]html'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
+import { Route as PacotesRouteImport } from './routes/pacotes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -160,6 +161,11 @@ const PrivacidadeDothtmlRoute = PrivacidadeDothtmlRouteImport.update({
 const PrivacidadeRoute = PrivacidadeRouteImport.update({
   id: '/privacidade',
   path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PacotesRoute = PacotesRouteImport.update({
+  id: '/pacotes',
+  path: '/pacotes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -552,6 +558,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
+  '/pacotes': typeof PacotesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -634,6 +641,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
+  '/pacotes': typeof PacotesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -717,6 +725,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/index.html': typeof IndexDothtmlRoute
   '/login': typeof LoginRoute
+  '/pacotes': typeof PacotesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/privacidade.html': typeof PrivacidadeDothtmlRoute
   '/proxy-facebook-ads': typeof ProxyFacebookAdsRoute
@@ -802,6 +811,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/index.html'
     | '/login'
+    | '/pacotes'
     | '/privacidade'
     | '/privacidade.html'
     | '/proxy-facebook-ads'
@@ -884,6 +894,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/index.html'
     | '/login'
+    | '/pacotes'
     | '/privacidade'
     | '/privacidade.html'
     | '/proxy-facebook-ads'
@@ -966,6 +977,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/index.html'
     | '/login'
+    | '/pacotes'
     | '/privacidade'
     | '/privacidade.html'
     | '/proxy-facebook-ads'
@@ -1051,6 +1063,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   IndexDothtmlRoute: typeof IndexDothtmlRoute
   LoginRoute: typeof LoginRoute
+  PacotesRoute: typeof PacotesRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   PrivacidadeDothtmlRoute: typeof PrivacidadeDothtmlRoute
   ProxyFacebookAdsRoute: typeof ProxyFacebookAdsRoute
@@ -1184,6 +1197,13 @@ declare module '@tanstack/react-router' {
       path: '/privacidade'
       fullPath: '/privacidade'
       preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pacotes': {
+      id: '/pacotes'
+      path: '/pacotes'
+      fullPath: '/pacotes'
+      preLoaderRoute: typeof PacotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -1811,6 +1831,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   IndexDothtmlRoute: IndexDothtmlRoute,
   LoginRoute: LoginRoute,
+  PacotesRoute: PacotesRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   PrivacidadeDothtmlRoute: PrivacidadeDothtmlRoute,
   ProxyFacebookAdsRoute: ProxyFacebookAdsRoute,

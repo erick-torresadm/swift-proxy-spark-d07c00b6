@@ -6,14 +6,18 @@ import {
   getVpsStatus,
   setVpsEnabled,
   setVpsSourceMode,
+  setIpv6BrSource,
+  setProxySellerSourceMode,
   listVpsProducts,
   issueVpsBlock,
   importManualStock,
   listManualStock,
   deleteManualStock,
+  type Ipv6BrSource,
+  type ProxySellerSource,
 } from "@/lib/vps-admin.functions";
 import { toast } from "sonner";
-import { ServerCog, CheckCircle2, AlertCircle, PlusCircle, PackagePlus, Trash2 } from "lucide-react";
+import { ServerCog, CheckCircle2, AlertCircle, PlusCircle, PackagePlus, Trash2, Cloud, Globe } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vps")({
   component: VpsAdmin,

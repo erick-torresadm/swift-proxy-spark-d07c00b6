@@ -81,6 +81,15 @@
       "f2": "Instant delivery",
       "f3": "Replacement guaranteed"
     },
+    "ipv6rot": {
+      "name": "Rotating IPv6",
+      "tagline": "IP swaps every 10 min",
+      "best_for": "Scraping and anti-ban with auto rotation",
+      "highlight": "Auto rotation every 10 min",
+      "f1": "Automatic IP swap every 10 minutes",
+      "f2": "Unlimited Brazil IPv6 pool",
+      "f3": "HTTP/S and SOCKS5"
+    },
     "ipv4": {
       "name": "Dedicated IPv4",
       "tagline": "Maximum compatibility",

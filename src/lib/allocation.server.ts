@@ -614,11 +614,32 @@ async function autoPurchaseIntoStock(
     .maybeSingle();
   const provider = (prodMeta as { provider?: string } | null)?.provider ?? "proxyseller";
   if (provider === "fastproxy_vps") {
+    // Check source_mode: 'stock' = manually-managed pool, never call the VPS.
+    const { data: vpsSettings } = await supabaseAdmin
+      .from("provider_settings")
+      .select("source_mode, dry_run")
+      .eq("provider", "fastproxy_vps")
+      .maybeSingle();
+    const mode = (vpsSettings as { source_mode?: string } | null)?.source_mode ?? "api";
+    if (mode === "stock") {
+      // Manual stock mode: alert admin, do NOT attempt a purchase.
+      try {
+        await notifyAllAdmins({
+          title: "⚠️ Estoque IPv6 esgotou (modo manual)",
+          body: `Produto ${product.id.slice(0, 8)} precisa de ${needed} IPs mas o estoque manual está vazio. Adicione IPs em /admin/vps.`,
+          link: "/admin/vps",
+          metadata: { productId: product.id, needed },
+          dedupeKey: `manual-stock-empty:${product.id}:${new Date().toISOString().slice(0, 10)}`,
+        });
+      } catch { /* ignore notify errors */ }
+      return 0;
+    }
     if (!(await vps.isVpsEnabled())) {
       throw new Error("fastproxy_vps disabled: flip provider_settings.fastproxy_vps.dry_run to false to enable");
     }
     return await vpsPurchaseIntoStock(product, needed, triggeredByOrderId);
   }
+
 
   if (!product.provider_tariff_id) {
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);
@@ -1868,4 +1889,59 @@ export async function runFulfillmentSweep(opts: { alertAfterMinutes?: number } =
 
   return out;
 }
+
+/**
+ * Checks manual-stock products (source_mode='stock') and pings admins via PWA
+ * push when the available pool falls below the product's min_stock rule
+ * (default 10). Deduped to at most one alert per product per 6h window.
+ * Called from fulfillment-sweep so it piggybacks the minute-by-minute cron.
+ */
+export async function checkManualStockLow(): Promise<{ checked: number; alerted: number }> {
+  const out = { checked: 0, alerted: 0 };
+  const { data: settings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("source_mode")
+    .eq("provider", "fastproxy_vps")
+    .maybeSingle();
+  const mode = (settings as { source_mode?: string } | null)?.source_mode ?? "api";
+  if (mode !== "stock") return out;
+
+  const { data: products } = await supabaseAdmin
+    .from("products")
+    .select("id, name, category, country_code")
+    .eq("provider", "fastproxy_vps")
+    .eq("active", true);
+
+  for (const p of products ?? []) {
+    out.checked++;
+    const { count } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", p.id)
+      .is("provider_order_id", null)
+      .eq("status", "available");
+    const available = count ?? 0;
+
+    const { data: rule } = await supabaseAdmin
+      .from("restock_rules")
+      .select("min_stock")
+      .eq("product_id", p.id)
+      .maybeSingle();
+    const minStock = (rule as { min_stock?: number } | null)?.min_stock ?? 10;
+
+    if (available >= minStock) continue;
+
+    const bucket = Math.floor(Date.now() / (6 * 3600_000));
+    await notifyAllAdmins({
+      title: "📦 Estoque manual baixo",
+      body: `${p.name ?? p.id.slice(0, 8)} (${p.country_code ?? "?"}): ${available} IPs disponíveis (mínimo ${minStock}). Adicione mais em /admin/vps.`,
+      link: "/admin/vps",
+      metadata: { productId: p.id, available, minStock },
+      dedupeKey: `manual-stock-low:${p.id}:${bucket}`,
+    });
+    out.alerted++;
+  }
+  return out;
+}
+
 

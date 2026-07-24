@@ -1265,6 +1265,7 @@ export type Database = {
           id: string
           min_balance_usd: number
           provider: string
+          source_mode: string
           updated_at: string
         }
         Insert: {
@@ -1274,6 +1275,7 @@ export type Database = {
           id?: string
           min_balance_usd?: number
           provider?: string
+          source_mode?: string
           updated_at?: string
         }
         Update: {
@@ -1283,6 +1285,7 @@ export type Database = {
           id?: string
           min_balance_usd?: number
           provider?: string
+          source_mode?: string
           updated_at?: string
         }
         Relationships: []

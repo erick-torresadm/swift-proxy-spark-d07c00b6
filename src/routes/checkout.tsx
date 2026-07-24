@@ -30,6 +30,7 @@ import { computeBumpsTotals, BUMP_CONFIG, type Bumps } from "@/lib/order-bumps";
 
 type Slug =
   | "ipv6-br" | "ipv6-us"
+  | "ipv6-rot-br"
   | "ipv6-fb-br" | "ipv6-fb-us"
   | "ipv4-br" | "ipv4-us"
   | "isp-br" | "isp-us";

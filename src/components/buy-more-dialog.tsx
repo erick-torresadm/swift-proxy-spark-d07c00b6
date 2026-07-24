@@ -108,6 +108,12 @@ export function BuyMoreDialog({
     code: string;
     discount_cents: number;
   } | null>(null);
+  const initialPhone =
+    (user?.user_metadata?.whatsapp as string | undefined) ||
+    (user?.user_metadata?.phone as string | undefined) ||
+    (user?.phone as string | undefined) ||
+    "";
+  const [whatsapp, setWhatsapp] = useState<string>(initialPhone);
 
   const plansForCountry = useMemo(
     () => (Object.values(CATALOG) as CatalogItem[]).filter((p) => p.country === country),

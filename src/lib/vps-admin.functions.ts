@@ -13,10 +13,17 @@ async function assertAdmin(userId: string) {
 }
 
 export type VpsSourceMode = "api" | "stock";
+export type Ipv6BrSource = "stock" | "vps" | "proxyseller";
+export type ProxySellerSource = "api" | "stock";
+
+// Slugs cobertos pelo toggle IPv6 BR (VPS própria vs ProxySeller vs Estoque).
+const IPV6_BR_SLUGS = ["ipv6-br", "ipv6-fb-br"] as const;
 
 export type VpsStatus = {
   enabled: boolean;
-  sourceMode: VpsSourceMode;
+  sourceMode: VpsSourceMode;               // legacy: fastproxy_vps.source_mode
+  ipv6BrSource: Ipv6BrSource;              // efeito real p/ família IPv6 BR
+  proxysellerSource: ProxySellerSource;    // efeito real p/ IPv4/ISP/USA
   apiBaseUrl: string;
   healthOk: boolean;
   healthError: string | null;
@@ -66,6 +73,17 @@ export const getVpsStatus = createServerFn({ method: "GET" })
       .eq("provider", "fastproxy_vps")
       .maybeSingle();
 
+    const { data: psSettings } = await supabaseAdmin
+      .from("provider_settings")
+      .select("source_mode")
+      .eq("provider", "proxyseller")
+      .maybeSingle();
+
+    const { data: ipv6BrProducts } = await supabaseAdmin
+      .from("products")
+      .select("slug, provider")
+      .in("slug", IPV6_BR_SLUGS as unknown as string[]);
+
     const { data: dbBlocksRaw } = await supabaseAdmin
       .from("provider_orders")
       .select("id, external_order_id, expires_at, quantity, status, created_at")
@@ -76,9 +94,26 @@ export const getVpsStatus = createServerFn({ method: "GET" })
     const s = settings as { dry_run?: boolean; source_mode?: string } | null;
     const enabled = !(s?.dry_run ?? true);
     const sourceMode: VpsSourceMode = s?.source_mode === "stock" ? "stock" : "api";
+
+    // Determinar fonte efetiva IPv6 BR: se algum produto da família estiver como proxyseller → proxyseller.
+    // Senão segue source_mode do fastproxy_vps (api/stock).
+    const anyOnProxySeller = (ipv6BrProducts ?? []).some(
+      (p) => (p as { provider?: string }).provider === "proxyseller",
+    );
+    const ipv6BrSource: Ipv6BrSource = anyOnProxySeller
+      ? "proxyseller"
+      : sourceMode === "stock"
+        ? "stock"
+        : "vps";
+
+    const psMode = (psSettings as { source_mode?: string } | null)?.source_mode ?? "api";
+    const proxysellerSource: ProxySellerSource = psMode === "stock" ? "stock" : "api";
+
     return {
       enabled,
       sourceMode,
+      ipv6BrSource,
+      proxysellerSource,
       apiBaseUrl,
       healthOk,
       healthError,
@@ -113,6 +148,66 @@ export const setVpsSourceMode = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, mode: data.mode };
   });
+
+/**
+ * Alterna a fonte da família IPv6 BR (produtos ipv6-br e ipv6-fb-br) entre:
+ *  - "stock"        → provider=fastproxy_vps, source_mode=stock (pool manual)
+ *  - "vps"          → provider=fastproxy_vps, source_mode=api   (VPS emite ao vivo)
+ *  - "proxyseller"  → provider=proxyseller                       (compra na ProxySeller)
+ */
+export const setIpv6BrSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { source: Ipv6BrSource }) => {
+    if (d.source !== "stock" && d.source !== "vps" && d.source !== "proxyseller") {
+      throw new Error("source inválido");
+    }
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+
+    const targetProvider = data.source === "proxyseller" ? "proxyseller" : "fastproxy_vps";
+    const { error: pErr } = await supabaseAdmin
+      .from("products")
+      .update({ provider: targetProvider } as never)
+      .in("slug", IPV6_BR_SLUGS as unknown as string[]);
+    if (pErr) throw new Error(pErr.message);
+
+    if (data.source !== "proxyseller") {
+      const nextMode: VpsSourceMode = data.source === "stock" ? "stock" : "api";
+      const { error: sErr } = await supabaseAdmin
+        .from("provider_settings")
+        .upsert(
+          { provider: "fastproxy_vps", source_mode: nextMode } as never,
+          { onConflict: "provider" },
+        );
+      if (sErr) throw new Error(sErr.message);
+    }
+    return { ok: true, source: data.source };
+  });
+
+/** Alterna a fonte dos produtos ProxySeller (IPv4/ISP/USA IPv6) entre Estoque manual e API. */
+export const setProxySellerSourceMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { mode: ProxySellerSource }) => {
+    if (d.mode !== "api" && d.mode !== "stock") throw new Error("mode inválido");
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const { error } = await supabaseAdmin
+      .from("provider_settings")
+      .upsert(
+        { provider: "proxyseller", source_mode: data.mode } as never,
+        { onConflict: "provider" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true, mode: data.mode };
+  });
+
+
 
 
 export const setVpsEnabled = createServerFn({ method: "POST" })

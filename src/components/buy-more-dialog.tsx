@@ -170,6 +170,11 @@ export function BuyMoreDialog({
       setError("Sessão expirada. Faça login novamente.");
       return;
     }
+    const cleanPhone = whatsapp.replace(/\D/g, "");
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      setError("Informe seu WhatsApp com DDD");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await startCheckout({
@@ -179,6 +184,7 @@ export function BuyMoreDialog({
           billing,
           email,
           name,
+          whatsapp: cleanPhone,
           couponCode: appliedCoupon?.code ?? null,
         },
       });

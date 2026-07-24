@@ -61,11 +61,32 @@ function VpsAdmin() {
 
   const modeMut = useMutation({
     mutationFn: (mode: "api" | "stock") => setMode({ data: { mode } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-vps"] }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+
+  const ipv6SrcMut = useMutation({
+    mutationFn: (source: Ipv6BrSource) => setIpv6Src({ data: { source } }),
+    onSuccess: (r) => {
+      toast.success(
+        r.source === "stock"
+          ? "IPv6 BR → Estoque manual (não emite/compra novos IPs)"
+          : r.source === "vps"
+            ? "IPv6 BR → API da VPS própria"
+            : "IPv6 BR → API ProxySeller",
+      );
+      qc.invalidateQueries({ queryKey: ["admin-vps"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+
+  const psModeMut = useMutation({
+    mutationFn: (mode: ProxySellerSource) => setPsMode({ data: { mode } }),
     onSuccess: (r) => {
       toast.success(
         r.mode === "stock"
-          ? "Modo Estoque manual — novos IPv6 saem do estoque"
-          : "Modo API — novos IPv6 são emitidos direto na VPS",
+          ? "ProxySeller (IPv4/ISP/USA) → Estoque manual"
+          : "ProxySeller (IPv4/ISP/USA) → API ao vivo",
       );
       qc.invalidateQueries({ queryKey: ["admin-vps"] });
     },

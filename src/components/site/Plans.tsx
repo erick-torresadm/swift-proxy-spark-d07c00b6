@@ -138,7 +138,7 @@ export function Plans() {
         </div>
 
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 sm:gap-6">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 sm:gap-7 lg:gap-8">
           {planDefs.map((plan, i) => {
             const live = priceBySlug.get(SLUG_MAP[plan.key]);
             const monthly = live?.monthly ?? plan.price;

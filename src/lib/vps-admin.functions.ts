@@ -13,10 +13,17 @@ async function assertAdmin(userId: string) {
 }
 
 export type VpsSourceMode = "api" | "stock";
+export type Ipv6BrSource = "stock" | "vps" | "proxyseller";
+export type ProxySellerSource = "api" | "stock";
+
+// Slugs cobertos pelo toggle IPv6 BR (VPS própria vs ProxySeller vs Estoque).
+const IPV6_BR_SLUGS = ["ipv6-br", "ipv6-fb-br"] as const;
 
 export type VpsStatus = {
   enabled: boolean;
-  sourceMode: VpsSourceMode;
+  sourceMode: VpsSourceMode;               // legacy: fastproxy_vps.source_mode
+  ipv6BrSource: Ipv6BrSource;              // efeito real p/ família IPv6 BR
+  proxysellerSource: ProxySellerSource;    // efeito real p/ IPv4/ISP/USA
   apiBaseUrl: string;
   healthOk: boolean;
   healthError: string | null;

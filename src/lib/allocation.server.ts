@@ -614,11 +614,32 @@ async function autoPurchaseIntoStock(
     .maybeSingle();
   const provider = (prodMeta as { provider?: string } | null)?.provider ?? "proxyseller";
   if (provider === "fastproxy_vps") {
+    // Check source_mode: 'stock' = manually-managed pool, never call the VPS.
+    const { data: vpsSettings } = await supabaseAdmin
+      .from("provider_settings")
+      .select("source_mode, dry_run")
+      .eq("provider", "fastproxy_vps")
+      .maybeSingle();
+    const mode = (vpsSettings as { source_mode?: string } | null)?.source_mode ?? "api";
+    if (mode === "stock") {
+      // Manual stock mode: alert admin, do NOT attempt a purchase.
+      try {
+        await notifyAllAdmins({
+          title: "⚠️ Estoque IPv6 esgotou (modo manual)",
+          body: `Produto ${product.id.slice(0, 8)} precisa de ${needed} IPs mas o estoque manual está vazio. Adicione IPs em /admin/vps.`,
+          link: "/admin/vps",
+          metadata: { productId: product.id, needed },
+          dedupeKey: `manual-stock-empty:${product.id}:${new Date().toISOString().slice(0, 10)}`,
+        });
+      } catch { /* ignore notify errors */ }
+      return 0;
+    }
     if (!(await vps.isVpsEnabled())) {
       throw new Error("fastproxy_vps disabled: flip provider_settings.fastproxy_vps.dry_run to false to enable");
     }
     return await vpsPurchaseIntoStock(product, needed, triggeredByOrderId);
   }
+
 
   if (!product.provider_tariff_id) {
     throw new Error(`product ${product.id} missing provider_tariff_id (ProxySeller config)`);

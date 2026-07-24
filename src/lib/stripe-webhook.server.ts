@@ -354,7 +354,11 @@ async function handlePaidInvoice(inv: Stripe.Invoice) {
     discountCents: inv.total_discount_amounts?.reduce((sum, d) => sum + (d.amount ?? 0), 0) ?? 0,
   });
 
-  for (const id of paidOrderIds) await allocateOrder(id);
+  for (const id of paidOrderIds) {
+    await allocateOrder(id);
+    await notifySale(id, eventType);
+  }
+
 
   const billingReason = (inv as unknown as { billing_reason?: string }).billing_reason;
   const oldEnd = before?.current_period_end ? new Date(before.current_period_end).getTime() : 0;

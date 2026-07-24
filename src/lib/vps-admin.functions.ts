@@ -62,7 +62,7 @@ export const getVpsStatus = createServerFn({ method: "GET" })
 
     const { data: settings } = await supabaseAdmin
       .from("provider_settings")
-      .select("dry_run")
+      .select("dry_run, source_mode")
       .eq("provider", "fastproxy_vps")
       .maybeSingle();
 
@@ -73,9 +73,12 @@ export const getVpsStatus = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(50);
 
-    const enabled = !((settings as { dry_run?: boolean } | null)?.dry_run ?? true);
+    const s = settings as { dry_run?: boolean; source_mode?: string } | null;
+    const enabled = !(s?.dry_run ?? true);
+    const sourceMode: VpsSourceMode = s?.source_mode === "stock" ? "stock" : "api";
     return {
       enabled,
+      sourceMode,
       apiBaseUrl,
       healthOk,
       healthError,
@@ -91,6 +94,26 @@ export const getVpsStatus = createServerFn({ method: "GET" })
       })),
     };
   });
+
+export const setVpsSourceMode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { mode: VpsSourceMode }) => {
+    if (d.mode !== "api" && d.mode !== "stock") throw new Error("mode inválido");
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const { error } = await supabaseAdmin
+      .from("provider_settings")
+      .upsert(
+        { provider: "fastproxy_vps", source_mode: data.mode } as never,
+        { onConflict: "provider" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true, mode: data.mode };
+  });
+
 
 export const setVpsEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

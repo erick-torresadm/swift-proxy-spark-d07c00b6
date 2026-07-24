@@ -167,7 +167,7 @@ export function Plans() {
                 whileHover={{ y: -4 }}
                 className={`relative rounded-2xl border bg-card flex flex-col pt-1 ${
                   isFeatured
-                    ? "border-primary/60 shadow-[0_0_50px_-12px_hsl(var(--primary)/0.45)] lg:scale-[1.03]"
+                    ? "border-primary/60 shadow-[0_0_50px_-12px_hsl(var(--primary)/0.45)]"
                     : "border-border"
                 }`}
               >

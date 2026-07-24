@@ -515,6 +515,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         baseRow.customer_id = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
         baseRow.status = "canceled";
         await markOrderCanceled(sub.id);
+        await safeBlockManyBySubscription(sub.id);
         await notifyAllAdmins({
           title: "⛔ Assinatura encerrada",
           body: `A assinatura foi encerrada. IPv6 fica preservado no fornecedor e oculto do painel; IPv4/ISP pode voltar ao estoque quando aplicável.`,

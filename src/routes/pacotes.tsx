@@ -237,8 +237,15 @@ function SelectedPackageCard({
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
+  const highlight = getHighlight(pkg.quantity, pkg.term_months);
+
   return (
-    <div className="rounded-2xl border border-primary/40 bg-primary/5 p-6">
+    <div className="rounded-2xl border border-primary/40 bg-primary/5 p-6 relative">
+      {highlight && (
+        <div className={`absolute -top-3 left-6 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${highlight.className}`}>
+          {highlight.label}
+        </div>
+      )}
       <div className="flex items-start justify-between flex-wrap gap-4 mb-4">
         <div>
           <p className="text-xs uppercase tracking-wide font-bold text-primary">

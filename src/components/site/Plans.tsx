@@ -8,11 +8,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useCurrency } from "@/lib/currency";
 import { getPublicCatalog } from "@/lib/catalog.functions";
 
-type PlanKey = "ipv6" | "ipv4" | "fbads" | "isp";
+type PlanKey = "ipv6" | "ipv6rot" | "ipv4" | "fbads" | "isp";
 type Billing = "monthly" | "yearly";
 
-const SLUG_MAP: Record<PlanKey, "ipv6-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us"> = {
+const SLUG_MAP: Record<PlanKey, "ipv6-br" | "ipv6-rot-br" | "ipv4-us" | "ipv6-fb-br" | "isp-us"> = {
   ipv6: "ipv6-br",
+  ipv6rot: "ipv6-rot-br",
   ipv4: "ipv4-us",
   fbads: "ipv6-fb-br",
   isp: "isp-us",
@@ -32,6 +33,7 @@ type PlanDef = {
 
 const planDefs: PlanDef[] = [
   { key: "ipv6", price: 29.9, Icon: Globe, accent: "sky" },
+  { key: "ipv6rot", price: 120, Icon: Sparkles, accent: "sky", highlightKey: "plans.ipv6rot.highlight" },
   { key: "ipv4", price: 39.9, Icon: Monitor, accent: "blue" },
   { key: "fbads", price: 79.9, oldPrice: 179, Icon: Target, accent: "primary", badge: { variant: "recommended" }, highlightKey: "plans.fbads.highlight" },
   { key: "isp", price: 49.9, Icon: Building2, accent: "amber", badge: { variant: "premium" } },
@@ -136,7 +138,7 @@ export function Plans() {
         </div>
 
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 sm:gap-6">
           {planDefs.map((plan, i) => {
             const live = priceBySlug.get(SLUG_MAP[plan.key]);
             const monthly = live?.monthly ?? plan.price;

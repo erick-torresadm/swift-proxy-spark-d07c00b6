@@ -30,6 +30,7 @@ import { computeBumpsTotals, BUMP_CONFIG, type Bumps } from "@/lib/order-bumps";
 
 type Slug =
   | "ipv6-br" | "ipv6-us"
+  | "ipv6-rot-br"
   | "ipv6-fb-br" | "ipv6-fb-us"
   | "ipv4-br" | "ipv4-us"
   | "isp-br" | "isp-us";
@@ -60,6 +61,12 @@ const META: Record<Slug, CatalogMeta> = {
     slug: "ipv6-fb-br", country: "BR", kind: "ipv6_fb",
     name: "IPv6 Facebook Ads — Brasil",
     tagline: "Inclui rotações de IP / mês por proxy",
+    blockSize: 1, unitLabel: "proxy",
+  },
+  "ipv6-rot-br": {
+    slug: "ipv6-rot-br", country: "BR", kind: "ipv6_fb",
+    name: "IPv6 Rotativo Brasil",
+    tagline: "Troca automática de IP a cada 10 minutos",
     blockSize: 1, unitLabel: "proxy",
   },
   "ipv6-us": {
@@ -103,6 +110,7 @@ const META: Record<Slug, CatalogMeta> = {
 const FALLBACK_PRICES: Record<Slug, { monthly: number; yearly: number }> = {
   "ipv6-br":    { monthly: 3000, yearly: 29700 },
   "ipv6-fb-br": { monthly: 8000, yearly: 79200 },
+  "ipv6-rot-br": { monthly: 12000, yearly: 118800 },
   "ipv6-us":    { monthly: 3000, yearly: 29700 },
   "ipv6-fb-us": { monthly: 8000, yearly: 79200 },
   "ipv4-br":    { monthly: 4990, yearly: 49401 },
@@ -117,7 +125,7 @@ const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] 
 ];
 
 const searchSchema = z.object({
-  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us"]).optional(),
+  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us", "ipv6-rot-br"]).optional(),
   billing: z.enum(["monthly", "yearly"]).optional(),
   qty: z.coerce.number().int().min(1).max(500).optional(),
   canceled: z.coerce.boolean().optional(),

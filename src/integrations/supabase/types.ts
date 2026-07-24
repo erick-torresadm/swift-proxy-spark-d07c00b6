@@ -1715,6 +1715,65 @@ export type Database = {
         }
         Relationships: []
       }
+      vps_user_bindings: {
+        Row: {
+          block_id: string | null
+          created_at: string
+          host: string
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          order_id: string
+          password: string
+          port_end: number
+          port_start: number
+          status: string
+          updated_at: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string
+          host?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          order_id: string
+          password: string
+          port_end?: number
+          port_start?: number
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string
+          host?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          order_id?: string
+          password?: string
+          port_end?: number
+          port_start?: number
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vps_user_bindings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       products_public: {

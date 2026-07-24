@@ -7,6 +7,10 @@ import {
 } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 import { getStripe } from "@/lib/stripe.server";
+import {
+  safeBlockManyBySubscription,
+  safeProvisionMany,
+} from "@/lib/vps-user-sync.server";
 import type Stripe from "stripe";
 
 async function logAudit(action: string, status: string, payload: unknown, error?: string) {
@@ -360,6 +364,9 @@ async function handlePaidInvoice(inv: Stripe.Invoice) {
 
   }
 
+  // VPS 3proxy sync (no-op enquanto provider_settings.fastproxy_vps_users.dry_run=true)
+  await safeProvisionMany(paidOrderIds);
+
 
   const billingReason = (inv as unknown as { billing_reason?: string }).billing_reason;
   const oldEnd = before?.current_period_end ? new Date(before.current_period_end).getTime() : 0;
@@ -508,6 +515,7 @@ export async function handleStripeWebhook({ request }: { request: Request }) {
         baseRow.customer_id = typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
         baseRow.status = "canceled";
         await markOrderCanceled(sub.id);
+        await safeBlockManyBySubscription(sub.id);
         await notifyAllAdmins({
           title: "⛔ Assinatura encerrada",
           body: `A assinatura foi encerrada. IPv6 fica preservado no fornecedor e oculto do painel; IPv4/ISP pode voltar ao estoque quando aplicável.`,

@@ -152,51 +152,106 @@ function VpsAdmin() {
   const health = data ? tryJson(data.healthJson) : null;
   const vpsBlocks = data ? (tryJson(data.vpsBlocksJson) as unknown[]) ?? [] : [];
   const sourceMode = data?.sourceMode ?? "api";
-  const isStockMode = sourceMode === "stock";
+  const ipv6BrSource: Ipv6BrSource = data?.ipv6BrSource ?? (sourceMode === "stock" ? "stock" : "vps");
+  const proxysellerSource: ProxySellerSource = data?.proxysellerSource ?? "api";
+  const isStockMode = ipv6BrSource === "stock";
+  const isProxySellerForIpv6Br = ipv6BrSource === "proxyseller";
+
+  const sourceBtn = (opts: {
+    active: boolean;
+    disabled?: boolean;
+    onClick: () => void;
+    icon: React.ReactNode;
+    title: string;
+    desc: string;
+  }) => (
+    <button
+      className={`text-left rounded-lg border p-3 transition-colors ${opts.active ? "border-primary bg-primary/5" : "hover:bg-accent/40"} disabled:opacity-50`}
+      disabled={opts.disabled}
+      onClick={opts.onClick}
+    >
+      <div className="font-medium flex items-center gap-2">
+        {opts.icon} {opts.title}
+        {opts.active && <span className="ml-auto text-xs text-primary">ATIVO</span>}
+      </div>
+      <div className="text-xs text-muted-foreground mt-1">{opts.desc}</div>
+    </button>
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
-          <ServerCog className="h-5 w-5" /> VPS IPv6 BR — Auto-hospedado
+          <ServerCog className="h-5 w-5" /> Fornecimento de proxies
         </h2>
         <p className="text-sm text-muted-foreground">
-          Escolha como os IPv6 BR vão ser entregues: emitidos direto na VPS (API) ou puxados de um estoque manual que você cola aqui.
+          Escolha em cada família de plano de onde os IPs vão sair. Você pode trocar a qualquer momento — o painel já usa a nova fonte na próxima venda/renovação.
         </p>
       </div>
 
-      {/* Source mode toggle */}
+      {/* IPv6 BR family — 3 sources */}
       <div className="rounded-lg border p-4">
-        <div className="font-medium mb-3">Modo de fornecimento (IPv6 BR)</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <button
-            className={`text-left rounded-lg border p-3 transition-colors ${sourceMode === "api" ? "border-primary bg-primary/5" : "hover:bg-accent/40"}`}
-            disabled={modeMut.isPending}
-            onClick={() => modeMut.mutate("api")}
-          >
-            <div className="font-medium flex items-center gap-2">
-              <ServerCog className="h-4 w-4" /> API (VPS emite ao vivo)
-              {sourceMode === "api" && <span className="ml-auto text-xs text-primary">ATIVO</span>}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Cada nova venda chama a VPS para criar bloco. Precisa da API online.
-            </div>
-          </button>
-          <button
-            className={`text-left rounded-lg border p-3 transition-colors ${sourceMode === "stock" ? "border-primary bg-primary/5" : "hover:bg-accent/40"}`}
-            disabled={modeMut.isPending}
-            onClick={() => modeMut.mutate("stock")}
-          >
-            <div className="font-medium flex items-center gap-2">
-              <PackagePlus className="h-4 w-4" /> Estoque manual
-              {sourceMode === "stock" && <span className="ml-auto text-xs text-primary">ATIVO</span>}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Você cola os IPs; o painel entrega, renova e avisa via PWA quando estoque está baixo.
-            </div>
-          </button>
+        <div className="font-medium mb-1">IPv6 BR (planos <code>ipv6-br</code> e <code>ipv6-fb-br</code>)</div>
+        <div className="text-xs text-muted-foreground mb-3">
+          Fonte atual: <b>{ipv6BrSource === "stock" ? "Estoque manual" : ipv6BrSource === "vps" ? "API VPS própria" : "API ProxySeller"}</b>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {sourceBtn({
+            active: ipv6BrSource === "stock",
+            disabled: ipv6SrcMut.isPending,
+            onClick: () => ipv6SrcMut.mutate("stock"),
+            icon: <PackagePlus className="h-4 w-4" />,
+            title: "Estoque manual",
+            desc: "Você cola os IPs abaixo; painel entrega e avisa quando estiver baixo. Nunca compra novo.",
+          })}
+          {sourceBtn({
+            active: ipv6BrSource === "vps",
+            disabled: ipv6SrcMut.isPending,
+            onClick: () => ipv6SrcMut.mutate("vps"),
+            icon: <ServerCog className="h-4 w-4" />,
+            title: "API VPS própria",
+            desc: "Cada venda pede à sua VPS um bloco novo. Precisa da API da VPS online.",
+          })}
+          {sourceBtn({
+            active: ipv6BrSource === "proxyseller",
+            disabled: ipv6SrcMut.isPending,
+            onClick: () => ipv6SrcMut.mutate("proxyseller"),
+            icon: <Cloud className="h-4 w-4" />,
+            title: "API ProxySeller",
+            desc: "Volta a comprar os IPv6 BR na ProxySeller (fallback se a VPS estiver com problema).",
+          })}
         </div>
       </div>
+
+      {/* ProxySeller family — 2 sources */}
+      <div className="rounded-lg border p-4">
+        <div className="font-medium mb-1 flex items-center gap-2">
+          <Globe className="h-4 w-4" /> ProxySeller (IPv4 BR/USA, ISP, IPv6 USA, IPv6 FB USA)
+        </div>
+        <div className="text-xs text-muted-foreground mb-3">
+          Fonte atual: <b>{proxysellerSource === "stock" ? "Estoque manual" : "API ProxySeller"}</b>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {sourceBtn({
+            active: proxysellerSource === "stock",
+            disabled: psModeMut.isPending,
+            onClick: () => psModeMut.mutate("stock"),
+            icon: <PackagePlus className="h-4 w-4" />,
+            title: "Estoque manual",
+            desc: "Entrega só do pool que você colou. Se acabar, admin recebe alerta no PWA — sem compra automática.",
+          })}
+          {sourceBtn({
+            active: proxysellerSource === "api",
+            disabled: psModeMut.isPending,
+            onClick: () => psModeMut.mutate("api"),
+            icon: <Cloud className="h-4 w-4" />,
+            title: "API ProxySeller",
+            desc: "Compra automática na ProxySeller quando o estoque acabar (comportamento padrão).",
+          })}
+        </div>
+      </div>
+
+
 
       {/* Manual stock — always visible; import even in API mode as backup */}
       <div className="rounded-lg border p-4 space-y-3">

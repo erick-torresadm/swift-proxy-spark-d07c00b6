@@ -377,9 +377,36 @@ export const botReply = createServerFn({ method: "POST" })
       return { ok: false, reason: "no-client-turn" };
     }
 
-    const { generateBotReply, formatBotMessage, notifyAdminsOfEscalation } = await import(
+    const { generateBotReply, formatBotMessage, notifyAdminsOfEscalation, tryCancelViaChat } = await import(
       "@/lib/chatbot.server"
     );
+
+    // 1) Intercepta pedido de cancelamento — cancela assinatura Stripe direto
+    const { data: convFull } = await supabaseAdmin
+      .from("chat_conversations")
+      .select("id, user_id, guest_email")
+      .eq("id", conv.id)
+      .single();
+    const cancelTry = await tryCancelViaChat(
+      {
+        id: conv.id,
+        user_id: convFull?.user_id ?? null,
+        guest_email: convFull?.guest_email ?? null,
+      },
+      list,
+    );
+    if (cancelTry.handled && cancelTry.body) {
+      await supabaseAdmin.from("chat_messages").insert({
+        conversation_id: conv.id,
+        sender: "system",
+        body: cancelTry.body,
+      });
+      if (cancelTry.escalate) {
+        await notifyAdminsOfEscalation(conv.id, list[list.length - 1].body);
+      }
+      return { ok: true, cancelled: true, escalate: !!cancelTry.escalate };
+    }
+
     const result = await generateBotReply(list);
     const body = formatBotMessage(result);
 

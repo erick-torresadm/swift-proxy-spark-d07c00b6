@@ -394,7 +394,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
   // IPv4/ISP → direct on-demand. Direct products typically have no stock, so
   // every paid order triggers a provider purchase here.)
   const canAutoPurchase = opts.allowAutoPurchase !== false && (
-    (product.provider === "fastproxy_vps" && isBrazilIpv6Product(product)) ||
+    isBrazilIpv6Product(product) ||
     !!product.provider_tariff_id
   );
   const stillShort = remaining - picks.length;

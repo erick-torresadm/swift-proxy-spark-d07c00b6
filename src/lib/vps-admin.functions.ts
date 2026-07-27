@@ -177,16 +177,14 @@ export const setIpv6BrSource = createServerFn({ method: "POST" })
       .in("slug", IPV6_BR_SLUGS as unknown as string[]);
     if (pErr) throw new Error(pErr.message);
 
-    if (data.source !== "proxyseller") {
-      const nextMode: VpsSourceMode = data.source === "stock" ? "stock" : "api";
-      const { error: sErr } = await supabaseAdmin
-        .from("provider_settings")
-        .upsert(
-          { provider: "fastproxy_vps", source_mode: nextMode } as never,
-          { onConflict: "provider" },
-        );
-      if (sErr) throw new Error(sErr.message);
-    }
+    const nextMode: VpsSourceMode = data.source === "stock" ? "stock" : "api";
+    const { error: sErr } = await supabaseAdmin
+      .from("provider_settings")
+      .upsert(
+        { provider: "fastproxy_vps", source_mode: nextMode } as never,
+        { onConflict: "provider" },
+      );
+    if (sErr) throw new Error(sErr.message);
     return { ok: true, source: data.source };
   });
 

@@ -16,8 +16,8 @@ export type VpsSourceMode = "api" | "stock";
 export type Ipv6BrSource = "stock" | "vps" | "proxyseller";
 export type ProxySellerSource = "api" | "stock";
 
-// Slugs cobertos pelo toggle IPv6 BR (VPS própria vs ProxySeller vs Estoque).
-const IPV6_BR_SLUGS = ["ipv6-br", "ipv6-fb-br"] as const;
+// Slugs cobertos pelo toggle IPv6 BR (VPS própria vs Estoque). IPv6 BR nunca usa ProxySeller.
+const IPV6_BR_SLUGS = ["ipv6-br", "ipv6-fb-br", "ipv6-rot-br"] as const;
 
 export type VpsStatus = {
   enabled: boolean;
@@ -153,7 +153,7 @@ export const setVpsSourceMode = createServerFn({ method: "POST" })
  * Alterna a fonte da família IPv6 BR (produtos ipv6-br e ipv6-fb-br) entre:
  *  - "stock"        → provider=fastproxy_vps, source_mode=stock (pool manual)
  *  - "vps"          → provider=fastproxy_vps, source_mode=api   (VPS emite ao vivo)
- *  - "proxyseller"  → provider=proxyseller                       (compra na ProxySeller)
+ *  - "proxyseller"  → legado bloqueado: IPv6 BR não pode comprar na ProxySeller
  */
 export const setIpv6BrSource = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -167,7 +167,10 @@ export const setIpv6BrSource = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
 
-    const targetProvider = data.source === "proxyseller" ? "proxyseller" : "fastproxy_vps";
+    if (data.source === "proxyseller") {
+      throw new Error("IPv6 BR deve usar somente Estoque próprio ou API VPS");
+    }
+    const targetProvider = "fastproxy_vps";
     const { error: pErr } = await supabaseAdmin
       .from("products")
       .update({ provider: targetProvider } as never)
@@ -491,6 +494,7 @@ export type ManualStockRow = {
   host: string;
   port: number;
   username: string | null;
+  password: string | null;
   protocol: string | null;
   country_code: string | null;
   status: string;
@@ -505,7 +509,7 @@ export const listManualStock = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
     const { data } = await supabaseAdmin
       .from("proxy_stock")
-      .select("id, product_id, host, port, username, protocol, country_code, status, expires_at, created_at, products(name)")
+      .select("id, product_id, host, port, username, password, protocol, country_code, status, expires_at, created_at, products(name)")
       .is("provider_order_id", null)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -516,12 +520,43 @@ export const listManualStock = createServerFn({ method: "GET" })
       host: r.host,
       port: r.port,
       username: r.username,
+      password: r.password,
       protocol: r.protocol,
       country_code: r.country_code,
       status: r.status as string,
       expires_at: r.expires_at,
       created_at: r.created_at,
     }));
+  });
+
+export const setManualStockStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; status: "available" | "removed" }) => {
+    if (!d.id) throw new Error("id obrigatório");
+    if (d.status !== "available" && d.status !== "removed") throw new Error("status inválido");
+    return d;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/lib/supabase-custom/admin.server");
+    const { data: row } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, status, provider_order_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!row) throw new Error("Estoque não encontrado");
+    if ((row as { provider_order_id?: string | null }).provider_order_id) {
+      throw new Error("Este IP veio de um fornecedor — não é estoque manual");
+    }
+    if ((row as { status?: string }).status === "allocated") {
+      throw new Error("IP está em uso por um cliente");
+    }
+    const { error } = await supabaseAdmin
+      .from("proxy_stock")
+      .update({ status: data.status } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, status: data.status };
   });
 
 export const deleteManualStock = createServerFn({ method: "POST" })

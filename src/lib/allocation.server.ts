@@ -450,8 +450,8 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
           pendingInFlight = true;
         } else {
           void notifyAllAdmins({
-            title: "📉 Estoque baixo — comprando bloco novo",
-            body: `Um cliente pagou e precisa de ${remaining} IP(s) do plano ${product.category}/${product.country_code ?? "?"}, mas faltam ${stillShortAfterReuse} no estoque. Estamos comprando um bloco novo na ProxySeller agora — leva ~1 min. Nada a fazer, só acompanhar.`,
+            title: "📉 Estoque baixo — emitindo bloco novo",
+            body: `Um cliente pagou e precisa de ${remaining} IP(s) do plano ${product.category}/${product.country_code ?? "?"}, mas faltam ${stillShortAfterReuse} no estoque. O sistema está emitindo/comprando pela fonte configurada agora — acompanhe se necessário.`,
             link: "/admin/inventory",
             metadata: { orderId: order.id, productId: product.id, shortBy: stillShortAfterReuse },
             dedupeKey: `stock-short:${order.id}`,
@@ -462,7 +462,7 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
             if (bought > 0) {
               void notifyAllAdmins({
                 title: "📦 Estoque renovado",
-                body: `+${bought} IPs adicionados ao produto ${product.category}/${product.country_code ?? "?"} via compra automática.`,
+                body: `+${bought} IPs adicionados ao produto ${product.category}/${product.country_code ?? "?"} via reposição automática.`,
                 link: "/admin/inventory",
                 metadata: { productId: product.id, added: bought },
                 dedupeKey: `restock-auto:${order.id}`,
@@ -476,13 +476,14 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
             purchaseError = e instanceof Error ? e.message : String(e);
             console.error("[allocation] auto-purchase IPv6 failed:", e);
             const isInsufficientFunds = /insufficient funds/i.test(purchaseError);
+            const isOwnIpv6Br = isBrazilIpv6Product(product);
             void notifyAllAdmins({
               title: isInsufficientFunds
                 ? "💸 SALDO ProxySeller INSUFICIENTE — RECARREGUE"
                 : "🛑 Falha na compra automática — AÇÃO NECESSÁRIA",
               body: isInsufficientFunds
                 ? `Cliente ${order.id.slice(0, 8)} pagou e está SEM PROXY. ProxySeller: ${purchaseError}. Recarregue o saldo em https://proxy-seller.com/personal/balance — assim que recarregar, o sistema aloca sozinho na próxima varredura (5 min).`
-                : `ProxySeller falhou ao comprar IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete até ser resolvido.`,
+                : `${isOwnIpv6Br ? "VPS própria" : "Fornecedor"} falhou ao repor IPs para ${product.category}/${product.country_code ?? "?"} (pedido ${order.id.slice(0, 8)}): ${purchaseError}. O alerta se repete até ser resolvido.`,
               link: "/admin/inventory",
               metadata: { orderId: order.id, productId: product.id, error: purchaseError, insufficientFunds: isInsufficientFunds },
               // Saldo baixo: re-arma a cada 15 min (urgente). Outros erros: a cada hora.
@@ -616,14 +617,18 @@ async function autoPurchaseIntoStock(
   needed: number,
   triggeredByOrderId: string,
 ): Promise<number> {
-  // Route to VPS when the product is provisioned by our own infra.
+  // IPv6 BR is always our own infra: never buy/import it from ProxySeller.
   const { data: prodMeta } = await supabaseAdmin
     .from("products")
     .select("provider")
     .eq("id", product.id)
     .maybeSingle();
   const provider = (prodMeta as { provider?: string } | null)?.provider ?? "proxyseller";
-  if (provider === "fastproxy_vps") {
+  const forceVps = isBrazilIpv6Product(product);
+  if (forceVps && provider !== "fastproxy_vps") {
+    await supabaseAdmin.from("products").update({ provider: "fastproxy_vps" } as never).eq("id", product.id);
+  }
+  if (provider === "fastproxy_vps" || forceVps) {
     // Check source_mode: 'stock' = manually-managed pool, never call the VPS.
     const { data: vpsSettings } = await supabaseAdmin
       .from("provider_settings")
@@ -1178,41 +1183,33 @@ async function pickAvailableStockWithSiblings(
   // Se faltar IP em modo API, o auto-purchase chama a VPS para emitir mais.
   const isIpv6BrFamily = isBrazilIpv6Product(product);
   let strictAllowed: Set<string> | null = null;
-  if (isIpv6BrFamily && (product.provider ?? "fastproxy_vps") === "fastproxy_vps") {
-    const { data: vpsSettings } = await supabaseAdmin
-      .from("provider_settings")
-      .select("source_mode")
-      .eq("provider", "fastproxy_vps")
-      .maybeSingle();
-    const isVpsApiMode = (vpsSettings as { source_mode?: string } | null)?.source_mode !== "stock";
-    if (isVpsApiMode) {
-      const { data: strictStock } = await supabaseAdmin
-        .from("proxy_stock")
-        .select("id, external_proxy_id, provider_order_id, provider_orders(provider)")
-        .in("product_id", poolIds)
-        .eq("status", "available");
-      strictAllowed = new Set(
-        (strictStock ?? [])
-          .filter((r) => {
-            const row = r as {
-              external_proxy_id?: string | null;
-              provider_order_id?: string | null;
-              provider_orders?: { provider?: string | null } | null;
-            };
-            const external = row.external_proxy_id ?? "";
-            const isManualOwnStock = !row.provider_order_id && external.startsWith("manual:");
-            const isVpsStock = external.startsWith("vps:") || row.provider_orders?.provider === "fastproxy_vps";
-            return isManualOwnStock || isVpsStock;
-          })
-          .map((r) => (r as { id: string }).id),
+  if (isIpv6BrFamily) {
+    const { data: strictStock } = await supabaseAdmin
+      .from("proxy_stock")
+      .select("id, external_proxy_id, provider_order_id, provider_orders(provider)")
+      .in("product_id", poolIds)
+      .eq("status", "available");
+    strictAllowed = new Set(
+      (strictStock ?? [])
+        .filter((r) => {
+          const row = r as {
+            external_proxy_id?: string | null;
+            provider_order_id?: string | null;
+            provider_orders?: { provider?: string | null } | null;
+          };
+          const external = row.external_proxy_id ?? "";
+          const isManualOwnStock = !row.provider_order_id && external.startsWith("manual:");
+          const isVpsStock = external.startsWith("vps:") || row.provider_orders?.provider === "fastproxy_vps";
+          return isManualOwnStock || isVpsStock;
+        })
+        .map((r) => (r as { id: string }).id),
+    );
+    if (strictAllowed.size === 0) {
+      console.log(
+        `[allocation] order=${orderId} IPv6 BR strict mode: 0 own/VPS IPs available in pool ` +
+          `(${product.category}/${product.country_code}) — auto-purchase deve emitir novo bloco na VPS.`,
       );
-      if (strictAllowed.size === 0) {
-        console.log(
-          `[allocation] order=${orderId} IPv6 BR strict mode: 0 own/VPS IPs available in pool ` +
-            `(${product.category}/${product.country_code}) — auto-purchase deve emitir novo bloco na VPS.`,
-        );
-        return [];
-      }
+      return [];
     }
   }
 

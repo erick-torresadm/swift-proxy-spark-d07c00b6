@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   getVpsStatus,
   setVpsEnabled,
@@ -13,13 +13,31 @@ import {
   importManualStock,
   listManualStock,
   deleteManualStock,
+  setManualStockStatus,
   type Ipv6BrSource,
   type ProxySellerSource,
 } from "@/lib/vps-admin.functions";
 import { toast } from "sonner";
-import { ServerCog, CheckCircle2, AlertCircle, PlusCircle, PackagePlus, Trash2, Cloud, Globe } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ServerCog, CheckCircle2, AlertCircle, PlusCircle, PackagePlus, Trash2, Cloud, Globe, Copy, Ban, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vps")({
+  head: () => ({
+    meta: [
+      { title: "Fornecimento de Proxies — Admin FastProxy" },
+      {
+        name: "description",
+        content: "Controle as fontes de estoque, VPS própria e API externa para entrega de proxies FastProxy.",
+      },
+      { property: "og:title", content: "Fornecimento de Proxies — Admin FastProxy" },
+      {
+        property: "og:description",
+        content: "Controle as fontes de estoque, VPS própria e API externa para entrega de proxies FastProxy.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: VpsAdmin,
 });
 
@@ -34,6 +52,7 @@ function VpsAdmin() {
   const importStock = useServerFn(importManualStock);
   const fetchStock = useServerFn(listManualStock);
   const removeStock = useServerFn(deleteManualStock);
+  const updateStockStatus = useServerFn(setManualStockStatus);
   const qc = useQueryClient();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-vps"],
@@ -75,7 +94,7 @@ function VpsAdmin() {
           ? "IPv6 BR → Estoque manual (não emite/compra novos IPs)"
           : r.source === "vps"
             ? "IPv6 BR → API da VPS própria"
-            : "IPv6 BR → API ProxySeller",
+            : "IPv6 BR → configuração bloqueada",
       );
       qc.invalidateQueries({ queryKey: ["admin-vps"] });
     },
@@ -151,6 +170,16 @@ function VpsAdmin() {
     onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
   });
 
+  const statusMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "available" | "removed" }) =>
+      updateStockStatus({ data: { id, status } }),
+    onSuccess: (r) => {
+      toast.success(r.status === "removed" ? "IP marcado como indisponível" : "IP voltou para disponível");
+      qc.invalidateQueries({ queryKey: ["admin-vps-manual-stock"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+
   const health = data ? tryJson(data.healthJson) : null;
   const vpsBlocks = data ? (tryJson(data.vpsBlocksJson) as unknown[]) ?? [] : [];
   const sourceMode = data?.sourceMode ?? "api";
@@ -159,11 +188,33 @@ function VpsAdmin() {
   const isStockMode = ipv6BrSource === "stock";
   const isProxySellerForIpv6Br = ipv6BrSource === "proxyseller";
 
+  const formatProxy = (r: { host: string; port: number; username?: string | null; password?: string | null }) => {
+    if (r.username && r.password) return `${r.username}:${r.password}@${r.host}:${r.port}`;
+    return `${r.host}:${r.port}`;
+  };
+
+  const copyProxy = async (proxy: string) => {
+    if (!navigator.clipboard) {
+      toast.error("Seu navegador não liberou copiar automaticamente");
+      return;
+    }
+    await navigator.clipboard.writeText(proxy);
+    toast.success("Proxy copiado");
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === "available") return "disponível";
+    if (status === "allocated") return "em uso";
+    if (status === "removed") return "indisponível";
+    if (status === "expired") return "expirado";
+    return status;
+  };
+
   const sourceBtn = (opts: {
     active: boolean;
     disabled?: boolean;
     onClick: () => void;
-    icon: React.ReactNode;
+    icon: ReactNode;
     title: string;
     desc: string;
   }) => (
@@ -191,13 +242,13 @@ function VpsAdmin() {
         </p>
       </div>
 
-      {/* IPv6 BR family — 3 sources */}
+      {/* IPv6 BR family — own stock/VPS only */}
       <div className="rounded-lg border p-4">
-        <div className="font-medium mb-1">IPv6 BR (planos <code>ipv6-br</code> e <code>ipv6-fb-br</code>)</div>
+        <div className="font-medium mb-1">IPv6 BR (planos <code>ipv6-br</code>, <code>ipv6-fb-br</code> e <code>ipv6-rot-br</code>)</div>
         <div className="text-xs text-muted-foreground mb-3">
-          Fonte atual: <b>{ipv6BrSource === "stock" ? "Estoque manual" : ipv6BrSource === "vps" ? "API VPS própria" : "API ProxySeller"}</b>
+          Fonte atual: <b>{ipv6BrSource === "stock" ? "Estoque manual" : ipv6BrSource === "vps" ? "API VPS própria" : "configuração antiga ProxySeller — trocar para VPS/Estoque"}</b>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {sourceBtn({
             active: ipv6BrSource === "stock",
             disabled: ipv6SrcMut.isPending,
@@ -214,15 +265,12 @@ function VpsAdmin() {
             title: "API VPS própria",
             desc: "Cada venda pede à sua VPS um bloco novo. Precisa da API da VPS online.",
           })}
-          {sourceBtn({
-            active: ipv6BrSource === "proxyseller",
-            disabled: ipv6SrcMut.isPending,
-            onClick: () => ipv6SrcMut.mutate("proxyseller"),
-            icon: <Cloud className="h-4 w-4" />,
-            title: "API ProxySeller",
-            desc: "Volta a comprar os IPv6 BR na ProxySeller (fallback se a VPS estiver com problema).",
-          })}
         </div>
+        {isProxySellerForIpv6Br && (
+          <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            IPv6 BR não deve sair da ProxySeller. Selecione Estoque manual ou API VPS própria.
+          </div>
+        )}
       </div>
 
       {/* ProxySeller family — 2 sources */}
@@ -352,8 +400,7 @@ function VpsAdmin() {
               <thead>
                 <tr className="text-left border-b">
                   <th className="py-1">Produto</th>
-                  <th>Host:Port</th>
-                  <th>User</th>
+                  <th>Proxy</th>
                   <th>Prot</th>
                   <th>Status</th>
                   <th>Expira</th>
@@ -361,31 +408,60 @@ function VpsAdmin() {
                 </tr>
               </thead>
               <tbody>
-                {(stockRows ?? []).map((r) => (
-                  <tr key={r.id} className="border-b">
-                    <td className="py-1">{r.product_name ?? "—"}</td>
-                    <td className="font-mono">
-                      {r.host}:{r.port}
-                    </td>
-                    <td className="font-mono">{r.username ?? "—"}</td>
-                    <td>{r.protocol ?? "—"}</td>
-                    <td>{r.status}</td>
-                    <td>{r.expires_at ? new Date(r.expires_at).toLocaleDateString("pt-BR") : "—"}</td>
-                    <td>
-                      {r.status !== "allocated" && (
-                        <button
-                          className="text-red-600 hover:underline inline-flex items-center gap-1"
-                          disabled={deleteMut.isPending}
-                          onClick={() => {
-                            if (confirm(`Remover ${r.host}:${r.port}?`)) deleteMut.mutate(r.id);
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" /> Remover
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {(stockRows ?? []).map((r) => {
+                  const proxy = formatProxy(r);
+                  const canEdit = r.status !== "allocated";
+                  const nextStatus = r.status === "removed" ? "available" : "removed";
+                  return (
+                    <tr key={r.id} className="border-b align-top">
+                      <td className="py-2 pr-3">{r.product_name ?? "—"}</td>
+                      <td className="font-mono py-2 pr-3 max-w-[360px] break-all">{proxy}</td>
+                      <td className="py-2 pr-3">{r.protocol ?? "—"}</td>
+                      <td className="py-2 pr-3">{statusLabel(r.status)}</td>
+                      <td className="py-2 pr-3">{r.expires_at ? new Date(r.expires_at).toLocaleDateString("pt-BR") : "—"}</td>
+                      <td className="py-2">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => void copyProxy(proxy)}
+                          >
+                            <Copy className="h-3 w-3" /> Copiar
+                          </Button>
+                          {canEdit && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-xs"
+                              disabled={statusMut.isPending}
+                              onClick={() => statusMut.mutate({ id: r.id, status: nextStatus })}
+                            >
+                              {nextStatus === "removed" ? <Ban className="h-3 w-3" /> : <RotateCcw className="h-3 w-3" />}
+                              {nextStatus === "removed" ? "Indisponível" : "Disponível"}
+                            </Button>
+                          )}
+                          {canEdit && (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-xs"
+                              disabled={deleteMut.isPending}
+                              onClick={() => {
+                                if (confirm(`Remover ${proxy}?`)) deleteMut.mutate(r.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" /> Remover
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

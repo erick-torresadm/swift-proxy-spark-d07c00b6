@@ -7,6 +7,8 @@ import {
 } from "@/lib/allocation.server";
 import { notifyAllAdmins } from "@/lib/notifications.server";
 import { getStripe } from "@/lib/stripe.server";
+import { findUserIdByEmail } from "@/lib/order-claim.server";
+
 import {
   safeBlockManyBySubscription,
   safeProvisionMany,
@@ -95,8 +97,7 @@ async function attachUserToOrder(orderId: string, email: string | null, name: st
 
   let userId: string | null = null;
   try {
-    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-    userId = list.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())?.id ?? null;
+    userId = await findUserIdByEmail(email);
   } catch {
     /* ignore */
   }

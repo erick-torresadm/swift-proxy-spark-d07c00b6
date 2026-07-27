@@ -5,6 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
 import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder } from "./allocation.server";
 import { reconcileOrderWithStripe } from "./reconcile.server";
+import { claimOrdersForUser, importStripeSubscriptionsForEmail } from "./order-claim.server";
+
 
 /**
  * Endpoint público que força a sincronização de um pedido com o Stripe.
@@ -76,10 +78,35 @@ export const getMyOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId } = context;
+    const email = (context.claims as { email?: string } | undefined)?.email ?? null;
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
+
+    // 1) Cola pedidos feitos como convidado (mesmo e-mail) na conta do usuário.
+    try {
+      await claimOrdersForUser(userId, email);
+    } catch (e) {
+      console.error("claimOrdersForUser failed", e);
+    }
+
+    // 2) Se ainda assim não há nenhum pedido, procura assinatura ativa no Stripe
+    //    e importa (casos legados sem registro no banco).
+    if (email) {
+      const { count: known } = await supabaseAdmin
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if ((known ?? 0) === 0) {
+        try {
+          await importStripeSubscriptionsForEmail(email, userId);
+        } catch (e) {
+          console.error("importStripeSubscriptionsForEmail failed", e);
+        }
+      }
+    }
 
     const [{ count: activeProxies }, { data: orders }, { data: paidOrders30 }] =
       await Promise.all([
+
         supabaseAdmin
           .from("customer_proxies")
           .select("*", { count: "exact", head: true })

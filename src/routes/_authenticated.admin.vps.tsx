@@ -22,6 +22,22 @@ import { Button } from "@/components/ui/button";
 import { ServerCog, CheckCircle2, AlertCircle, PlusCircle, PackagePlus, Trash2, Cloud, Globe, Copy, Ban, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/vps")({
+  head: () => ({
+    meta: [
+      { title: "Fornecimento de Proxies — Admin FastProxy" },
+      {
+        name: "description",
+        content: "Controle as fontes de estoque, VPS própria e API externa para entrega de proxies FastProxy.",
+      },
+      { property: "og:title", content: "Fornecimento de Proxies — Admin FastProxy" },
+      {
+        property: "og:description",
+        content: "Controle as fontes de estoque, VPS própria e API externa para entrega de proxies FastProxy.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: VpsAdmin,
 });
 

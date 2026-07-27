@@ -78,7 +78,7 @@ function VpsAdmin() {
           ? "IPv6 BR → Estoque manual (não emite/compra novos IPs)"
           : r.source === "vps"
             ? "IPv6 BR → API da VPS própria"
-            : "IPv6 BR → API ProxySeller",
+            : "IPv6 BR → configuração bloqueada",
       );
       qc.invalidateQueries({ queryKey: ["admin-vps"] });
     },
@@ -184,6 +184,14 @@ function VpsAdmin() {
     }
     await navigator.clipboard.writeText(proxy);
     toast.success("Proxy copiado");
+  };
+
+  const statusLabel = (status: string) => {
+    if (status === "available") return "disponível";
+    if (status === "allocated") return "em uso";
+    if (status === "removed") return "indisponível";
+    if (status === "expired") return "expirado";
+    return status;
   };
 
   const sourceBtn = (opts: {
@@ -393,7 +401,7 @@ function VpsAdmin() {
                       <td className="py-2 pr-3">{r.product_name ?? "—"}</td>
                       <td className="font-mono py-2 pr-3 max-w-[360px] break-all">{proxy}</td>
                       <td className="py-2 pr-3">{r.protocol ?? "—"}</td>
-                      <td className="py-2 pr-3">{r.status}</td>
+                      <td className="py-2 pr-3">{statusLabel(r.status)}</td>
                       <td className="py-2 pr-3">{r.expires_at ? new Date(r.expires_at).toLocaleDateString("pt-BR") : "—"}</td>
                       <td className="py-2">
                         <div className="flex flex-wrap justify-end gap-2">

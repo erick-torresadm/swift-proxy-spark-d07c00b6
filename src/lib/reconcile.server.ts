@@ -10,6 +10,7 @@
  */
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
+import { findUserIdByEmail } from "./order-claim.server";
 import { allocateProxiesForOrder } from "./allocation.server";
 import { notifyAllAdmins } from "./notifications.server";
 
@@ -118,9 +119,7 @@ export async function reconcileOrderWithStripe(orderId: string): Promise<{
 
   if (!userId && emailFromStripe) {
     try {
-      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      userId =
-        list.users.find((u) => u.email?.toLowerCase() === emailFromStripe.toLowerCase())?.id ?? null;
+      userId = await findUserIdByEmail(emailFromStripe);
       if (!userId) {
         const { data: invited } = await supabaseAdmin.auth.admin.inviteUserByEmail(emailFromStripe, {
           data: {

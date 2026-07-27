@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
 import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder, restoreHiddenProxiesForPaidOrder } from "@/lib/allocation.server";
 import { reconcileOrderWithStripe } from "@/lib/reconcile.server";
+import { backfillOrphanStripeSubscriptions } from "@/lib/order-claim.server";
 import { blockOrderOnVps, provisionOrderOnVps } from "@/lib/vps-user-sync.server";
 
 function subscriptionPeriodEnd(subscription: unknown): string | null {
@@ -163,6 +164,16 @@ export const Route = createFileRoute("/api/public/hooks/stripe-sync")({
               summary.errors.push(`${o.id}: ${msg}`);
             }
           }
+        }
+
+        // Importa assinaturas ativas do Stripe que não têm pedido no banco
+        try {
+          const bf = await backfillOrphanStripeSubscriptions(50);
+          summary.reconciled += bf.imported;
+          summary.allocated += bf.allocated;
+          for (const e of bf.errors.slice(0, 5)) summary.errors.push(`backfill ${e}`);
+        } catch (e) {
+          summary.errors.push(`backfill: ${e instanceof Error ? e.message : String(e)}`);
         }
 
         // Release proxies whose grace expired

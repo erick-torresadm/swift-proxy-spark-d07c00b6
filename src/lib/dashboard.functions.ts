@@ -5,6 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
 import { allocateProxiesForOrder, hideOrReleaseProxiesForOrder } from "./allocation.server";
 import { reconcileOrderWithStripe } from "./reconcile.server";
+import { claimOrdersForUser, importStripeSubscriptionsForEmail } from "./order-claim.server";
+
 
 /**
  * Endpoint público que força a sincronização de um pedido com o Stripe.

@@ -32,4 +32,6 @@ dist-ssr
 *.sw?
 .vercel
 
-# Local env (secrets ficam no Supabase, nao no git).env
+# Local env (secrets ficam no Supabase, nao no git)
+.env
+.env.local

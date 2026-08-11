@@ -6,12 +6,14 @@ import { FP_SUPABASE_URL } from './config';
 
 function createSupabaseAdminClient() {
   const SUPABASE_URL = FP_SUPABASE_URL;
-  const SECRET_KEY =
-    process.env['FP_SUPABASE_SECRET_KEY'] ?? process.env['CUSTOM_SUPABASE_SERVICE_ROLE_KEY'];
+  // Somente a chave do projeto novo. Nunca cair para chaves de outro projeto
+  // (isso gerava "Invalid API key" silenciosamente).
+  const SECRET_KEY = process.env['FP_SUPABASE_SECRET_KEY'];
 
   if (!SECRET_KEY) {
     throw new Error('Missing secret(s): FP_SUPABASE_SECRET_KEY');
   }
+
 
   return createClient<Database>(SUPABASE_URL, SECRET_KEY, {
     auth: {

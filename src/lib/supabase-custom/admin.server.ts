@@ -1,25 +1,35 @@
 // Custom Supabase admin client (service_role) — server-only.
-// Reads from runtime secrets (CUSTOM_SUPABASE_*) configured in Lovable secrets.
+// URL vem do config (público); a chave secreta vem de FP_SUPABASE_SECRET_KEY.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { FP_SUPABASE_URL } from './config';
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_URL = FP_SUPABASE_URL;
+  const SECRET_KEY =
+    process.env['FP_SUPABASE_SECRET_KEY'] ?? process.env['CUSTOM_SUPABASE_SERVICE_ROLE_KEY'];
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
-    ];
-    throw new Error(`Missing secret(s): ${missing.join(', ')}`);
+  if (!SECRET_KEY) {
+    throw new Error('Missing secret(s): FP_SUPABASE_SECRET_KEY');
   }
 
-  return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient<Database>(SUPABASE_URL, SECRET_KEY, {
     auth: {
       storage: undefined,
       persistSession: false,
       autoRefreshToken: false,
+    },
+    global: {
+      // Chaves no formato sb_secret_* são opacas (não são JWT): PostgREST só
+      // aceita se o header apikey estiver presente e sem Bearer duplicado.
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (SECRET_KEY.startsWith('sb_') && headers.get('Authorization') === `Bearer ${SECRET_KEY}`) {
+          headers.delete('Authorization');
+        }
+        headers.set('apikey', SECRET_KEY);
+        return fetch(input, { ...init, headers });
+      },
     },
   });
 }

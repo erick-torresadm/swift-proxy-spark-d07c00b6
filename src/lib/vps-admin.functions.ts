@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/lib/supabase-custom/auth-middleware";
 import { assertAdmin, IPV6_BR_SLUGS, parseManualProxyList } from "./vps-admin.server";
 
 export type VpsSourceMode = "api" | "stock";

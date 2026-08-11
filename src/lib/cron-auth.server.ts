@@ -12,6 +12,8 @@
 // an apikey header keep working as long as the value is CRON_SECRET (not the
 // anon key).
 import { timingSafeEqual } from "crypto";
+import { FP_SUPABASE_PUBLISHABLE_KEY } from "@/lib/supabase-custom/config";
+
 
 function safeEq(a: string, b: string): boolean {
   if (!a || !b) return false;
@@ -37,6 +39,7 @@ export function checkCronAuth(request: Request): Response | null {
   const publicKeys = [
     process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
     process.env.SUPABASE_ANON_KEY ?? "",
+    FP_SUPABASE_PUBLISHABLE_KEY,
   ].filter(Boolean);
   for (const pub of publicKeys) {
     if (safeEq(provided, pub)) {
@@ -46,8 +49,10 @@ export function checkCronAuth(request: Request): Response | null {
 
   const accepted: string[] = [
     process.env.CRON_SECRET ?? "",
+    process.env.FP_SUPABASE_SECRET_KEY ?? "",
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
   ].filter(Boolean);
+
 
   if (accepted.length === 0) {
     return new Response("Server misconfigured", { status: 500 });

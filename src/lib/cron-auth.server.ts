@@ -12,6 +12,8 @@
 // an apikey header keep working as long as the value is CRON_SECRET (not the
 // anon key).
 import { timingSafeEqual } from "crypto";
+import { FP_SUPABASE_PUBLISHABLE_KEY } from "@/lib/supabase-custom/config";
+
 
 function safeEq(a: string, b: string): boolean {
   if (!a || !b) return false;

@@ -1,4 +1,4 @@
-
+﻿
 CREATE TABLE IF NOT EXISTS public.proxy_metrics (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   stock_id uuid NOT NULL,
@@ -17,11 +17,11 @@ CREATE INDEX IF NOT EXISTS idx_proxy_metrics_ts
 
 ALTER TABLE public.proxy_metrics ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin lê todas as métricas"
+CREATE POLICY "Admin lÃª todas as mÃ©tricas"
 ON public.proxy_metrics FOR SELECT TO authenticated
 USING (public.has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Cliente lê métricas dos próprios proxies"
+CREATE POLICY "Cliente lÃª mÃ©tricas dos prÃ³prios proxies"
 ON public.proxy_metrics FOR SELECT TO authenticated
 USING (EXISTS (
   SELECT 1 FROM public.customer_proxies cp
@@ -29,7 +29,7 @@ USING (EXISTS (
     AND cp.user_id = auth.uid()
 ));
 
--- Limpeza automática: apaga snapshots com mais de 30 dias
+-- Limpeza automÃ¡tica: apaga snapshots com mais de 30 dias
 CREATE OR REPLACE FUNCTION public.prune_proxy_metrics()
 RETURNS void
 LANGUAGE sql
@@ -39,11 +39,11 @@ AS $$
   DELETE FROM public.proxy_metrics WHERE ts < now() - interval '30 days';
 $$;
 
--- Agenda jobs (extensions já existem no projeto)
+-- Agenda jobs (extensions jÃ¡ existem no projeto)
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Remove jobs anteriores com mesmo nome para idempotência
+-- Remove jobs anteriores com mesmo nome para idempotÃªncia
 DO $$
 BEGIN
   PERFORM cron.unschedule('proxy-healthcheck-5min');
@@ -63,7 +63,7 @@ SELECT cron.schedule(
     url := 'https://project--22278c7a-6a44-4eed-8709-90b11bbbb809.lovable.app/api/public/cron/healthcheck',
     headers := jsonb_build_object(
       'Content-Type','application/json',
-      'apikey','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwaXRuanp1bHFxeXF4aWtldHN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMDM1NTcsImV4cCI6MjA5NDg3OTU1N30.4LFcofa4VNpgNOfxqDXOJ9ZuGkKUFaE-1jff5lHPjSs'
+      'apikey','CHAVE_ANON_REMOVIDA__COLE_A_CHAVE_DO_PROJETO_ATUAL'
     ),
     body := '{}'::jsonb
   );

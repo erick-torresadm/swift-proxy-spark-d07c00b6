@@ -23,7 +23,7 @@ function ForgotPasswordPage() {
     setLoading(true);
     // Sempre mostra o mesmo sucesso — não revela se o email existe (anti-enumeração).
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${process.env.PUBLIC_BASE_URL || window.location.origin}/reset-password`,
     });
     setLoading(false);
     setSent(true);
@@ -48,9 +48,7 @@ function ForgotPasswordPage() {
           <div className="text-center mb-8">
             <img src={logo} alt="FastProxy" className="h-9 mx-auto mb-6" />
             <h1 className="text-2xl font-bold mb-1">Recuperar senha</h1>
-            <p className="text-sm text-muted-foreground">
-              Enviaremos um link para o seu email
-            </p>
+            <p className="text-sm text-muted-foreground">Enviaremos um link para o seu email</p>
           </div>
 
           {sent ? (
@@ -62,8 +60,8 @@ function ForgotPasswordPage() {
                 Email enviado para <span className="font-semibold">{email}</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                Cheque sua caixa de entrada (e o spam) e clique no link para
-                escolher uma nova senha.
+                Cheque sua caixa de entrada (e o spam) e clique no link para escolher uma nova
+                senha.
               </p>
             </div>
           ) : (

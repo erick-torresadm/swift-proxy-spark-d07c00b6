@@ -4,21 +4,21 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase-custom/client";
-import { lovable } from "@/integrations/lovable";
+// import { lovable } from "@/integrations/lovable";
 import logo from "@/assets/logo-fastproxy.png";
 
-async function handleGoogleSignIn(setGoogleLoading: (v: boolean) => void) {
-  setGoogleLoading(true);
-  const result = await lovable.auth.signInWithOAuth("google", {
-    redirect_uri: window.location.origin + "/dashboard",
-  });
-  if (result.error) {
-    setGoogleLoading(false);
-    toast.error("Não foi possível entrar com Google.");
-    return;
-  }
-  if (result.redirected) return;
-}
+// async function handleGoogleSignIn(setGoogleLoading: (v: boolean) => void) {
+//   setGoogleLoading(true);
+//   const result = await lovable.auth.signInWithOAuth("google", {
+//     redirect_uri: window.location.origin + "/dashboard",
+//   });
+//   if (result.error) {
+//     setGoogleLoading(false);
+//     toast.error("Não foi possível entrar com Google.");
+//     return;
+//   }
+//   if (result.redirected) return;
+// }
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -35,8 +35,7 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-
+  // const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -78,9 +77,7 @@ function LoginPage() {
           <div className="text-center mb-8">
             <img src={logo} alt="FastProxy" className="h-9 mx-auto mb-6" />
             <h1 className="text-2xl font-bold mb-1">Entrar</h1>
-            <p className="text-sm text-muted-foreground">
-              Acesse o painel da sua conta
-            </p>
+            <p className="text-sm text-muted-foreground">Acesse o painel da sua conta</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,13 +125,13 @@ function LoginPage() {
             </button>
           </form>
 
-          <div className="my-6 flex items-center gap-3">
+          {/* <div className="my-6 flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
             <span className="text-xs text-muted-foreground uppercase tracking-wider">ou</span>
             <div className="flex-1 h-px bg-border" />
-          </div>
+          </div> */}
 
-          <button
+          {/* <button
             type="button"
             onClick={() => handleGoogleSignIn(setGoogleLoading)}
             disabled={googleLoading}
@@ -151,8 +148,7 @@ function LoginPage() {
               </svg>
             )}
             Continuar com Google
-          </button>
-
+          </button> */}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Não tem conta?{" "}

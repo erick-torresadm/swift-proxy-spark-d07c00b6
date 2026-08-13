@@ -8,6 +8,8 @@ export type PublicPlan = {
   description: string | null;
   country_code: string;
   price_monthly_cents: number;
+  price_quarterly_cents: number | null;
+  price_semiannual_cents: number | null;
   price_yearly_cents: number | null;
   block_size: number;
 };
@@ -15,7 +17,7 @@ export type PublicPlan = {
 export const getPublicCatalog = createServerFn({ method: "GET" }).handler(async () => {
   const { data, error } = await supabaseAdmin
     .from("products")
-    .select("id, slug, name, description, country_code, price_monthly_cents, price_yearly_cents, block_size, active")
+    .select("id, slug, name, description, country_code, price_monthly_cents, price_quarterly_cents, price_semiannual_cents, price_yearly_cents, block_size, active")
     .eq("active", true);
   if (error) throw new Error(error.message);
   return (data ?? []).map((p) => ({
@@ -25,6 +27,8 @@ export const getPublicCatalog = createServerFn({ method: "GET" }).handler(async 
     description: p.description,
     country_code: p.country_code,
     price_monthly_cents: p.price_monthly_cents,
+    price_quarterly_cents: p.price_quarterly_cents,
+    price_semiannual_cents: p.price_semiannual_cents,
     price_yearly_cents: p.price_yearly_cents,
     block_size: p.block_size,
   })) as PublicPlan[];

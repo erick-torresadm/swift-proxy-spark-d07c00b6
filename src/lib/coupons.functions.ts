@@ -53,7 +53,7 @@ const couponInput = z.object({
   max_uses: z.number().int().min(1).max(1_000_000).nullable().optional(),
   active: z.boolean().default(true),
   valid_until: z.string().datetime().nullable().optional(),
-  applies_to_billing: z.enum(["any", "monthly", "yearly"]).default("any"),
+  applies_to_billing: z.enum(["any", "monthly", "quarterly", "semiannual", "yearly"]).default("any"),
 });
 
 export const upsertCoupon = createServerFn({ method: "POST" })
@@ -118,7 +118,7 @@ export const listCouponRedemptions = createServerFn({ method: "GET" })
 const validateInput = z.object({
   code: z.string().min(1).max(40),
   amount_cents: z.number().int().min(1).max(100_000_000),
-  billing: z.enum(["monthly", "yearly"]).default("monthly"),
+  billing: z.enum(["monthly", "quarterly", "semiannual", "yearly"]).default("monthly"),
 });
 
 export const validateCouponPublic = createServerFn({ method: "POST" })

@@ -16,6 +16,7 @@ import {
 import { z } from "zod";
 import { getOrderPublicStatus, syncMyAllocations, reconcileOrderPublic } from "@/lib/dashboard.functions";
 import { createAnnualUpgradeSession } from "@/lib/upsell.functions";
+import { BILLING_LABELS, type BillingCycle } from "@/lib/checkout.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { pixelTrack, purchaseEventId } from "@/lib/meta-pixel";
 
@@ -215,7 +216,8 @@ function SuccessPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ciclo</span>
               <span className="font-semibold">
-                {order.billing_cycle === "yearly" ? "Anual" : "Mensal"}
+                {BILLING_LABELS[order.billing_cycle as BillingCycle]?.title ??
+                  (order.billing_cycle === "yearly" ? "Anual" : "Mensal")}
               </span>
             </div>
             <div className="flex justify-between">

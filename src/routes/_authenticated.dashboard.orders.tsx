@@ -100,7 +100,7 @@ function OrdersPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 capitalize">
-                      {o.billing_cycle === "yearly" ? "Anual" : "Mensal"}
+                      {o.billing_cycle === "yearly" ? "Anual" : o.billing_cycle === "quarterly" ? "Trimestral" : o.billing_cycle === "semiannual" ? "Semestral" : "Mensal"}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       {formatBRL(o.amount_cents)}

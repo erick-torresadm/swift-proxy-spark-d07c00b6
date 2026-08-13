@@ -62,7 +62,7 @@ export function extendMonthsChargeCents(
 
 /** Sums every one-time bump amount that hits the first invoice. */
 export function computeBumpsTotals(opts: {
-  billing: "monthly" | "yearly";
+  billing: "monthly" | "quarterly" | "semiannual" | "yearly";
   unitMonthlyCents: number;
   quantity: number;
   bumps: Bumps;

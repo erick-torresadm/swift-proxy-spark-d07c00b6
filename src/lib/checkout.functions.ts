@@ -15,10 +15,14 @@ const BumpsSchema = z
   .optional()
   .nullable();
 
+/** Ciclo de cobrança suportado em assinaturas. */
+export const BILLING_CYCLES = ["monthly", "quarterly", "semiannual", "yearly"] as const;
+export type BillingCycle = (typeof BILLING_CYCLES)[number];
+
 const CheckoutSchema = z.object({
   productSlug: z.string().min(1).max(64),
   quantity: z.number().int().min(1).max(500),
-  billing: z.enum(["monthly", "yearly"]),
+  billing: z.enum(BILLING_CYCLES),
   email: z.string().trim().toLowerCase().email().max(255),
   name: z.string().trim().min(1).max(120),
   whatsapp: z
@@ -29,6 +33,39 @@ const CheckoutSchema = z.object({
   couponCode: z.string().trim().min(1).max(40).optional().nullable(),
   bumps: BumpsSchema,
 });
+
+/** Meses cobertos por cada ciclo (para math de bumps/preview). */
+export const BILLING_MONTHS: Record<BillingCycle, number> = {
+  monthly: 1,
+  quarterly: 3,
+  semiannual: 6,
+  yearly: 12,
+};
+
+/** Rótulos PT-BR por ciclo (UI). */
+export const BILLING_LABELS: Record<BillingCycle, { title: string; unit: string; months: number }> = {
+  monthly: { title: "Mensal", unit: "mês", months: 1 },
+  quarterly: { title: "Trimestral", unit: "trimestre", months: 3 },
+  semiannual: { title: "Semestral", unit: "semestre", months: 6 },
+  yearly: { title: "Anual", unit: "ano", months: 12 },
+};
+
+/** Intervalo + intervalo_count do Stripe para cada ciclo. */
+export function billingToStripeRecurring(billing: BillingCycle): {
+  interval: "month" | "year";
+  interval_count?: number;
+} {
+  switch (billing) {
+    case "yearly":
+      return { interval: "year", interval_count: 1 };
+    case "quarterly":
+      return { interval: "month", interval_count: 3 };
+    case "semiannual":
+      return { interval: "month", interval_count: 6 };
+    default:
+      return { interval: "month", interval_count: 1 };
+  }
+}
 
 
 function originFromRequest(): string {
@@ -57,7 +94,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     const { data: product, error: prodErr } = await supabaseAdmin
       .from("products")
       .select(
-        "id, name, slug, description, price_monthly_cents, price_yearly_cents, block_size, active",
+        "id, name, slug, description, price_monthly_cents, price_quarterly_cents, price_semiannual_cents, price_yearly_cents, block_size, active",
       )
       .eq("slug", data.productSlug)
       .eq("active", true)
@@ -66,8 +103,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     if (prodErr) throw new Error(prodErr.message);
     if (!product) throw new Error("Produto não encontrado");
 
-    const unitAmount =
-      data.billing === "yearly" ? product.price_yearly_cents : product.price_monthly_cents;
+    const priceByBilling: Record<BillingCycle, number | null | undefined> = {
+      monthly: product.price_monthly_cents,
+      quarterly: product.price_quarterly_cents,
+      semiannual: product.price_semiannual_cents,
+      yearly: product.price_yearly_cents,
+    };
+    const unitAmount = priceByBilling[data.billing] ?? null;
     if (!unitAmount || unitAmount <= 0)
       throw new Error("Plano sem preço configurado para este ciclo");
 
@@ -252,9 +294,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
           price_data: {
             currency: "brl",
             unit_amount: unitAmount,
-            recurring: {
-              interval: data.billing === "yearly" ? "year" : "month",
-            },
+            recurring: billingToStripeRecurring(data.billing),
             product_data: {
               name: product.name,
               description: product.description ?? undefined,

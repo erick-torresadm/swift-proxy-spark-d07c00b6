@@ -14,15 +14,13 @@ import {
   User,
   Check,
   Clock,
-  Zap,
   Sparkles,
-  Shield,
   Users,
   CalendarClock,
   Phone,
 } from "lucide-react";
 import { z } from "zod";
-import { createCheckoutSession } from "@/lib/checkout.functions";
+import { createCheckoutSession, BILLING_MONTHS, BILLING_LABELS, BILLING_CYCLES, type BillingCycle } from "@/lib/checkout.functions";
 import { validateCouponPublic } from "@/lib/coupons.functions";
 import { getPublicCatalog } from "@/lib/catalog.functions";
 import { pixelTrack } from "@/lib/meta-pixel";
@@ -48,7 +46,59 @@ type CatalogMeta = {
   unitLabel: string;
 };
 
-type CatalogItem = CatalogMeta & { monthly: number; yearly: number };
+type CatalogItem = CatalogMeta & {
+  monthly: number;
+  quarterly: number;
+  semiannual: number;
+  yearly: number;
+};
+
+function fallbackCyclePrices(monthly: number) {
+  return {
+    quarterly: Math.round(monthly * 3 * 0.875),
+    semiannual: Math.round(monthly * 6 * 0.85),
+    yearly: Math.round(monthly * 12 * 0.825),
+  };
+}
+
+const CYCLE_CARDS: {
+  billing: BillingCycle;
+  title: string;
+  tagline: string;
+  badge?: string;
+  perks?: string[];
+}[] = [
+  {
+    billing: "yearly",
+    title: "Anual",
+    badge: "Mais escolhido — 2 meses grátis",
+    tagline: "Pague 10, use 12 meses • economia de 17,5%",
+    perks: [
+      "+10% de IPs bônus",
+      "Trava de preço 12 meses",
+      "Suporte prioritário incluso",
+      "Garantia estendida 60 dias",
+    ],
+  },
+  {
+    billing: "semiannual",
+    title: "Semestral",
+    tagline: "Pague 5, use 6 meses • economia de 15%",
+    perks: ["+5% de IPs bônus", "Trava de preço 6 meses", "Suporte prioritário incluso"],
+  },
+  {
+    billing: "quarterly",
+    title: "Trimestral",
+    tagline: "Pague 3, use 3 meses • economia de 12,5%",
+    perks: ["Trava de preço 3 meses", "Sem burocracia na renovação"],
+  },
+  {
+    billing: "monthly",
+    title: "Mensal",
+    tagline: "Flexível, cancele quando quiser",
+    perks: ["Sem fidelidade", "Cancele quando quiser"],
+  },
+];
 
 // Static metadata. Prices come from the DB (getPublicCatalog) with fallbacks.
 const META: Record<Slug, CatalogMeta> = {
@@ -108,17 +158,21 @@ const META: Record<Slug, CatalogMeta> = {
   },
 };
 
-const FALLBACK_PRICES: Record<Slug, { monthly: number; yearly: number }> = {
-  "ipv6-br":    { monthly: 3000, yearly: 29700 },
-  "ipv6-fb-br": { monthly: 8000, yearly: 79200 },
-  "ipv6-rot-br": { monthly: 12000, yearly: 118800 },
-  "ipv6-us":    { monthly: 3000, yearly: 29700 },
-  "ipv6-fb-us": { monthly: 8000, yearly: 79200 },
-  "ipv4-br":    { monthly: 4990, yearly: 49401 },
-  "ipv4-us":    { monthly: 4990, yearly: 49401 },
-  "isp-br":     { monthly: 9900, yearly: 98010 },
-  "isp-us":     { monthly: 9900, yearly: 98010 },
+const FALLBACK_RAW: Record<Slug, { monthly: number }> = {
+  "ipv6-br":    { monthly: 3000 },
+  "ipv6-fb-br": { monthly: 8000 },
+  "ipv6-rot-br": { monthly: 12000 },
+  "ipv6-us":    { monthly: 3000 },
+  "ipv6-fb-us": { monthly: 8000 },
+  "ipv4-br":    { monthly: 4990 },
+  "ipv4-us":    { monthly: 4990 },
+  "isp-br":     { monthly: 9900 },
+  "isp-us":     { monthly: 9900 },
 };
+const FALLBACK_PRICES = {} as Record<Slug, { monthly: number; quarterly: number; semiannual: number; yearly: number }>;
+(Object.keys(FALLBACK_RAW) as Slug[]).forEach((s) => {
+  FALLBACK_PRICES[s] = { monthly: FALLBACK_RAW[s].monthly, ...fallbackCyclePrices(FALLBACK_RAW[s].monthly) };
+});
 
 const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] = [
   { code: "BR", label: "Brasil", flag: "🇧🇷", desc: "IPs brasileiros — ideal para o mercado nacional" },
@@ -127,7 +181,7 @@ const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] 
 
 const searchSchema = z.object({
   plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us", "ipv6-rot-br"]).optional(),
-  billing: z.enum(["monthly", "yearly"]).optional(),
+  billing: z.enum(BILLING_CYCLES).optional(),
   qty: z.coerce.number().int().min(1).max(500).optional(),
   canceled: z.coerce.boolean().optional(),
   coupon: z.string().trim().min(1).max(40).optional(),
@@ -223,9 +277,7 @@ function CheckoutPage() {
   const initialSlug: Slug = search.plan ?? "ipv6-br";
   const [country, setCountry] = useState<Country>(META[initialSlug].country);
   const [slug, setSlug] = useState<Slug>(initialSlug);
-  const [billing, setBilling] = useState<"monthly" | "yearly">(
-    search.billing ?? "yearly",
-  );
+  const [billing, setBilling] = useState<BillingCycle>(search.billing ?? "yearly");
 
   const [qty, setQty] = useState<number>(search.qty ?? 1);
   const [email, setEmail] = useState("");
@@ -258,13 +310,18 @@ function CheckoutPage() {
   // Merge live DB prices with static metadata.
   const CATALOG = useMemo(() => {
     const byslug = new Map(
-      (liveCatalog ?? []).map((p) => [
-        p.slug,
-        {
-          monthly: p.price_monthly_cents,
-          yearly: p.price_yearly_cents ?? Math.round(p.price_monthly_cents * 12 * 0.825),
-        },
-      ]),
+      (liveCatalog ?? []).map((p) => {
+        const fb = fallbackCyclePrices(p.price_monthly_cents);
+        return [
+          p.slug,
+          {
+            monthly: p.price_monthly_cents,
+            quarterly: p.price_quarterly_cents ?? fb.quarterly,
+            semiannual: p.price_semiannual_cents ?? fb.semiannual,
+            yearly: p.price_yearly_cents ?? fb.yearly,
+          },
+        ];
+      }),
     );
     const out = {} as Record<Slug, CatalogItem>;
     (Object.keys(META) as Slug[]).forEach((s) => {
@@ -272,6 +329,8 @@ function CheckoutPage() {
       out[s] = {
         ...META[s],
         monthly: live?.monthly ?? FALLBACK_PRICES[s].monthly,
+        quarterly: live?.quarterly ?? FALLBACK_PRICES[s].quarterly,
+        semiannual: live?.semiannual ?? FALLBACK_PRICES[s].semiannual,
         yearly: live?.yearly ?? FALLBACK_PRICES[s].yearly,
       };
     });
@@ -288,8 +347,16 @@ function CheckoutPage() {
   }
 
   const item = CATALOG[slug];
-  const unitCents = billing === "yearly" ? item.yearly : item.monthly;
+  const unitCents =
+    billing === "quarterly"
+      ? item.quarterly
+      : billing === "semiannual"
+        ? item.semiannual
+        : billing === "yearly"
+          ? item.yearly
+          : item.monthly;
   const subtotal = unitCents * qty;
+  const billingMonths = BILLING_MONTHS[billing];
 
   // Server = source of truth. We recompute the same numbers on the client for preview.
   const bumpTotals = computeBumpsTotals({
@@ -299,7 +366,7 @@ function CheckoutPage() {
     bumps,
   });
   const bumpsSubtotal =
-    bumpTotals.extraProxiesRecurringCents * (billing === "yearly" ? 12 : 1) +
+    bumpTotals.extraProxiesRecurringCents * billingMonths +
     bumpTotals.firstInvoiceExtraCents;
   const discount = appliedCoupon?.discount_cents ?? 0;
   const total = Math.max(0, subtotal + bumpsSubtotal - discount);
@@ -599,59 +666,56 @@ function CheckoutPage() {
             </AnimatePresence>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Anual — card em destaque */}
-              <button
-                onClick={() => setBilling("yearly")}
-                className={`relative text-left rounded-xl border px-4 py-4 transition ${
-                  billing === "yearly"
-                    ? "border-primary bg-primary/10 shadow-[0_0_30px_-8px_hsl(var(--primary)/0.5)]"
-                    : "border-border hover:border-foreground/30"
-                }`}
-              >
-                <span className="absolute -top-2 left-3 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary text-primary-foreground">
-                  Mais escolhido — 2 meses grátis
-                </span>
-                <div className="flex items-start justify-between gap-2 mt-1">
-                  <div>
-                    <div className="font-bold text-sm">Anual</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Pague 10, use 12 meses • economia de 17,5%
+              {CYCLE_CARDS.map((c) => {
+                const active = billing === c.billing;
+                const isAnnual = c.billing === "yearly";
+                return (
+                  <button
+                    key={c.billing}
+                    onClick={() => setBilling(c.billing)}
+                    className={`relative text-left rounded-xl border px-4 py-4 transition ${
+                      active
+                        ? "border-primary bg-primary/10 shadow-[0_0_30px_-8px_hsl(var(--primary)/0.5)]"
+                        : "border-border hover:border-foreground/30"
+                    }`}
+                  >
+                    {c.badge && (
+                      <span className="absolute -top-2 left-3 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary text-primary-foreground">
+                        {c.badge}
+                      </span>
+                    )}
+                    <div className="flex items-start justify-between gap-2 mt-1">
+                      <div>
+                        <div className="font-bold text-sm">{c.title}</div>
+                        <div className="text-sm font-black text-primary mt-0.5">
+                          {formatBRL(
+                            c.billing === "quarterly"
+                              ? item.quarterly
+                              : c.billing === "semiannual"
+                                ? item.semiannual
+                                : c.billing === "yearly"
+                                  ? item.yearly
+                                  : item.monthly,
+                          )}
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {" "}/ {BILLING_LABELS[c.billing].unit}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{c.tagline}</div>
+                      </div>
+                      {active && <Check className="w-4 h-4 text-primary shrink-0" />}
                     </div>
-                  </div>
-                  {billing === "yearly" && <Check className="w-4 h-4 text-primary shrink-0" />}
-                </div>
-                <ul className="mt-3 space-y-1.5 text-[12px] text-foreground/85">
-                  <li className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" /> +10% de IPs bônus</li>
-                  <li className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-primary" /> Trava de preço 12 meses</li>
-                  <li className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-primary" /> Suporte prioritário incluso</li>
-                  <li className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5 text-primary" /> Garantia estendida 60 dias</li>
-                </ul>
-              </button>
-
-              {/* Mensal — neutro */}
-              <button
-                onClick={() => setBilling("monthly")}
-                className={`text-left rounded-xl border px-4 py-4 transition ${
-                  billing === "monthly"
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-foreground/30"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-bold text-sm">Mensal</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Flexível, cancele quando quiser
-                    </div>
-                  </div>
-                  {billing === "monthly" && <Check className="w-4 h-4 text-primary shrink-0" />}
-                </div>
-                <ul className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
-                  <li>• Sem bônus</li>
-                  <li>• Preço sujeito a reajuste</li>
-                  <li>• Sem suporte prioritário</li>
-                </ul>
-              </button>
+                    <ul className={`mt-3 space-y-1.5 text-[12px] ${isAnnual ? "text-foreground/85" : "text-muted-foreground"}`}>
+                      {(c.perks ?? []).map((perk, i) => (
+                        <li key={i} className="flex items-center gap-1.5">
+                          {isAnnual && <Sparkles className="w-3.5 h-3.5 text-primary" />}
+                          {perk}
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -789,10 +853,10 @@ function CheckoutPage() {
                   Math.round(
                     BUMP_CONFIG.extraProxies.defaultCount *
                       item.monthly *
-                      (billing === "yearly" ? 12 : 1) *
+                      billingMonths *
                       (1 - BUMP_CONFIG.extraProxies.discount),
                   ),
-                )}/${billing === "yearly" ? "ano" : "mês"}`}
+                )}/${BILLING_LABELS[billing].unit}`}
               />
 
               {/* Estender +6 meses (só mensal) */}
@@ -915,9 +979,7 @@ function CheckoutPage() {
             </div>
             <div className="flex justify-between text-sm mb-2">
               <span className="text-muted-foreground">Ciclo</span>
-              <span className="font-semibold">
-                {billing === "yearly" ? "Anual" : "Mensal"}
-              </span>
+              <span className="font-semibold">{BILLING_LABELS[billing].title}</span>
             </div>
             <div className="flex justify-between text-sm mb-2">
               <span className="text-muted-foreground">Subtotal</span>
@@ -927,9 +989,9 @@ function CheckoutPage() {
             {/* Bumps rows */}
             {bumpTotals.extraProxies > 0 && (
               <div className="flex justify-between text-sm mb-2 text-primary">
-                <span>+{bumpTotals.extraProxies} proxies extras ({billing === "yearly" ? "anual" : "mensal"})</span>
+                <span>+{bumpTotals.extraProxies} proxies extras ({BILLING_LABELS[billing].unit})</span>
                 <span className="font-bold">
-                  +{formatBRL(bumpTotals.extraProxiesRecurringCents * (billing === "yearly" ? 12 : 1))}
+                  +{formatBRL(bumpTotals.extraProxiesRecurringCents * billingMonths)}
                 </span>
               </div>
             )}
@@ -961,17 +1023,16 @@ function CheckoutPage() {
             <div className="border-t border-border my-3" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold">
-                Total {billing === "yearly" ? "hoje (12 meses)" : "hoje"}
+                Total {billing === "monthly" ? "hoje" : `hoje (${BILLING_LABELS[billing].months} meses)`}
               </span>
               <span className="text-2xl font-black text-primary">
                 {formatBRL(total)}
               </span>
             </div>
-            {billing === "monthly" && (
-              <div className="mt-2 text-[11px] text-muted-foreground text-right">
-                Depois: {formatBRL(unitCents * (qty + bumpTotals.extraProxies))}/mês
-              </div>
-            )}
+            <div className="mt-2 text-[11px] text-muted-foreground text-right">
+              Próxima cobrança: {formatBRL(unitCents * (qty + bumpTotals.extraProxies))} em{" "}
+              {billing === "monthly" ? "1 mês" : `${BILLING_LABELS[billing].months} meses`}
+            </div>
           </div>
 
 

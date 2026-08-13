@@ -190,7 +190,7 @@ function CancelPage() {
                         <div className="font-bold">{o.product_name}</div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                           {o.quantity} {o.block_size > 1 ? `× ${o.block_size} IPs` : o.quantity === 1 ? "proxy" : "proxies"} ·{" "}
-                          {o.billing_cycle === "yearly" ? "Anual" : "Mensal"} · {formatBRL(o.amount_cents)}
+                          {o.billing_cycle === "yearly" ? "Anual" : o.billing_cycle === "quarterly" ? "Trimestral" : o.billing_cycle === "semiannual" ? "Semestral" : "Mensal"} · {formatBRL(o.amount_cents)}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {o.active_proxies} proxy(s) ativo(s) · Renova em {formatDate(o.current_period_end)}

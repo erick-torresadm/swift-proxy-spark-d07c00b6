@@ -1100,12 +1100,16 @@ export type Database = {
           name: string
           notify_expiry_days: number[]
           price_monthly_cents: number
+          price_quarterly_cents: number | null
+          price_semiannual_cents: number | null
           price_yearly_cents: number | null
           provider: string
           provider_tariff_id: string | null
           restock_threshold: number
           slug: string
           stripe_price_monthly_id: string | null
+          stripe_price_quarterly_id: string | null
+          stripe_price_semiannual_id: string | null
           stripe_price_yearly_id: string | null
           stripe_product_id: string | null
           updated_at: string
@@ -1125,12 +1129,16 @@ export type Database = {
           name: string
           notify_expiry_days?: number[]
           price_monthly_cents: number
+          price_quarterly_cents?: number | null
+          price_semiannual_cents?: number | null
           price_yearly_cents?: number | null
           provider?: string
           provider_tariff_id?: string | null
           restock_threshold?: number
           slug: string
           stripe_price_monthly_id?: string | null
+          stripe_price_quarterly_id?: string | null
+          stripe_price_semiannual_id?: string | null
           stripe_price_yearly_id?: string | null
           stripe_product_id?: string | null
           updated_at?: string
@@ -1150,12 +1158,16 @@ export type Database = {
           name?: string
           notify_expiry_days?: number[]
           price_monthly_cents?: number
+          price_quarterly_cents?: number | null
+          price_semiannual_cents?: number | null
           price_yearly_cents?: number | null
           provider?: string
           provider_tariff_id?: string | null
           restock_threshold?: number
           slug?: string
           stripe_price_monthly_id?: string | null
+          stripe_price_quarterly_id?: string | null
+          stripe_price_semiannual_id?: string | null
           stripe_price_yearly_id?: string | null
           stripe_product_id?: string | null
           updated_at?: string

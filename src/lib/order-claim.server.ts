@@ -162,7 +162,16 @@ async function importSubscription(
   if (!product) return { imported: false, allocated: 0, error: `${sub.id}: sem produto no catálogo` };
 
   const quantity = item?.quantity ?? 1;
-  const yearly = price?.recurring?.interval === "year";
+  const interval = price?.recurring?.interval;
+  const intervalCount = (price?.recurring as { interval_count?: number } | undefined)?.interval_count ?? 1;
+  const billing_cycle =
+    interval === "year"
+      ? "yearly"
+      : interval === "month" && intervalCount === 3
+        ? "quarterly"
+        : interval === "month" && intervalCount === 6
+          ? "semiannual"
+          : "monthly";
   const amount = (price?.unit_amount ?? product.price_monthly_cents) * quantity;
   const customerId = typeof sub.customer === "string" ? sub.customer : (sub.customer?.id ?? null);
   const active = ["active", "trialing"].includes(sub.status);
@@ -173,7 +182,7 @@ async function importSubscription(
       user_id: userId,
       product_id: product.id,
       quantity,
-      billing_cycle: yearly ? "yearly" : "monthly",
+      billing_cycle,
       amount_cents: amount,
       status: active ? "paid" : "past_due",
       stripe_subscription_id: sub.id,

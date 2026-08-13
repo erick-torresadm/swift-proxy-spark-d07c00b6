@@ -393,7 +393,7 @@ export const createReactivateCheckout = createServerFn({ method: "POST" })
     const { data: order } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, user_id, status, billing_cycle, quantity, customer_email, products(name, stripe_price_monthly_id, stripe_price_yearly_id)",
+        "id, user_id, status, billing_cycle, quantity, customer_email, products(name, stripe_price_monthly_id, stripe_price_quarterly_id, stripe_price_semiannual_id, stripe_price_yearly_id)",
       )
       .eq("id", data.orderId)
       .maybeSingle();
@@ -405,10 +405,18 @@ export const createReactivateCheckout = createServerFn({ method: "POST" })
       throw new Error("Pedido não precisa de reativação");
     }
 
-    const priceId =
-      order.billing_cycle === "yearly"
-        ? order.products?.stripe_price_yearly_id
-        : order.products?.stripe_price_monthly_id;
+    const cycle = (order.billing_cycle ?? "monthly") as
+      | "monthly"
+      | "quarterly"
+      | "semiannual"
+      | "yearly";
+    const priceByCycle = {
+      monthly: order.products?.stripe_price_monthly_id,
+      quarterly: order.products?.stripe_price_quarterly_id,
+      semiannual: order.products?.stripe_price_semiannual_id,
+      yearly: order.products?.stripe_price_yearly_id,
+    } as const;
+    const priceId = priceByCycle[cycle] ?? priceByCycle.monthly;
 
     if (!priceId) throw new Error("Preço Stripe não configurado");
 

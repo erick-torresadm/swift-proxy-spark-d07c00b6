@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react";
 import { useState } from "react";
 
-import { supabase } from "@/lib/supabase-custom/client";
 import logo from "@/assets/logo-fastproxy.png";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -22,9 +21,15 @@ function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     // Sempre mostra o mesmo sucesso — não revela se o email existe (anti-enumeração).
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.PUBLIC_BASE_URL || window.location.origin}/reset-password`,
-    });
+    try {
+      await fetch("/api/public/auth/recovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      // Falha de rede: ainda mostra sucesso para não vazar se o email existe.
+    }
     setLoading(false);
     setSent(true);
   }

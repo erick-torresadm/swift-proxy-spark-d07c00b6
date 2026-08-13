@@ -223,6 +223,35 @@ export function tplTest(name?: string) {
   });
 }
 
+export function tplPasswordRecovery(opts: {
+  email: string;
+  resetUrl: string;
+  magicUrl: string;
+}) {
+  return layout({
+    preview: "Recupere o acesso à sua conta Fast Proxy",
+    title: "Recuperar acesso",
+    bodyHtml: `
+      <h1 style="margin:0 0 12px;font-size:22px;">Recupere o acesso à sua conta</h1>
+      <p style="margin:0 0 16px;color:${BRAND.muted};line-height:1.6;">
+        Recebemos um pedido para <b>${escapeHtml(opts.email)}</b>. Escolha uma das opções abaixo:
+      </p>
+      <p style="margin:0 0 10px;">${btn(opts.resetUrl, "Definir nova senha")}</p>
+      <p style="margin:0 0 18px;color:${BRAND.muted};font-size:13px;line-height:1.6;">
+        Crie uma nova senha para acessar sua conta.
+      </p>
+      <p style="margin:0 0 10px;">${btn(opts.magicUrl, "Entrar com link mágico")}</p>
+      <p style="margin:0 0 18px;color:${BRAND.muted};font-size:13px;line-height:1.6;">
+        Entre direto na sua conta, sem precisar digitar a senha.
+      </p>
+      <p style="margin:18px 0 0;color:${BRAND.muted};font-size:12px;line-height:1.6;">
+        Os links são válidos por 1 hora e podem ser usados uma única vez.
+        Se você não pediu isso, ignore este email — nada será alterado.
+      </p>
+    `,
+  });
+}
+
 export function tplOrderPaid(opts: {
   customerName?: string;
   productName: string;

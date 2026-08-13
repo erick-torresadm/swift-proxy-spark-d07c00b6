@@ -34,6 +34,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as TermosDothtmlRouteImport } from './routes/termos[.]html'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CategorySplatRouteImport } from './routes/category.$'
@@ -79,6 +80,7 @@ import { Route as AuthenticatedAdminCustomersIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAdminCustomersUserIdRouteImport } from './routes/_authenticated.admin.customers.$userId'
 import { Route as AuthenticatedAdminInventoryIndexRouteImport } from './routes/_authenticated.admin.inventory.index'
 import { Route as AuthenticatedAdminInventoryProductIdRouteImport } from './routes/_authenticated.admin.inventory.$productId'
+import { Route as ApiPublicAuthRecoveryRouteImport } from './routes/api/public/auth/recovery'
 import { Route as ApiPublicBlogIngestRouteImport } from './routes/api/public/blog/ingest'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
 import { Route as ApiPublicHooksDunningSweepRouteImport } from './routes/api/public/hooks/dunning-sweep'
@@ -218,6 +220,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/',
@@ -474,6 +481,11 @@ const AuthenticatedAdminInventoryProductIdRoute =
     path: '/inventory/$productId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicAuthRecoveryRoute = ApiPublicAuthRecoveryRouteImport.update({
+  id: '/api/public/auth/recovery',
+  path: '/api/public/auth/recovery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicBlogIngestRoute = ApiPublicBlogIngestRouteImport.update({
   id: '/api/public/blog/ingest',
   path: '/api/public/blog/ingest',
@@ -588,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/termos': typeof TermosRoute
   '/termos.html': typeof TermosDothtmlRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -630,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
+  '/api/public/auth/recovery': typeof ApiPublicAuthRecoveryRoute
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
@@ -672,6 +686,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
   '/termos.html': typeof TermosDothtmlRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -713,6 +728,7 @@ export interface FileRoutesByTo {
   '/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
+  '/api/public/auth/recovery': typeof ApiPublicAuthRecoveryRoute
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
@@ -759,6 +775,7 @@ export interface FileRoutesById {
   '/termos': typeof TermosRoute
   '/termos.html': typeof TermosDothtmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/auth/callback': typeof AuthCallbackRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/category/$': typeof CategorySplatRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -801,6 +818,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/blog/tags': typeof AuthenticatedAdminBlogTagsRoute
   '/_authenticated/admin/customers/$userId': typeof AuthenticatedAdminCustomersUserIdRoute
   '/_authenticated/admin/inventory/$productId': typeof AuthenticatedAdminInventoryProductIdRoute
+  '/api/public/auth/recovery': typeof ApiPublicAuthRecoveryRoute
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
@@ -847,6 +865,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/termos.html'
     | '/admin'
+    | '/auth/callback'
     | '/blog/$slug'
     | '/category/$'
     | '/checkout/success'
@@ -889,6 +908,7 @@ export interface FileRouteTypes {
     | '/admin/blog/tags'
     | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
+    | '/api/public/auth/recovery'
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/dunning-sweep'
@@ -931,6 +951,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/termos'
     | '/termos.html'
+    | '/auth/callback'
     | '/blog/$slug'
     | '/category/$'
     | '/checkout/success'
@@ -972,6 +993,7 @@ export interface FileRouteTypes {
     | '/admin/blog/tags'
     | '/admin/customers/$userId'
     | '/admin/inventory/$productId'
+    | '/api/public/auth/recovery'
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/dunning-sweep'
@@ -1017,6 +1039,7 @@ export interface FileRouteTypes {
     | '/termos'
     | '/termos.html'
     | '/_authenticated/admin'
+    | '/auth/callback'
     | '/blog/$slug'
     | '/category/$'
     | '/checkout/success'
@@ -1059,6 +1082,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/blog/tags'
     | '/_authenticated/admin/customers/$userId'
     | '/_authenticated/admin/inventory/$productId'
+    | '/api/public/auth/recovery'
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
     | '/api/public/hooks/dunning-sweep'
@@ -1104,11 +1128,13 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
   TermosDothtmlRoute: typeof TermosDothtmlRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   CategorySplatRoute: typeof CategorySplatRoute
   CommentsSplatRoute: typeof CommentsSplatRoute
   LocaleBlogSlugRoute: typeof LocaleBlogSlugRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   LocaleBlogIndexRoute: typeof LocaleBlogIndexRoute
+  ApiPublicAuthRecoveryRoute: typeof ApiPublicAuthRecoveryRoute
   ApiPublicBlogIngestRoute: typeof ApiPublicBlogIngestRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
   ApiPublicHooksDunningSweepRoute: typeof ApiPublicHooksDunningSweepRoute
@@ -1301,6 +1327,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/': {
       id: '/blog/'
@@ -1617,6 +1650,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInventoryProductIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/auth/recovery': {
+      id: '/api/public/auth/recovery'
+      path: '/api/public/auth/recovery'
+      fullPath: '/api/public/auth/recovery'
+      preLoaderRoute: typeof ApiPublicAuthRecoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/blog/ingest': {
       id: '/api/public/blog/ingest'
       path: '/api/public/blog/ingest'
@@ -1890,11 +1930,13 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
   TermosDothtmlRoute: TermosDothtmlRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   CategorySplatRoute: CategorySplatRoute,
   CommentsSplatRoute: CommentsSplatRoute,
   LocaleBlogSlugRoute: LocaleBlogSlugRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   LocaleBlogIndexRoute: LocaleBlogIndexRoute,
+  ApiPublicAuthRecoveryRoute: ApiPublicAuthRecoveryRoute,
   ApiPublicBlogIngestRoute: ApiPublicBlogIngestRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
   ApiPublicHooksDunningSweepRoute: ApiPublicHooksDunningSweepRoute,

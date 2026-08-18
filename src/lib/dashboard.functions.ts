@@ -187,7 +187,7 @@ export const listMyOrders = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, status, quantity, billing_cycle, amount_cents, current_period_end, grace_until, created_at, products(name, slug, block_size)",
+        "id, status, quantity, billing_cycle, amount_cents, current_period_end, grace_until, created_at, delivery_issue_at, delivery_issue_message, products(name, slug, block_size)",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false });
@@ -203,6 +203,9 @@ export const listMyOrders = createServerFn({ method: "GET" })
       created_at: o.created_at,
       product_name: o.products?.name ?? "Plano",
       block_size: o.products?.block_size ?? 1,
+      delivery_issue_at: (o as { delivery_issue_at?: string | null }).delivery_issue_at ?? null,
+      delivery_issue_message:
+        (o as { delivery_issue_message?: string | null }).delivery_issue_message ?? null,
     }));
   });
 

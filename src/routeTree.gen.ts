@@ -91,6 +91,7 @@ import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './route
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksProxysellerFullSyncRouteImport } from './routes/api/public/hooks/proxyseller-full-sync'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
+import { Route as ApiPublicHooksReconcileStuckOrdersRouteImport } from './routes/api/public/hooks/reconcile-stuck-orders'
 import { Route as ApiPublicHooksRenewalSweepRouteImport } from './routes/api/public/hooks/renewal-sweep'
 import { Route as ApiPublicHooksResendEventsRouteImport } from './routes/api/public/hooks/resend-events'
 import { Route as ApiPublicHooksStripeRouteImport } from './routes/api/public/hooks/stripe'
@@ -545,6 +546,12 @@ const ApiPublicHooksProxysellerSyncRoute =
     path: '/api/public/hooks/proxyseller-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksReconcileStuckOrdersRoute =
+  ApiPublicHooksReconcileStuckOrdersRouteImport.update({
+    id: '/api/public/hooks/reconcile-stuck-orders',
+    path: '/api/public/hooks/reconcile-stuck-orders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksRenewalSweepRoute =
   ApiPublicHooksRenewalSweepRouteImport.update({
     id: '/api/public/hooks/renewal-sweep',
@@ -654,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/reconcile-stuck-orders': typeof ApiPublicHooksReconcileStuckOrdersRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
   '/api/public/hooks/resend-events': typeof ApiPublicHooksResendEventsRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
@@ -739,6 +747,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/reconcile-stuck-orders': typeof ApiPublicHooksReconcileStuckOrdersRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
   '/api/public/hooks/resend-events': typeof ApiPublicHooksResendEventsRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
@@ -829,6 +838,7 @@ export interface FileRoutesById {
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
+  '/api/public/hooks/reconcile-stuck-orders': typeof ApiPublicHooksReconcileStuckOrdersRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
   '/api/public/hooks/resend-events': typeof ApiPublicHooksResendEventsRoute
   '/api/public/hooks/stripe': typeof ApiPublicHooksStripeRoute
@@ -919,6 +929,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/reconcile-stuck-orders'
     | '/api/public/hooks/renewal-sweep'
     | '/api/public/hooks/resend-events'
     | '/api/public/hooks/stripe'
@@ -1004,6 +1015,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/reconcile-stuck-orders'
     | '/api/public/hooks/renewal-sweep'
     | '/api/public/hooks/resend-events'
     | '/api/public/hooks/stripe'
@@ -1093,6 +1105,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
     | '/api/public/hooks/proxyseller-sync'
+    | '/api/public/hooks/reconcile-stuck-orders'
     | '/api/public/hooks/renewal-sweep'
     | '/api/public/hooks/resend-events'
     | '/api/public/hooks/stripe'
@@ -1145,6 +1158,7 @@ export interface RootRouteChildren {
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
   ApiPublicHooksProxysellerFullSyncRoute: typeof ApiPublicHooksProxysellerFullSyncRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
+  ApiPublicHooksReconcileStuckOrdersRoute: typeof ApiPublicHooksReconcileStuckOrdersRoute
   ApiPublicHooksRenewalSweepRoute: typeof ApiPublicHooksRenewalSweepRoute
   ApiPublicHooksResendEventsRoute: typeof ApiPublicHooksResendEventsRoute
   ApiPublicHooksStripeRoute: typeof ApiPublicHooksStripeRoute
@@ -1727,6 +1741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProxysellerSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/reconcile-stuck-orders': {
+      id: '/api/public/hooks/reconcile-stuck-orders'
+      path: '/api/public/hooks/reconcile-stuck-orders'
+      fullPath: '/api/public/hooks/reconcile-stuck-orders'
+      preLoaderRoute: typeof ApiPublicHooksReconcileStuckOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/renewal-sweep': {
       id: '/api/public/hooks/renewal-sweep'
       path: '/api/public/hooks/renewal-sweep'
@@ -1950,6 +1971,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksProxysellerFullSyncRoute:
     ApiPublicHooksProxysellerFullSyncRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
+  ApiPublicHooksReconcileStuckOrdersRoute:
+    ApiPublicHooksReconcileStuckOrdersRoute,
   ApiPublicHooksRenewalSweepRoute: ApiPublicHooksRenewalSweepRoute,
   ApiPublicHooksResendEventsRoute: ApiPublicHooksResendEventsRoute,
   ApiPublicHooksStripeRoute: ApiPublicHooksStripeRoute,

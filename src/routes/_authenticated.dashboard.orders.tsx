@@ -85,39 +85,48 @@ function OrdersPage() {
               </thead>
               <tbody>
                 {(data ?? []).map((o) => (
-                  <tr key={o.id} className="border-t border-border/60">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {formatDate(o.created_at)}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">{o.product_name}</td>
-                    <td className="px-4 py-3">
-                      {o.quantity}
-                      {o.block_size > 1 && (
-                        <span className="text-muted-foreground text-xs">
-                          {" "}
-                          ({o.quantity * o.block_size} IPs)
+                  <>
+                    <tr key={o.id} className="border-t border-border/60">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {formatDate(o.created_at)}
+                      </td>
+                      <td className="px-4 py-3 font-semibold">{o.product_name}</td>
+                      <td className="px-4 py-3">
+                        {o.quantity}
+                        {o.block_size > 1 && (
+                          <span className="text-muted-foreground text-xs">
+                            {" "}
+                            ({o.quantity * o.block_size} IPs)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 capitalize">
+                        {o.billing_cycle === "yearly" ? "Anual" : o.billing_cycle === "quarterly" ? "Trimestral" : o.billing_cycle === "semiannual" ? "Semestral" : "Mensal"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold">
+                        {formatBRL(o.amount_cents)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {formatDate(o.current_period_end)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            STATUS_STYLE[o.status] ?? "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {STATUS_LABEL[o.status] ?? o.status}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 capitalize">
-                      {o.billing_cycle === "yearly" ? "Anual" : o.billing_cycle === "quarterly" ? "Trimestral" : o.billing_cycle === "semiannual" ? "Semestral" : "Mensal"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold">
-                      {formatBRL(o.amount_cents)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                      {formatDate(o.current_period_end)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          STATUS_STYLE[o.status] ?? "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {STATUS_LABEL[o.status] ?? o.status}
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {o.delivery_issue_message && (
+                      <tr key={`${o.id}-issue`} className="bg-amber-500/10">
+                        <td colSpan={7} className="px-4 py-2 text-xs text-amber-600 dark:text-amber-400">
+                          ⚠️ {o.delivery_issue_message}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>

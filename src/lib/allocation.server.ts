@@ -351,13 +351,23 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
 }> {
   const { data: order, error: orderErr } = await supabaseAdmin
     .from("orders")
-    .select("id, user_id, product_id, quantity, status")
+    .select("id, user_id, product_id, quantity, status, customer_email")
     .eq("id", orderId)
     .maybeSingle();
 
   if (orderErr) throw new Error(orderErr.message);
   if (!order) throw new Error("order not found");
-  if (!order.user_id) throw new Error("order has no user_id yet");
+  if (!order.user_id) {
+    // Race condition entre o checkout e o vínculo do usuário: tenta resolver
+    // pelo e-mail antes de desistir, em vez de travar o pedido pra sempre.
+    const { findUserIdByEmail } = await import("@/lib/order-claim.server");
+    const resolvedUserId = order.customer_email
+      ? await findUserIdByEmail(order.customer_email)
+      : null;
+    if (!resolvedUserId) throw new Error("order has no user_id yet");
+    await supabaseAdmin.from("orders").update({ user_id: resolvedUserId }).eq("id", order.id);
+    order.user_id = resolvedUserId;
+  }
   if (order.status !== "paid") {
     return { allocated: 0, short: 0 };
   }

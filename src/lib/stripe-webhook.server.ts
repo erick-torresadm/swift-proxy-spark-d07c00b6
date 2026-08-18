@@ -223,8 +223,25 @@ async function allocateOrder(orderId: string) {
   try {
     const result = await allocateProxiesForOrder(orderId);
     await logAudit("allocate_proxies", result.short > 0 ? "partial" : "ok", { orderId, ...result }, result.error);
+    if (result.short > 0 && !result.pending) {
+      void notifyAllAdmins({
+        title: "⚠️ Estoque insuficiente na compra",
+        body: `Pedido ${orderId}: faltaram ${result.short} proxy(s) — cliente não recebeu tudo.`,
+        link: "/admin/orders",
+        metadata: { orderId, ...result },
+        dedupeKey: `alloc-short:${orderId}`,
+      });
+    }
   } catch (err) {
-    await logAudit("allocate_proxies", "error", { orderId }, err instanceof Error ? err.message : String(err));
+    const message = err instanceof Error ? err.message : String(err);
+    await logAudit("allocate_proxies", "error", { orderId }, message);
+    void notifyAllAdmins({
+      title: "🛑 Falha ao entregar proxy — AÇÃO NECESSÁRIA",
+      body: `Pedido ${orderId} pago mas alocação falhou: ${message}`,
+      link: "/admin/orders",
+      metadata: { orderId, error: message },
+      dedupeKey: `alloc-fail:${orderId}`,
+    });
   }
 }
 

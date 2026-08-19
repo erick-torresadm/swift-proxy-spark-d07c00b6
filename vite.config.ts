@@ -36,6 +36,8 @@ export default defineConfig({
   // e o wrapper voltava a usar o fallback `cloudflare-module`, quebrando o
   // site de novo. Este projeto só é buildado para a Vercel, então forçar
   // sempre é seguro.
+  // cache-bust: 2026-08-18-b (build cache da Vercel restaurou o vite.config.ts
+  // de um deploy quebrado anterior e ignorou esta mudança; força novo hash).
   nitro: { preset: "vercel", vercel: { functions: { runtime: "nodejs22.x" } } } as {
     preset: string;
   },

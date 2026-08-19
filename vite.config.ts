@@ -14,9 +14,24 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 // um build no formato Cloudflare Workers (wrangler.json) em vez do Vercel
 // Build Output API — a Vercel então não encontra nenhuma function/rota e o
 // site inteiro responde 404. Setar explícito evita depender da autodetecção.
+//
+// nitro.vercel.functions.runtime também é fixado: sem isso o Nitro escolhe
+// o runtime da function com base na versão do Node (ou Bun, se detectar
+// globalThis.Bun) que está rodando o BUILD, não a config do projeto na
+// Vercel — então uma imagem de build diferente (ou a presença de um
+// bun.lock) muda silenciosamente o runtime gerado sem nenhuma mudança de
+// código, e uma versão não suportada pela plataforma quebra o site inteiro
+// com 404 (a function nunca é provisionada).
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
-  nitro: process.env.VERCEL ? { preset: "vercel" } : undefined,
+  // O tipo exposto pelo wrapper só declara { preset, output, cloudflare },
+  // mas repassa o objeto direto pro plugin `nitro()` real, que aceita
+  // `vercel.functions.runtime` normalmente (confirmado em build local).
+  nitro: process.env.VERCEL
+    ? ({ preset: "vercel", vercel: { functions: { runtime: "nodejs22.x" } } } as {
+        preset: string;
+      })
+    : undefined,
 });

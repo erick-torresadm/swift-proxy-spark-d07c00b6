@@ -29,9 +29,14 @@ export default defineConfig({
   // O tipo exposto pelo wrapper só declara { preset, output, cloudflare },
   // mas repassa o objeto direto pro plugin `nitro()` real, que aceita
   // `vercel.functions.runtime` normalmente (confirmado em build local).
-  nitro: process.env.VERCEL
-    ? ({ preset: "vercel", vercel: { functions: { runtime: "nodejs22.x" } } } as {
-        preset: string;
-      })
-    : undefined,
+  //
+  // NÃO condicionar em process.env.VERCEL: essa env var se mostrou
+  // inconsistente entre os builds de preview e production desse projeto
+  // (preview tinha, production não) — sem ela a condição caía no `undefined`
+  // e o wrapper voltava a usar o fallback `cloudflare-module`, quebrando o
+  // site de novo. Este projeto só é buildado para a Vercel, então forçar
+  // sempre é seguro.
+  nitro: { preset: "vercel", vercel: { functions: { runtime: "nodejs22.x" } } } as {
+    preset: string;
+  },
 });

@@ -89,18 +89,28 @@ function endpointKey(host: string | null | undefined, port: number | string | nu
   return `${cleanHost}:${String(port)}`;
 }
 
+// Hosts da VPS própria (fastproxy_vps). Estoque manual (subido direto na VPS,
+// sem passar por uma "compra" formal) não tem provider_order_id vinculado,
+// então reconhecer só por provider_orders.provider deixava esses proxies de
+// fora do bloqueio/reativação — checar pelo host cobre os dois casos.
+const FASTPROXY_VPS_HOSTS = new Set(["147.15.47.249"]);
+
 async function vpsUsernamesForStockIds(stockIds: string[]): Promise<string[]> {
   if (stockIds.length === 0) return [];
   const { data } = await supabaseAdmin
     .from("proxy_stock")
-    .select("username, provider_order_id, provider_orders(provider)")
+    .select("username, host, provider_order_id, provider_orders(provider)")
     .in("id", stockIds);
   const usernames = new Set<string>();
   for (const row of (data ?? []) as unknown as Array<{
     username?: string | null;
+    host?: string | null;
     provider_orders?: { provider?: string | null } | null;
   }>) {
-    if (row.provider_orders?.provider === "fastproxy_vps" && row.username) {
+    const isVps =
+      row.provider_orders?.provider === "fastproxy_vps" ||
+      (row.host && FASTPROXY_VPS_HOSTS.has(row.host));
+    if (isVps && row.username) {
       usernames.add(row.username);
     }
   }
@@ -127,20 +137,24 @@ async function restoreVpsCredentials(stockIds: string[]): Promise<void> {
   if (stockIds.length === 0) return;
   const { data } = await supabaseAdmin
     .from("proxy_stock")
-    .select("username, password, provider_order_id, provider_orders(provider, external_order_id)")
+    .select("username, password, host, provider_order_id, provider_orders(provider, external_order_id)")
     .in("id", stockIds);
   for (const row of (data ?? []) as unknown as Array<{
     username?: string | null;
     password?: string | null;
+    host?: string | null;
     provider_orders?: { provider?: string | null; external_order_id?: string | null } | null;
   }>) {
-    if (row.provider_orders?.provider !== "fastproxy_vps") continue;
+    const isVps =
+      row.provider_orders?.provider === "fastproxy_vps" ||
+      (row.host && FASTPROXY_VPS_HOSTS.has(row.host));
+    if (!isVps) continue;
     if (!row.username || !row.password) continue;
     try {
       await vps.upsertCredential({
         username: row.username,
         password: row.password,
-        block_id: row.provider_orders.external_order_id ?? undefined,
+        block_id: row.provider_orders?.external_order_id ?? undefined,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

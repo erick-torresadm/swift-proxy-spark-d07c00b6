@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { getStripe } from "./stripe.server";
 import { computeBumpsTotals, type Bumps } from "./order-bumps";
+import { notifyAllAdmins } from "./notifications.server";
 
 const BumpsSchema = z
   .object({
@@ -336,6 +337,14 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       .from("orders")
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", order.id);
+
+    void notifyAllAdmins({
+      title: "🛒 Checkout iniciado",
+      body: `${product.name} × ${effectiveQuantity} — ${data.name} (${data.email})`,
+      link: "/admin/orders",
+      metadata: { orderId: order.id, productSlug: product.slug, email: data.email },
+      dedupeKey: `checkout-created:${order.id}`,
+    });
 
 
     // Best-effort: log redemption + increment uses_count (kept simple; webhook

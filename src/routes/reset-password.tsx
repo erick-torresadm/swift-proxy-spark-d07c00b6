@@ -19,10 +19,21 @@ function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Supabase coloca um access_token no hash quando o link de recovery é aberto;
-    // o client SDK detecta automaticamente. Esperamos a sessão temporária ficar pronta.
+    // Apps de email no celular (Gmail, Outlook) costumam pré-abrir os links
+    // por segurança (link scanning) antes do usuário clicar de verdade — isso
+    // consome o token de recovery de uso único, e o Supabase redireciona de
+    // volta com "error"/"error_description" no hash em vez de uma sessão.
+    // Sem tratar isso, a tela ficava presa em "Validando..." pra sempre.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const hashError = hashParams.get("error_description") || hashParams.get("error");
+    if (hashError) {
+      setLinkError(decodeURIComponent(hashError.replace(/\+/g, " ")));
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setReady(true);
@@ -31,7 +42,25 @@ function ResetPasswordPage() {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setReady(true);
     });
-    return () => subscription.unsubscribe();
+
+    // Timeout: se nada acontecer em alguns segundos, o link provavelmente já
+    // foi consumido (ou é inválido/expirado) — melhor avisar do que travar
+    // "Validando..." pra sempre.
+    const timeout = setTimeout(() => {
+      setReady((current) => {
+        if (!current) {
+          setLinkError(
+            "Link inválido, expirado ou já usado. Peça um novo link de recuperação.",
+          );
+        }
+        return current;
+      });
+    }, 6000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -72,7 +101,17 @@ function ResetPasswordPage() {
             </p>
           </div>
 
-          {!ready ? (
+          {linkError ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-destructive mb-4">{linkError}</p>
+              <a
+                href="/forgot-password"
+                className="inline-block text-sm font-semibold text-primary hover:underline"
+              >
+                Pedir novo link de recuperação
+              </a>
+            </div>
+          ) : !ready ? (
             <div className="text-center text-sm text-muted-foreground py-6">
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-3" />
               Validando link de recuperação…

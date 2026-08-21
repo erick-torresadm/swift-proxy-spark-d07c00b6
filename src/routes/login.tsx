@@ -49,8 +49,32 @@ function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      // Mensagem genérica — não diferencia "email não existe" de "senha errada"
-      // para evitar enumeração de usuários.
+      // "email não confirmado" é um erro categoricamente diferente de
+      // senha errada — o Supabase já expõe isso via error.code, então dar
+      // uma mensagem específica aqui não abre a enumeração genérica que o
+      // catch-all abaixo evita (não diferencia "não existe" de "senha errada").
+      if (error.code === "email_not_confirmed") {
+        toast.error(
+          "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada (e o spam).",
+          {
+            action: {
+              label: "Reenviar",
+              onClick: async () => {
+                const { error: resendError } = await supabase.auth.resend({
+                  type: "signup",
+                  email,
+                });
+                if (resendError) {
+                  toast.error("Não foi possível reenviar agora. Tente de novo em instantes.");
+                } else {
+                  toast.success("E-mail de confirmação reenviado.");
+                }
+              },
+            },
+          },
+        );
+        return;
+      }
       toast.error("Email ou senha inválidos.");
       return;
     }

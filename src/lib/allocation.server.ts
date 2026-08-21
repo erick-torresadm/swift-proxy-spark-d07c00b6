@@ -986,6 +986,25 @@ export async function renewProxyBlocksForOrder(orderId: string): Promise<{
   dry_run: boolean;
   skipped_reason?: string;
 }> {
+  // Kill switch manual: enquanto provider_settings.renewals.dry_run = true,
+  // nenhum pedido é renovado no provedor (evita gastar saldo com renovação
+  // de clientes existentes até decidir com calma quem renovar). Pedidos
+  // novos (allocateProxiesForOrder) não passam por aqui — continuam normais.
+  const { data: renewalSettings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "renewals")
+    .maybeSingle();
+  if ((renewalSettings as { dry_run?: boolean } | null)?.dry_run) {
+    return {
+      renewed_proxies: 0,
+      renewed_blocks: 0,
+      cost_usd: 0,
+      dry_run: true,
+      skipped_reason: "renovações desativadas manualmente (provider_settings.renewals.dry_run)",
+    };
+  }
+
   const { data: order } = await supabaseAdmin
     .from("orders")
     .select("id, product_id, current_period_end")
@@ -1568,7 +1587,17 @@ export async function runRenewalSweep(opts: {
     .select("dry_run")
     .eq("provider", "proxyseller")
     .maybeSingle();
-  const dryRun = !!opts.dryRun || !!(settings as { dry_run?: boolean } | null)?.dry_run;
+  // Kill switch manual de renovações (independente do flag "proxyseller",
+  // que também gate compras novas e não pode ser desligado junto).
+  const { data: renewalSettings } = await supabaseAdmin
+    .from("provider_settings")
+    .select("dry_run")
+    .eq("provider", "renewals")
+    .maybeSingle();
+  const dryRun =
+    !!opts.dryRun ||
+    !!(settings as { dry_run?: boolean } | null)?.dry_run ||
+    !!(renewalSettings as { dry_run?: boolean } | null)?.dry_run;
 
   const out = {
     window_days: windowDays,

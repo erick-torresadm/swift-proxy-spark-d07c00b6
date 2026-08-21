@@ -551,3 +551,80 @@ export const setProductPrice = createServerFn({ method: "POST" })
     return { ok: true, price_monthly_cents: data.price_monthly_cents, price_yearly_cents: yearly };
   });
 
+
+
+/**
+ * Clientes ativos por categoria dos produtos servidos pelo ProxySeller
+ * (ipv4, isp, ipv6/ipv6_fb que rodam nesse provedor) — pra decidir com
+ * calma quem renovar quando as renovações automáticas estão pausadas
+ * (provider_settings.renewals.dry_run).
+ *
+ * Expõe o vencimento REAL do IP no provedor (proxy_stock.expires_at), que
+ * pode já ter passado mesmo com a assinatura Stripe ainda ativa — é
+ * exatamente esse descompasso que a tela precisa deixar visível.
+ */
+export const getProxySellerActiveCustomers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "id, customer_email, customer_name, status, quantity, billing_cycle, amount_cents, current_period_end, grace_until, products(slug, category, provider)",
+      )
+      .in("status", ["paid", "past_due", "grace"])
+      .order("current_period_end", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const proxysellerOrders = (rows ?? []).filter(
+      (o) => (o.products as { provider?: string } | null)?.provider === "proxyseller",
+    );
+
+    const orderIds = proxysellerOrders.map((o) => o.id);
+    const { data: proxies } = orderIds.length
+      ? await supabaseAdmin
+          .from("customer_proxies")
+          .select("order_id, status, proxy_stock(expires_at)")
+          .in("order_id", orderIds)
+          .eq("status", "active")
+      : { data: [] };
+
+    const byOrder = new Map<string, { count: number; earliestExpiry: string | null }>();
+    for (const p of proxies ?? []) {
+      const entry = byOrder.get(p.order_id as string) ?? { count: 0, earliestExpiry: null };
+      entry.count++;
+      const exp = (p.proxy_stock as { expires_at?: string | null } | null)?.expires_at ?? null;
+      if (exp && (!entry.earliestExpiry || exp < entry.earliestExpiry)) entry.earliestExpiry = exp;
+      byOrder.set(p.order_id as string, entry);
+    }
+
+    const nowIso = new Date().toISOString();
+    const items = proxysellerOrders.map((o) => {
+      const proxyInfo = byOrder.get(o.id) ?? { count: 0, earliestExpiry: null };
+      const product = o.products as { slug?: string; category?: string } | null;
+      return {
+        order_id: o.id,
+        customer_email: o.customer_email,
+        customer_name: o.customer_name,
+        status: o.status,
+        category: product?.category ?? "?",
+        product_slug: product?.slug ?? "?",
+        quantity: o.quantity,
+        billing_cycle: o.billing_cycle,
+        amount_cents: o.amount_cents,
+        current_period_end: o.current_period_end,
+        grace_until: o.grace_until,
+        active_proxies: proxyInfo.count,
+        earliest_proxy_expiry: proxyInfo.earliestExpiry,
+        proxy_already_expired: !!proxyInfo.earliestExpiry && proxyInfo.earliestExpiry < nowIso,
+      };
+    });
+
+    const byCategory: Record<string, typeof items> = {};
+    for (const item of items) {
+      (byCategory[item.category] ??= []).push(item);
+    }
+
+    return { items, byCategory };
+  });

@@ -9,10 +9,30 @@ import {
   TrendingUp,
   Heart,
   Settings as SettingsIcon,
+  Users,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getProviderStatus, updateProviderSettings } from "@/lib/inventory.functions";
+import {
+  getProviderStatus,
+  updateProviderSettings,
+  getProxySellerActiveCustomers,
+} from "@/lib/inventory.functions";
 import { toast } from "sonner";
+
+const CATEGORY_LABEL: Record<string, string> = {
+  ipv4: "IPv4",
+  isp: "ISP Residencial",
+  ipv6: "IPv6",
+  ipv6_fb: "IPv6 Facebook",
+};
+
+const fmtBrlAmount = (cents: number | null) =>
+  cents == null ? "—" : (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function fmtDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
 
 export const Route = createFileRoute("/_authenticated/admin/provider")({
   component: ProviderPage,
@@ -132,6 +152,9 @@ function ProviderPage() {
         )}
       </div>
 
+      {/* Clientes ativos por categoria — pra decidir quem renovar */}
+      <ActiveCustomersByCategory />
+
       {/* Últimas chamadas API */}
       <div className="bg-card border border-border rounded-2xl p-5">
         <p className="font-bold mb-3">Últimas chamadas à API</p>
@@ -164,6 +187,93 @@ function ProviderPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ActiveCustomersByCategory() {
+  const fn = useServerFn(getProxySellerActiveCustomers);
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-provider-active-customers"],
+    queryFn: () => fn(),
+    refetchInterval: 60000,
+  });
+
+  const categories = Object.keys(data?.byCategory ?? {}).sort();
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5">
+      <p className="font-bold mb-1 flex items-center gap-2">
+        <Users className="w-4 h-4 text-primary" /> Clientes ativos por categoria
+      </p>
+      <p className="text-xs text-muted-foreground mb-4">
+        Só produtos servidos pelo provedor. Use pra decidir quem renovar quando as
+        renovações automáticas estiverem pausadas.
+      </p>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      ) : categories.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhum cliente ativo nesses produtos.</p>
+      ) : (
+        <div className="space-y-6">
+          {categories.map((cat) => {
+            const rows = data!.byCategory[cat]!;
+            const expiredCount = rows.filter((r) => r.proxy_already_expired).length;
+            return (
+              <div key={cat}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold text-sm">{CATEGORY_LABEL[cat] ?? cat}</span>
+                  <span className="text-xs text-muted-foreground">({rows.length} ativo{rows.length !== 1 ? "s" : ""})</span>
+                  {expiredCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-500/15 text-red-500">
+                      {expiredCount} com IP já vencido no provedor
+                    </span>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground border-b border-border/60">
+                        <th className="py-1.5 pr-3 font-medium">Cliente</th>
+                        <th className="py-1.5 pr-3 font-medium">Produto</th>
+                        <th className="py-1.5 pr-3 font-medium">IPs ativos</th>
+                        <th className="py-1.5 pr-3 font-medium">Vence no provedor</th>
+                        <th className="py-1.5 pr-3 font-medium">Assinatura até</th>
+                        <th className="py-1.5 pr-3 font-medium text-right">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr
+                          key={r.order_id}
+                          className={`border-b border-border/40 last:border-0 ${
+                            r.proxy_already_expired ? "bg-red-500/5" : ""
+                          }`}
+                        >
+                          <td className="py-1.5 pr-3">
+                            <div className="font-medium">{r.customer_name ?? "—"}</div>
+                            <div className="text-muted-foreground">{r.customer_email}</div>
+                          </td>
+                          <td className="py-1.5 pr-3 font-mono">{r.product_slug}</td>
+                          <td className="py-1.5 pr-3">{r.active_proxies}</td>
+                          <td className="py-1.5 pr-3">
+                            <span className={r.proxy_already_expired ? "text-red-500 font-bold" : ""}>
+                              {fmtDate(r.earliest_proxy_expiry)}
+                            </span>
+                          </td>
+                          <td className="py-1.5 pr-3">{fmtDate(r.current_period_end)}</td>
+                          <td className="py-1.5 pr-3 text-right">{fmtBrlAmount(r.amount_cents)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

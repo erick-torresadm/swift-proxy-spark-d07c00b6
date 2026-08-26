@@ -375,9 +375,18 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
     // Race condition entre o checkout e o vínculo do usuário: tenta resolver
     // pelo e-mail antes de desistir, em vez de travar o pedido pra sempre.
     const { findUserIdByEmail } = await import("@/lib/order-claim.server");
-    const resolvedUserId = order.customer_email
+    let resolvedUserId = order.customer_email
       ? await findUserIdByEmail(order.customer_email)
       : null;
+    // Compra como convidado que nunca confirmou/criou conta: sem isso o
+    // pedido fica travado pra sempre (não existe onde vincular o proxy no
+    // painel). Convida por e-mail e usa a conta recém-criada.
+    if (!resolvedUserId && order.customer_email) {
+      const { data: invited } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+        order.customer_email,
+      );
+      resolvedUserId = invited.user?.id ?? null;
+    }
     if (!resolvedUserId) throw new Error("order has no user_id yet");
     await supabaseAdmin.from("orders").update({ user_id: resolvedUserId }).eq("id", order.id);
     order.user_id = resolvedUserId;

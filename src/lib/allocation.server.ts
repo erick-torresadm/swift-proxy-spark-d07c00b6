@@ -19,9 +19,13 @@ import * as vps from "./fastproxy-vps.server";
  * differ by how the platform exposes them. Never buy a new block if a sibling
  * has stock available. See docs/PROXY-CATALOG.md.
  */
+// IPv6 BR "normal" continua exclusivo (estoque próprio da VPS). O plano
+// Facebook é so estrategia comercial pra ticket maior — a entrega real
+// é a mesma do IPv4 (mesmo estoque/fornecedor), só com rotação de IP
+// incluída no plano. Por isso compartilha pool com ipv4, não com ipv6.
 const SIBLING_CATEGORIES: Record<string, string[]> = {
-  ipv6: ["ipv6", "ipv6_fb"],
-  ipv6_fb: ["ipv6", "ipv6_fb"],
+  ipv6: ["ipv6"],
+  ipv6_fb: ["ipv6_fb", "ipv4"],
 };
 
 /** Map our product.category → ProxySeller "kind" used in /order/* and /proxy/list/{kind}. */
@@ -43,7 +47,9 @@ function isBrazilIpv6Product(product: {
   category?: string | null;
   country_code?: string | null;
 }): boolean {
-  return isIpv6Category(product.category) && product.country_code?.toUpperCase() === "BR";
+  // Só o IPv6 "normal" é estrito (estoque próprio, nunca ProxySeller).
+  // ipv6_fb é rótulo comercial — entrega vem do mesmo pool do IPv4.
+  return product.category === "ipv6" && product.country_code?.toUpperCase() === "BR";
 }
 
 const PURCHASE_LOCK_TTL_MS = 90_000;
@@ -491,7 +497,21 @@ export async function allocateProxiesForOrder(orderId: string, opts: { allowAuto
           });
 
           try {
-            const bought = await autoPurchaseIntoStock(product, stillShortAfterReuse, order.id);
+            // ipv6_fb não tem provider_tariff_id próprio (não compra sozinho) —
+            // usa o produto IPv4 irmão do mesmo país pra comprar de verdade.
+            // O estoque entra no pool compartilhado (SIBLING_CATEGORIES acima)
+            // e o pick seguinte já enxerga.
+            let purchaseProduct = product;
+            if (product.category === "ipv6_fb" && !product.provider_tariff_id && product.country_code) {
+              const { data: ipv4Sibling } = await supabaseAdmin
+                .from("products")
+                .select("id, block_size, category, country_code, provider_tariff_id, delivery_mode, restock_threshold, provider")
+                .eq("category", "ipv4")
+                .eq("country_code", product.country_code)
+                .maybeSingle();
+              if (ipv4Sibling) purchaseProduct = ipv4Sibling;
+            }
+            const bought = await autoPurchaseIntoStock(purchaseProduct, stillShortAfterReuse, order.id);
             if (bought > 0) {
               void notifyAllAdmins({
                 title: "📦 Estoque renovado",

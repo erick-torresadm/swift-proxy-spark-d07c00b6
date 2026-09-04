@@ -4,6 +4,12 @@ import { listProxies, psDateToIso, type PsProxyItem, type PsProxyKind } from "@/
 import * as vps from "@/lib/fastproxy-vps.server";
 import { checkCronAuth } from "@/lib/cron-auth.server";
 
+// Hosts da VPS própria. Estoque manual (subido direto na VPS, sem "compra"
+// formal via provider_orders) não tinha esse vínculo e caía sendo checado
+// contra a API do ProxySeller — que nunca reconhece esses proxies, gerando
+// "OFFLINE 0%" falso no painel mesmo com o proxy funcionando normalmente.
+const FASTPROXY_VPS_HOSTS = new Set(["147.15.47.249"]);
+
 
 /**
  * Healthcheck periódico chamado por pg_cron a cada 5 minutos.
@@ -43,7 +49,7 @@ async function runHealthcheck(): Promise<number> {
   // incluindo o provider do bloco para saber qual API consultar.
   const { data: stockRows } = await supabaseAdmin
     .from("proxy_stock")
-    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, status, country_code, provider_order_id, provider_orders(provider, external_order_id)")
+    .select("id, external_proxy_id, host, port, username, password, protocol, expires_at, status, country_code, health_status, provider_order_id, provider_orders(provider, external_order_id)")
     .in("status", ["allocated", "available"]);
 
   if (!stockRows || stockRows.length === 0) return 0;
@@ -52,7 +58,8 @@ async function runHealthcheck(): Promise<number> {
   const vpsRows: typeof stockRows = [];
   for (const r of stockRows) {
     const p = (r as unknown as { provider_orders?: { provider?: string | null } | null }).provider_orders?.provider;
-    if (p === "fastproxy_vps") vpsRows.push(r); else psRows.push(r);
+    const isVps = p === "fastproxy_vps" || FASTPROXY_VPS_HOSTS.has(r.host ?? "");
+    if (isVps) vpsRows.push(r); else psRows.push(r);
   }
 
   // 2. ProxySeller: uma chamada por kind
@@ -104,9 +111,27 @@ async function runHealthcheck(): Promise<number> {
   const snapshots = await Promise.all(stockRows.map(async (r) => {
     const providerName = (r as unknown as { provider_orders?: { provider?: string | null } | null }).provider_orders?.provider;
 
-    if (providerName === "fastproxy_vps") {
+    const isVpsHost = providerName === "fastproxy_vps" || FASTPROXY_VPS_HOSTS.has(r.host ?? "");
+    if (isVpsHost) {
       const extOrder = (r as unknown as { provider_orders?: { external_order_id?: string | null } | null }).provider_orders?.external_order_id ?? null;
-      const block = extOrder ? vpsBlockCache.get(extOrder) : null;
+
+      // Sem provider_orders (estoque importado manual): não dá pra consultar
+      // bloco por external_order_id. Usa o resultado do proxy-health-sweep
+      // (teste de conexão real, roda a cada 10min) como fonte da verdade.
+      if (!extOrder) {
+        const swept = (r as unknown as { health_status?: string | null }).health_status ?? null;
+        const ok = swept !== "dead"; // desconhecido/ok = considera vivo até prova em contrário
+        return {
+          stock_id: r.id,
+          ok,
+          latency_ms: null,
+          country_seen: r.country_code ?? null,
+          source: "vps_sweep",
+          error: ok ? null : "failed_connection_test",
+        };
+      }
+
+      const block = vpsBlockCache.get(extOrder) ?? null;
       const proxies = block?.proxies ?? [];
       const match = proxies.find((p) => hostOnly(p.ip) === hostOnly(r.host) && p.port === r.port)
         || proxies.find((p) => p.username && p.username === r.username);

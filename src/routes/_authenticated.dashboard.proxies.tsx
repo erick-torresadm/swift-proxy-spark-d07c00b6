@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag, Activity, ShoppingCart, Pencil } from "lucide-react";
-import { listMyProxies, rotateProxyIp, createReactivateCheckout, syncMyAllocations, setProxyLabel } from "@/lib/dashboard.functions";
+import { listMyProxies, rotateProxyIp, createReactivateCheckout, syncMyAllocations, setProxyLabel, testProxyNow } from "@/lib/dashboard.functions";
 import { reportProxyIssue } from "@/lib/admin-ops.functions";
 import { getMyProxiesHealth } from "@/lib/health.functions";
 import { BuyMoreDialog } from "@/components/buy-more-dialog";
@@ -122,6 +122,29 @@ function LabelCell({ proxyId, value, onSaved }: { proxyId: string; value: string
   );
 }
 
+function TestNowButton({ proxyId }: { proxyId: string }) {
+  const testFn = useServerFn(testProxyNow);
+  const test = useMutation({
+    mutationFn: () => testFn({ data: { proxyId } }),
+    onSuccess: (r) => {
+      if (r.ok) toast.success(`Funcionando! ${r.country ?? ""} · ${r.latency_ms}ms`.trim());
+      else toast.error("Proxy não respondeu agora. Vamos investigar.");
+    },
+    onError: () => toast.error("Não deu pra testar agora, tenta de novo."),
+  });
+  return (
+    <button
+      onClick={() => test.mutate()}
+      disabled={test.isPending}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-muted-foreground hover:text-primary hover:bg-primary/10 disabled:opacity-50 transition"
+      title="Testar conexão agora"
+    >
+      <Activity className={`w-3.5 h-3.5 ${test.isPending ? "animate-pulse" : ""}`} />
+      {test.isPending ? "Testando…" : "Testar"}
+    </button>
+  );
+}
+
 function ProxiesPage() {
   const fetchProxies = useServerFn(listMyProxies);
   const fetchHealth = useServerFn(getMyProxiesHealth);
@@ -207,22 +230,44 @@ function ProxiesPage() {
 
 
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "grace">("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const list = data ?? [];
-    if (!query.trim()) return list;
+    let out = list;
+    if (statusFilter === "active") out = out.filter((p) => p.status === "active" && !p.grace_until);
+    if (statusFilter === "grace") out = out.filter((p) => !!p.grace_until);
+    if (!query.trim()) return out;
     const q = query.toLowerCase();
-    return list.filter(
+    return out.filter(
       (p) =>
         p.host?.toLowerCase().includes(q) ||
         p.product_name.toLowerCase().includes(q) ||
         p.username?.toLowerCase().includes(q) ||
         p.label?.toLowerCase().includes(q),
     );
-  }, [data, query]);
+  }, [data, query, statusFilter]);
 
-  function downloadList() {
-    const lines = (data ?? []).map(formatLine).filter(Boolean);
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === filtered.length ? new Set() : new Set(filtered.map((p) => p.id))));
+  }
+
+  function linesFor(list: typeof filtered) {
+    return list.map(formatLine).filter(Boolean);
+  }
+
+  function downloadList(list = data ?? []) {
+    const lines = linesFor(list);
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -232,11 +277,13 @@ function ProxiesPage() {
     URL.revokeObjectURL(url);
   }
 
-  function copyAll() {
-    const lines = (data ?? []).map(formatLine).filter(Boolean);
+  function copyAll(list = data ?? []) {
+    const lines = linesFor(list);
     navigator.clipboard.writeText(lines.join("\n"));
     toast.success(`${lines.length} proxies copiados`);
   }
+
+  const selectedProxies = filtered.filter((p) => selected.has(p.id));
 
   return (
     <div className="max-w-6xl">
@@ -251,13 +298,13 @@ function ProxiesPage() {
           {(data?.length ?? 0) > 0 && (
             <>
               <button
-                onClick={copyAll}
+                onClick={() => copyAll()}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-foreground/40 text-sm font-semibold transition"
               >
                 <Copy className="w-4 h-4" /> Copiar todos
               </button>
               <button
-                onClick={downloadList}
+                onClick={() => downloadList()}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:border-foreground/40 text-sm font-semibold transition"
               >
                 <Download className="w-4 h-4" /> Baixar .txt
@@ -327,21 +374,140 @@ function ProxiesPage() {
         </div>
       ) : (
         <>
-          <div className="relative mb-4">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filtrar por host, produto ou usuário…"
-              className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
-            />
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filtrar por host, produto, usuário ou tag…"
+                className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="h-10 px-3 rounded-lg border border-border bg-background text-sm sm:w-48"
+            >
+              <option value="all">Todos os status</option>
+              <option value="active">Ativos</option>
+              <option value="grace">Pagamento pendente</option>
+            </select>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-sm flex-wrap">
+              <span className="font-semibold">{selected.size} selecionado{selected.size > 1 ? "s" : ""}</span>
+              <button onClick={() => copyAll(selectedProxies)} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold hover:bg-primary/15 transition">
+                <Copy className="w-3.5 h-3.5" /> Copiar
+              </button>
+              <button onClick={() => downloadList(selectedProxies)} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold hover:bg-primary/15 transition">
+                <Download className="w-3.5 h-3.5" /> Baixar .txt
+              </button>
+              <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-foreground transition">
+                Limpar seleção
+              </button>
+            </div>
+          )}
+
+          {/* Mobile: lista em cards (tabela larga quebra em telas pequenas) */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((p) => {
+              const cap = p.ip_rotations_per_month ?? 0;
+              const used = p.ip_rotations_used ?? 0;
+              const remaining = Math.max(0, cap - used);
+              return (
+                <div key={p.id} className="bg-card border border-border rounded-2xl p-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelected(p.id)}
+                      className="mt-1 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-semibold truncate">{p.product_name}</div>
+                        <span
+                          className={`shrink-0 inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            p.status === "active" ? "bg-primary/15 text-primary" : "bg-amber-400/15 text-amber-400"
+                          }`}
+                        >
+                          {p.status}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground uppercase mb-1">
+                        {p.protocol} · {p.country_code}
+                      </div>
+                      <LabelCell
+                        proxyId={p.id}
+                        value={p.label}
+                        onSaved={(label) =>
+                          qc.setQueryData<typeof data>(["my-proxies"], (old) =>
+                            old?.map((row) => (row.id === p.id ? { ...row, label } : row)),
+                          )
+                        }
+                      />
+                      <div className="mt-2 font-mono text-xs break-all">
+                        {p.username}:{p.password}@{p.host}:{p.port}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 flex-wrap">
+                        <HealthBadge stockId={p.stock_id} health={health} />
+                        <TestNowButton proxyId={p.id} />
+                        {cap > 0 && (
+                          <button
+                            onClick={() => rotate.mutate(p.id)}
+                            disabled={remaining === 0 || rotate.isPending || p.status !== "active"}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border border-border hover:border-primary/60 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            title={`${remaining}/${cap} rotações restantes`}
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${rotate.isPending ? "animate-spin" : ""}`} />
+                            {remaining}/{cap}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setReportTarget(p.id);
+                            setReportMsg("");
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-muted-foreground hover:text-amber-400 hover:bg-amber-400/10 transition"
+                        >
+                          <Flag className="w-3.5 h-3.5" /> Reportar
+                        </button>
+                        <Link
+                          to="/dashboard/proxy/$id/quick"
+                          params={{ id: p.id }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5" /> Abrir
+                        </Link>
+                        <CopyButton value={formatLine(p)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="bg-card border border-border rounded-2xl p-6 text-center text-sm text-muted-foreground">
+                Nenhum proxy corresponde ao filtro.
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: tabela */}
+          <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-background/60 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
+                    <th className="px-4 py-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={filtered.length > 0 && selected.size === filtered.length}
+                        onChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="text-left px-4 py-3 font-semibold">Produto</th>
                     <th className="text-left px-4 py-3 font-semibold">Host : Porta</th>
                     <th className="text-left px-4 py-3 font-semibold">Usuário</th>
@@ -359,6 +525,9 @@ function ProxiesPage() {
                     const remaining = Math.max(0, cap - used);
                     return (
                       <tr key={p.id} className="border-t border-border/60">
+                        <td className="px-4 py-3">
+                          <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelected(p.id)} />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="font-semibold">{p.product_name}</div>
                           <div className="text-[11px] text-muted-foreground uppercase mb-1">
@@ -412,6 +581,7 @@ function ProxiesPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center gap-1">
+                            <TestNowButton proxyId={p.id} />
                             <button
                               onClick={() => {
                                 setReportTarget(p.id);
@@ -438,7 +608,7 @@ function ProxiesPage() {
                   })}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
                         Nenhum proxy corresponde ao filtro.
                       </td>
                     </tr>

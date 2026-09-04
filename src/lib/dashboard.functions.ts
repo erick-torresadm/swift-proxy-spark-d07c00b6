@@ -182,6 +182,65 @@ export const listMyProxies = createServerFn({ method: "GET" })
     }));
   });
 
+/**
+ * Testa a conexão real de um proxy do próprio usuário, na hora, sem esperar
+ * o cron de saúde (10min). Existe porque cliente relatava "parece não estar
+ * funcionando" antes do cron rodar de novo.
+ */
+export const testProxyNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ proxyId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { data: cp } = await supabaseAdmin
+      .from("customer_proxies")
+      .select("stock_id, proxy_stock(host, port, username, password, protocol)")
+      .eq("id", data.proxyId)
+      .eq("user_id", context.userId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const stock = cp?.proxy_stock;
+    if (!stock?.host || !stock.port) throw new Error("Proxy não encontrado.");
+
+    const { SocksProxyAgent } = await import("socks-proxy-agent");
+    const { HttpsProxyAgent } = await import("https-proxy-agent");
+
+    const auth = `${encodeURIComponent(stock.username ?? "")}:${encodeURIComponent(stock.password ?? "")}`;
+    const proxyUrl =
+      stock.protocol === "socks5"
+        ? `socks5h://${auth}@${stock.host}:${stock.port}`
+        : `http://${auth}@${stock.host}:${stock.port}`;
+    const agent = stock.protocol === "socks5" ? new SocksProxyAgent(proxyUrl) : new HttpsProxyAgent(proxyUrl);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const startedAt = Date.now();
+    try {
+      const res = await fetch("http://ip-api.com/json/?fields=status,country", {
+        // @ts-expect-error -- undici aceita agent em runtime node
+        agent,
+        signal: controller.signal,
+      });
+      const body = (await res.json()) as { status?: string; country?: string };
+      const ok = res.ok && body.status === "success";
+      if (cp?.stock_id) {
+        await supabaseAdmin
+          .from("proxy_stock")
+          .update({
+            last_health_check_at: new Date().toISOString(),
+            health_status: ok ? "ok" : "dead",
+            ...(ok ? { consecutive_failures: 0 } : {}),
+          })
+          .eq("id", cp.stock_id);
+      }
+      return { ok, country: body.country ?? null, latency_ms: Date.now() - startedAt };
+    } catch {
+      return { ok: false, country: null, latency_ms: Date.now() - startedAt };
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
 export const setProxyLabel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>

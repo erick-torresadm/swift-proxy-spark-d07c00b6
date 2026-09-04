@@ -314,7 +314,11 @@ function ProxiesPage() {
         </div>
       </div>
       <p className="text-muted-foreground mb-6">
-        Use no formato <code className="text-foreground">usuário:senha@host:porta</code>.
+        Use no formato <code className="text-foreground">usuário:senha@host:porta</code>, protocolo{" "}
+        <strong className="text-foreground uppercase">
+          {Array.from(new Set((data ?? []).map((p) => p.protocol).filter(Boolean))).join(" ou ") || "SOCKS5"}
+        </strong>
+        {" "}— não use HTTP se seu proxy for SOCKS5, a conexão não vai funcionar.
       </p>
 
       {(() => {

@@ -370,6 +370,7 @@ export type Database = {
           created_at: string
           id: string
           ip_rotations_used: number
+          label: string | null
           order_id: string
           provider_order_id: string | null
           released_at: string | null
@@ -384,6 +385,7 @@ export type Database = {
           created_at?: string
           id?: string
           ip_rotations_used?: number
+          label?: string | null
           order_id: string
           provider_order_id?: string | null
           released_at?: string | null
@@ -398,6 +400,7 @@ export type Database = {
           created_at?: string
           id?: string
           ip_rotations_used?: number
+          label?: string | null
           order_id?: string
           provider_order_id?: string | null
           released_at?: string | null

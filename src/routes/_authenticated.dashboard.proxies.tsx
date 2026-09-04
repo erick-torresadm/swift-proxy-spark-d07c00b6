@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag, Activity, ShoppingCart } from "lucide-react";
-import { listMyProxies, rotateProxyIp, createReactivateCheckout, syncMyAllocations } from "@/lib/dashboard.functions";
+import { Server, Copy, Check, Download, Search, RefreshCw, AlertCircle, Maximize2, Flag, Activity, ShoppingCart, Pencil } from "lucide-react";
+import { listMyProxies, rotateProxyIp, createReactivateCheckout, syncMyAllocations, setProxyLabel } from "@/lib/dashboard.functions";
 import { reportProxyIssue } from "@/lib/admin-ops.functions";
 import { getMyProxiesHealth } from "@/lib/health.functions";
 import { BuyMoreDialog } from "@/components/buy-more-dialog";
@@ -19,11 +19,14 @@ function HealthBadge({ stockId, health }: { stockId: string | null; health?: Rec
     );
   }
   const up = h.uptime_24h ?? 0;
-  const color =
-    up >= 99 ? "bg-primary/15 text-primary" :
-    up >= 90 ? "bg-amber-400/15 text-amber-400" :
-    "bg-red-500/15 text-red-400";
-  const label = up >= 99 ? "Saudável" : up >= 90 ? "Degradado" : "Offline";
+  // Última checagem manda: uma média de 24h fica "presa" a falhas antigas
+  // (ex: bug de classificação já corrigido) por horas depois do problema
+  // já ter sumido. O status atual reflete a realidade, o % é só contexto.
+  const healthy = h.last_ok === true;
+  const color = healthy
+    ? "bg-primary/15 text-primary"
+    : up >= 90 ? "bg-amber-400/15 text-amber-400" : "bg-red-500/15 text-red-400";
+  const label = healthy ? "Saudável" : up >= 90 ? "Degradado" : "Offline";
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${color}`}
@@ -64,6 +67,57 @@ function CopyButton({ value, label = "Copiar" }: { value: string; label?: string
     >
       {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
       {label}
+    </button>
+  );
+}
+
+function LabelCell({ proxyId, value, onSaved }: { proxyId: string; value: string | null; onSaved: (label: string | null) => void }) {
+  const setLabelFn = useServerFn(setProxyLabel);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+
+  const save = useMutation({
+    mutationFn: (label: string | null) => setLabelFn({ data: { proxyId, label } }),
+    onSuccess: (r) => {
+      onSaved(r.label);
+      setEditing(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => save.mutate(draft.trim() || null)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") {
+            setDraft(value ?? "");
+            setEditing(false);
+          }
+        }}
+        maxLength={40}
+        placeholder="Ex: Conta Instagram 1"
+        className="w-full text-xs px-1.5 py-0.5 rounded border border-primary/60 bg-background outline-none"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition"
+      title="Clique pra dar um nome/tag pra esse proxy"
+    >
+      {value ? (
+        <span className="px-1.5 py-0.5 rounded bg-foreground/5 font-medium text-foreground">{value}</span>
+      ) : (
+        <span className="italic opacity-60">adicionar tag</span>
+      )}
+      <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 transition" />
     </button>
   );
 }
@@ -162,7 +216,8 @@ function ProxiesPage() {
       (p) =>
         p.host?.toLowerCase().includes(q) ||
         p.product_name.toLowerCase().includes(q) ||
-        p.username?.toLowerCase().includes(q),
+        p.username?.toLowerCase().includes(q) ||
+        p.label?.toLowerCase().includes(q),
     );
   }, [data, query]);
 
@@ -306,9 +361,18 @@ function ProxiesPage() {
                       <tr key={p.id} className="border-t border-border/60">
                         <td className="px-4 py-3">
                           <div className="font-semibold">{p.product_name}</div>
-                          <div className="text-[11px] text-muted-foreground uppercase">
+                          <div className="text-[11px] text-muted-foreground uppercase mb-1">
                             {p.protocol} · {p.country_code}
                           </div>
+                          <LabelCell
+                            proxyId={p.id}
+                            value={p.label}
+                            onSaved={(label) =>
+                              qc.setQueryData<typeof data>(["my-proxies"], (old) =>
+                                old?.map((row) => (row.id === p.id ? { ...row, label } : row)),
+                              )
+                            }
+                          />
                         </td>
                         <td className="px-4 py-3 font-mono text-xs">
                           {p.host}:{p.port}

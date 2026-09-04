@@ -153,7 +153,7 @@ export const listMyProxies = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("customer_proxies")
       .select(
-        "id, stock_id, status, allocated_at, order_id, ip_rotations_used, rotations_reset_at, proxy_stock(host, port, username, password, protocol, country_code), orders(grace_until, products(name, slug, ip_rotations_per_month))",
+        "id, stock_id, status, allocated_at, order_id, label, ip_rotations_used, rotations_reset_at, proxy_stock(host, port, username, password, protocol, country_code), orders(grace_until, products(name, slug, ip_rotations_per_month))",
       )
       .eq("user_id", context.userId)
       .eq("status", "active")
@@ -166,6 +166,7 @@ export const listMyProxies = createServerFn({ method: "GET" })
 
       status: r.status as string,
       allocated_at: r.allocated_at,
+      label: r.label ?? null,
       host: r.proxy_stock?.host ?? null,
       port: r.proxy_stock?.port ?? null,
       username: r.proxy_stock?.username ?? null,
@@ -179,6 +180,25 @@ export const listMyProxies = createServerFn({ method: "GET" })
       rotations_reset_at: r.rotations_reset_at,
       grace_until: r.orders?.grace_until ?? null,
     }));
+  });
+
+export const setProxyLabel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({ proxyId: z.string().uuid(), label: z.string().trim().max(40).nullable() })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const label = data.label && data.label.length > 0 ? data.label : null;
+    const { error } = await supabaseAdmin
+      .from("customer_proxies")
+      .update({ label })
+      .eq("id", data.proxyId)
+      .eq("user_id", context.userId);
+
+    if (error) throw new Error(error.message);
+    return { ok: true, label };
   });
 
 export const listMyOrders = createServerFn({ method: "GET" })

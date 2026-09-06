@@ -329,31 +329,40 @@ export function tplGracePeriod(opts: { customerName?: string; daysLeft: number }
 // Dunning / Win-back templates (escalating cadence)
 // ============================================================
 
-export type OverdueStage = "d1" | "d5" | "d15";
+export type OverdueTone = "d1" | "d5" | "d15";
+/** @deprecated use OverdueTone */
+export type OverdueStage = OverdueTone;
 export type WinbackStage = "d7" | "d20" | "d45";
 
 export function tplOverdue(opts: {
   customerName?: string;
   productName: string;
   amountBRL: string;
+  discountedBRL?: string;
+  discountPct?: number;
   daysOverdue: number;
-  stage: OverdueStage;
+  stage: OverdueTone;
   payUrl?: string;
 }) {
   const name = escapeHtml(opts.customerName || "cliente");
   const product = escapeHtml(opts.productName);
   const pay = opts.payUrl || (BRAND.url + "/dashboard/orders");
+  const hasDiscount = Boolean(opts.discountedBRL && opts.discountPct);
+  const discountLine = hasDiscount
+    ? `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Pra facilitar, o link abaixo quita a fatura com <b>${opts.discountPct}% de desconto</b> (R$ ${escapeHtml(opts.discountedBRL!)} em vez de R$ ${escapeHtml(opts.amountBRL)}). O link vale por 24 horas; se passar, o próximo e-mail traz um novo.</p>`
+    : "";
 
-  const variants: Record<OverdueStage, { preview: string; title: string; emoji: string; color: string; headline: string; body: string; cta: string }> = {
+  const variants: Record<OverdueTone, { preview: string; title: string; emoji: string; color: string; headline: string; body: string; cta: string }> = {
     d1: {
-      preview: `Lembrete amigável: seu pagamento ficou pendente`,
+      preview: hasDiscount ? `Seu pagamento ficou pendente — ${opts.discountPct}% off pra regularizar` : `Lembrete amigável: seu pagamento ficou pendente`,
       title: "Pagamento pendente",
       emoji: "👋",
       color: BRAND.primary,
       headline: "Identificamos uma falha no seu pagamento",
-      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, tudo bem? Tentamos cobrar sua assinatura do <b>${product}</b> mas o pagamento não foi concluído.</p>
-             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Pode ser só um detalhe do cartão. Atualize agora e seus proxies continuam funcionando normalmente, sem interrupção.</p>`,
-      cta: "Atualizar pagamento",
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, tudo bem? Tentamos renovar sua assinatura do <b>${product}</b> e o pagamento não foi concluído — normalmente é limite, vencimento ou troca de cartão.</p>
+             ${discountLine}
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Assim que o pagamento compensar, seus proxies voltam automaticamente.</p>`,
+      cta: hasDiscount ? `Pagar com ${opts.discountPct}% off` : "Atualizar pagamento",
     },
     d5: {
       preview: `Atenção: sua assinatura está prestes a ser desativada`,
@@ -361,9 +370,10 @@ export function tplOverdue(opts: {
       emoji: "⚠️",
       color: "#f59e0b",
       headline: "Sua assinatura está em risco",
-      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, já se passaram <b>${opts.daysOverdue} dias</b> desde a falha no pagamento de <b>${product}</b>.</p>
-             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se você não regularizar nos próximos dias, vamos <b>desativar seus proxies</b> e cancelar a assinatura automaticamente. Não queremos que isso aconteça.</p>`,
-      cta: "Regularizar agora",
+      body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, já se passaram <b>${opts.daysOverdue} dias</b> desde a falha no pagamento de <b>${product}</b>. Seus proxies estão suspensos.</p>
+             ${discountLine}
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se não recebermos o pagamento nos próximos dias, a assinatura será cancelada automaticamente e os IPs liberados para outros clientes.</p>`,
+      cta: hasDiscount ? `Regularizar com ${opts.discountPct}% off` : "Regularizar agora",
     },
     d15: {
       preview: `Último aviso antes do cancelamento da sua conta`,
@@ -372,8 +382,9 @@ export function tplOverdue(opts: {
       color: "#dc2626",
       headline: "Último aviso: sua conta será cancelada",
       body: `<p style="margin:0 0 14px;color:${BRAND.fg};line-height:1.6;font-size:15px;">Olá ${name}, este é o <b>último aviso</b>. Sua assinatura de <b>${product}</b> está com pagamento pendente há <b>${opts.daysOverdue} dias</b>.</p>
-             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se não recebermos o pagamento, sua conta será cancelada e seus proxies desativados permanentemente. Resolva agora em menos de 2 minutos:</p>`,
-      cta: "Pagar agora e manter conta",
+             ${discountLine}
+             <p style="margin:0 0 14px;color:${BRAND.muted};line-height:1.6;">Se não recebermos o pagamento, a assinatura será cancelada e os proxies desativados definitivamente. Resolver leva menos de 2 minutos:</p>`,
+      cta: hasDiscount ? `Pagar com ${opts.discountPct}% off e manter conta` : "Pagar agora e manter conta",
     },
   };
 
@@ -390,14 +401,14 @@ export function tplOverdue(opts: {
       ${v.body}
       <table cellpadding="0" cellspacing="0" style="margin:18px 0;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
         <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;">Plano</td><td style="padding:10px 14px;text-align:right;font-weight:600;">${product}</td></tr>
-        <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;border-top:1px solid ${BRAND.border};">Valor pendente</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:${v.color};border-top:1px solid ${BRAND.border};">R$ ${escapeHtml(opts.amountBRL)}</td></tr>
+        <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;border-top:1px solid ${BRAND.border};">Valor pendente</td><td style="padding:10px 14px;text-align:right;font-weight:700;color:${v.color};border-top:1px solid ${BRAND.border};">${hasDiscount ? `<span style="text-decoration:line-through;color:${BRAND.muted};font-weight:400;">R$ ${escapeHtml(opts.amountBRL)}</span>&nbsp; R$ ${escapeHtml(opts.discountedBRL!)}` : `R$ ${escapeHtml(opts.amountBRL)}`}</td></tr>
         <tr><td style="padding:10px 14px;color:${BRAND.muted};font-size:13px;border-top:1px solid ${BRAND.border};">Dias em atraso</td><td style="padding:10px 14px;text-align:right;font-weight:600;border-top:1px solid ${BRAND.border};">${opts.daysOverdue}</td></tr>
       </table>
       <p style="margin:24px 0 8px;">
         <a href="${pay}" style="display:inline-block;background:${v.color};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">${escapeHtml(v.cta)}</a>
       </p>
       <p style="margin:14px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;">
-        O link acima abre sua fatura no Stripe — dá pra pagar com cartão (ou trocar o cartão salvo). Enquanto o pagamento não for identificado, seus proxies ficam suspensos; assim que compensar, eles voltam automaticamente.
+        O link acima abre um checkout seguro do Stripe (cartão ou Pix, conforme disponível). Enquanto o pagamento não for identificado, seus proxies ficam suspensos; assim que compensar, eles voltam automaticamente em alguns minutos.
       </p>
       <p style="margin:14px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;">
         Não quer continuar? Sem problema e sem burocracia: <a href="${BRAND.url}/dashboard/cancelar" style="color:${BRAND.primary};font-weight:600;">cancele sua assinatura aqui</a> em um clique. Cancelando, nenhuma nova cobrança será feita e não fica pendência.

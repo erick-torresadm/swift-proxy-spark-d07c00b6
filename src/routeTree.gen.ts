@@ -83,6 +83,7 @@ import { Route as AuthenticatedAdminInventoryProductIdRouteImport } from './rout
 import { Route as ApiPublicAuthRecoveryRouteImport } from './routes/api/public/auth/recovery'
 import { Route as ApiPublicBlogIngestRouteImport } from './routes/api/public/blog/ingest'
 import { Route as ApiPublicCronHealthcheckRouteImport } from './routes/api/public/cron.healthcheck'
+import { Route as ApiPublicDunningSettleRouteImport } from './routes/api/public/dunning/settle'
 import { Route as ApiPublicHooksDunningSweepRouteImport } from './routes/api/public/hooks/dunning-sweep'
 import { Route as ApiPublicHooksEmailQueueWorkerRouteImport } from './routes/api/public/hooks/email-queue-worker'
 import { Route as ApiPublicHooksEngagementNudgesRouteImport } from './routes/api/public/hooks/engagement-nudges'
@@ -499,6 +500,11 @@ const ApiPublicCronHealthcheckRoute =
     path: '/api/public/cron/healthcheck',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicDunningSettleRoute = ApiPublicDunningSettleRouteImport.update({
+  id: '/api/public/dunning/settle',
+  path: '/api/public/dunning/settle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksDunningSweepRoute =
   ApiPublicHooksDunningSweepRouteImport.update({
     id: '/api/public/hooks/dunning-sweep',
@@ -660,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/api/public/auth/recovery': typeof ApiPublicAuthRecoveryRoute
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
+  '/api/public/dunning/settle': typeof ApiPublicDunningSettleRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
   '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
@@ -747,6 +754,7 @@ export interface FileRoutesByTo {
   '/api/public/auth/recovery': typeof ApiPublicAuthRecoveryRoute
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
+  '/api/public/dunning/settle': typeof ApiPublicDunningSettleRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
   '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
@@ -839,6 +847,7 @@ export interface FileRoutesById {
   '/api/public/auth/recovery': typeof ApiPublicAuthRecoveryRoute
   '/api/public/blog/ingest': typeof ApiPublicBlogIngestRoute
   '/api/public/cron/healthcheck': typeof ApiPublicCronHealthcheckRoute
+  '/api/public/dunning/settle': typeof ApiPublicDunningSettleRoute
   '/api/public/hooks/dunning-sweep': typeof ApiPublicHooksDunningSweepRoute
   '/api/public/hooks/email-queue-worker': typeof ApiPublicHooksEmailQueueWorkerRoute
   '/api/public/hooks/engagement-nudges': typeof ApiPublicHooksEngagementNudgesRoute
@@ -931,6 +940,7 @@ export interface FileRouteTypes {
     | '/api/public/auth/recovery'
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
+    | '/api/public/dunning/settle'
     | '/api/public/hooks/dunning-sweep'
     | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
@@ -1018,6 +1028,7 @@ export interface FileRouteTypes {
     | '/api/public/auth/recovery'
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
+    | '/api/public/dunning/settle'
     | '/api/public/hooks/dunning-sweep'
     | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
@@ -1109,6 +1120,7 @@ export interface FileRouteTypes {
     | '/api/public/auth/recovery'
     | '/api/public/blog/ingest'
     | '/api/public/cron/healthcheck'
+    | '/api/public/dunning/settle'
     | '/api/public/hooks/dunning-sweep'
     | '/api/public/hooks/email-queue-worker'
     | '/api/public/hooks/engagement-nudges'
@@ -1163,6 +1175,7 @@ export interface RootRouteChildren {
   ApiPublicAuthRecoveryRoute: typeof ApiPublicAuthRecoveryRoute
   ApiPublicBlogIngestRoute: typeof ApiPublicBlogIngestRoute
   ApiPublicCronHealthcheckRoute: typeof ApiPublicCronHealthcheckRoute
+  ApiPublicDunningSettleRoute: typeof ApiPublicDunningSettleRoute
   ApiPublicHooksDunningSweepRoute: typeof ApiPublicHooksDunningSweepRoute
   ApiPublicHooksEmailQueueWorkerRoute: typeof ApiPublicHooksEmailQueueWorkerRoute
   ApiPublicHooksEngagementNudgesRoute: typeof ApiPublicHooksEngagementNudgesRoute
@@ -1699,6 +1712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronHealthcheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/dunning/settle': {
+      id: '/api/public/dunning/settle'
+      path: '/api/public/dunning/settle'
+      fullPath: '/api/public/dunning/settle'
+      preLoaderRoute: typeof ApiPublicDunningSettleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/dunning-sweep': {
       id: '/api/public/hooks/dunning-sweep'
       path: '/api/public/hooks/dunning-sweep'
@@ -1981,6 +2001,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAuthRecoveryRoute: ApiPublicAuthRecoveryRoute,
   ApiPublicBlogIngestRoute: ApiPublicBlogIngestRoute,
   ApiPublicCronHealthcheckRoute: ApiPublicCronHealthcheckRoute,
+  ApiPublicDunningSettleRoute: ApiPublicDunningSettleRoute,
   ApiPublicHooksDunningSweepRoute: ApiPublicHooksDunningSweepRoute,
   ApiPublicHooksEmailQueueWorkerRoute: ApiPublicHooksEmailQueueWorkerRoute,
   ApiPublicHooksEngagementNudgesRoute: ApiPublicHooksEngagementNudgesRoute,

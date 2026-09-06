@@ -258,6 +258,12 @@ async function handleCheckoutSession(s: Stripe.Checkout.Session, eventType: stri
   }
   if (s.payment_status !== "paid") return;
 
+  if (s.metadata?.kind === "dunning_settle") {
+    const { settleDunningSession } = await import("./dunning.server");
+    await settleDunningSession(s.id);
+    return;
+  }
+
   if (orderId) await attachUserToOrder(orderId, customerEmail, customerName);
 
   let promoCode: string | null = null;

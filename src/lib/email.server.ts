@@ -396,6 +396,12 @@ export function tplOverdue(opts: {
       <p style="margin:24px 0 8px;">
         <a href="${pay}" style="display:inline-block;background:${v.color};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:700;font-size:15px;">${escapeHtml(v.cta)}</a>
       </p>
+      <p style="margin:14px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;">
+        O link acima abre sua fatura no Stripe — dá pra pagar com cartão (ou trocar o cartão salvo). Enquanto o pagamento não for identificado, seus proxies ficam suspensos; assim que compensar, eles voltam automaticamente.
+      </p>
+      <p style="margin:14px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;">
+        Não quer continuar? Sem problema e sem burocracia: <a href="${BRAND.url}/dashboard/cancelar" style="color:${BRAND.primary};font-weight:600;">cancele sua assinatura aqui</a> em um clique. Cancelando, nenhuma nova cobrança será feita e não fica pendência.
+      </p>
       <p style="margin:18px 0 0;color:${BRAND.muted};font-size:13px;line-height:1.6;">
         Dúvidas? Responda este email ou fale com a gente no painel.
       </p>

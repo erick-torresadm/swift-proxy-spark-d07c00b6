@@ -5,9 +5,12 @@
  */
 import { supabaseAdmin } from "@/lib/supabase-custom/admin.server";
 import { sendEmail, tplOverdue, tplWinback, type OverdueStage, type WinbackStage } from "./email.server";
+import { getStripe } from "./stripe.server";
 
 const WINBACK_COUPON = "VOLTA20";
 const WINBACK_PCT = 20;
+// O webhook grava grace_until = falha + 7 dias; a data da falha é o que conta.
+const GRACE_DAYS = 7;
 
 interface OrderRow {
   id: string;
@@ -16,6 +19,8 @@ interface OrderRow {
   status: string;
   amount_cents: number;
   current_period_end: string | null;
+  grace_until: string | null;
+  stripe_subscription_id: string | null;
   updated_at: string;
   customer_email: string | null;
   customer_name: string | null;
@@ -24,6 +29,29 @@ interface OrderRow {
 function daysSince(iso: string | null): number {
   if (!iso) return 0;
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+// current_period_end não serve de âncora: o Stripe avança o período mesmo
+// sem pagamento, então "dias em atraso" dava negativo e nunca disparava.
+function overdueAnchor(o: OrderRow): string {
+  if (o.grace_until) {
+    return new Date(new Date(o.grace_until).getTime() - GRACE_DAYS * 86_400_000).toISOString();
+  }
+  return o.updated_at;
+}
+
+async function stripePayUrl(subscriptionId: string | null): Promise<string | undefined> {
+  if (!subscriptionId) return undefined;
+  try {
+    const sub = await getStripe().subscriptions.retrieve(subscriptionId, { expand: ["latest_invoice"] });
+    const inv = sub.latest_invoice;
+    if (inv && typeof inv !== "string" && inv.status === "open" && inv.hosted_invoice_url) {
+      return inv.hosted_invoice_url;
+    }
+  } catch {
+    /* cai no link do painel */
+  }
+  return undefined;
 }
 
 function pickOverdueStage(days: number): OverdueStage | null {
@@ -102,14 +130,14 @@ export async function runDunningSweep(opts: { dryRun?: boolean } = {}): Promise<
   // ---- INADIMPLENTES (past_due / grace) ----
   const { data: overdueOrders } = await supabaseAdmin
     .from("orders")
-    .select("id, user_id, product_id, status, amount_cents, current_period_end, updated_at, customer_email, customer_name")
+    .select("id, user_id, product_id, status, amount_cents, current_period_end, grace_until, stripe_subscription_id, updated_at, customer_email, customer_name")
     .in("status", ["past_due", "grace"])
     .limit(500);
 
   for (const o of (overdueOrders ?? []) as OrderRow[]) {
     result.scanned++;
     try {
-      const days = daysSince(o.current_period_end ?? o.updated_at);
+      const days = daysSince(overdueAnchor(o));
       const stage = pickOverdueStage(days);
       if (!stage) { result.skipped++; continue; }
       if (await alreadySent(o.id, "overdue", stage)) { result.skipped++; continue; }
@@ -126,6 +154,7 @@ export async function runDunningSweep(opts: { dryRun?: boolean } = {}): Promise<
         amountBRL: (o.amount_cents / 100).toFixed(2).replace(".", ","),
         daysOverdue: days,
         stage,
+        payUrl: await stripePayUrl(o.stripe_subscription_id),
       });
       const subjects: Record<OverdueStage, string> = {
         d1: `Pagamento pendente · ${name}`,

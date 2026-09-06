@@ -13,17 +13,18 @@ export const Route = createFileRoute("/api/public/dunning/settle")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const sessionId = url.searchParams.get("session_id");
-        const back = new URL("/dashboard/proxies", url.origin);
-        if (!sessionId || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) {
-          return Response.redirect(back.toString(), 302);
-        }
+        const redirect = (settled?: "1" | "0") =>
+          new Response(null, {
+            status: 302,
+            headers: { Location: `/dashboard/proxies${settled ? `?settled=${settled}` : ""}` },
+          });
+        if (!sessionId || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return redirect();
         try {
           const r = await settleDunningSession(sessionId);
-          back.searchParams.set("settled", r.ok ? "1" : "0");
+          return redirect(r.ok ? "1" : "0");
         } catch {
-          back.searchParams.set("settled", "0");
+          return redirect("0");
         }
-        return Response.redirect(back.toString(), 302);
       },
     },
   },

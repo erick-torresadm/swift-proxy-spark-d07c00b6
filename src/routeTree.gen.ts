@@ -92,7 +92,6 @@ import { Route as ApiPublicHooksNotificationsDispatchRouteImport } from './route
 import { Route as ApiPublicHooksProxyHealthSweepRouteImport } from './routes/api/public/hooks/proxy-health-sweep'
 import { Route as ApiPublicHooksProxysellerBackfillRouteImport } from './routes/api/public/hooks/proxyseller-backfill'
 import { Route as ApiPublicHooksProxysellerFullSyncRouteImport } from './routes/api/public/hooks/proxyseller-full-sync'
-import { Route as ApiPublicHooksProxysellerReferenceRouteImport } from './routes/api/public/hooks/proxyseller-reference'
 import { Route as ApiPublicHooksProxysellerSyncRouteImport } from './routes/api/public/hooks/proxyseller-sync'
 import { Route as ApiPublicHooksReconcileStuckOrdersRouteImport } from './routes/api/public/hooks/reconcile-stuck-orders'
 import { Route as ApiPublicHooksRenewalSweepRouteImport } from './routes/api/public/hooks/renewal-sweep'
@@ -554,12 +553,6 @@ const ApiPublicHooksProxysellerFullSyncRoute =
     path: '/api/public/hooks/proxyseller-full-sync',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksProxysellerReferenceRoute =
-  ApiPublicHooksProxysellerReferenceRouteImport.update({
-    id: '/api/public/hooks/proxyseller-reference',
-    path: '/api/public/hooks/proxyseller-reference',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicHooksProxysellerSyncRoute =
   ApiPublicHooksProxysellerSyncRouteImport.update({
     id: '/api/public/hooks/proxyseller-sync',
@@ -682,7 +675,6 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/proxy-health-sweep': typeof ApiPublicHooksProxyHealthSweepRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
-  '/api/public/hooks/proxyseller-reference': typeof ApiPublicHooksProxysellerReferenceRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/reconcile-stuck-orders': typeof ApiPublicHooksReconcileStuckOrdersRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
@@ -771,7 +763,6 @@ export interface FileRoutesByTo {
   '/api/public/hooks/proxy-health-sweep': typeof ApiPublicHooksProxyHealthSweepRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
-  '/api/public/hooks/proxyseller-reference': typeof ApiPublicHooksProxysellerReferenceRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/reconcile-stuck-orders': typeof ApiPublicHooksReconcileStuckOrdersRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
@@ -865,7 +856,6 @@ export interface FileRoutesById {
   '/api/public/hooks/proxy-health-sweep': typeof ApiPublicHooksProxyHealthSweepRoute
   '/api/public/hooks/proxyseller-backfill': typeof ApiPublicHooksProxysellerBackfillRoute
   '/api/public/hooks/proxyseller-full-sync': typeof ApiPublicHooksProxysellerFullSyncRoute
-  '/api/public/hooks/proxyseller-reference': typeof ApiPublicHooksProxysellerReferenceRoute
   '/api/public/hooks/proxyseller-sync': typeof ApiPublicHooksProxysellerSyncRoute
   '/api/public/hooks/reconcile-stuck-orders': typeof ApiPublicHooksReconcileStuckOrdersRoute
   '/api/public/hooks/renewal-sweep': typeof ApiPublicHooksRenewalSweepRoute
@@ -959,7 +949,6 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxy-health-sweep'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
-    | '/api/public/hooks/proxyseller-reference'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/reconcile-stuck-orders'
     | '/api/public/hooks/renewal-sweep'
@@ -1048,7 +1037,6 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxy-health-sweep'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
-    | '/api/public/hooks/proxyseller-reference'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/reconcile-stuck-orders'
     | '/api/public/hooks/renewal-sweep'
@@ -1141,7 +1129,6 @@ export interface FileRouteTypes {
     | '/api/public/hooks/proxy-health-sweep'
     | '/api/public/hooks/proxyseller-backfill'
     | '/api/public/hooks/proxyseller-full-sync'
-    | '/api/public/hooks/proxyseller-reference'
     | '/api/public/hooks/proxyseller-sync'
     | '/api/public/hooks/reconcile-stuck-orders'
     | '/api/public/hooks/renewal-sweep'
@@ -1197,7 +1184,6 @@ export interface RootRouteChildren {
   ApiPublicHooksProxyHealthSweepRoute: typeof ApiPublicHooksProxyHealthSweepRoute
   ApiPublicHooksProxysellerBackfillRoute: typeof ApiPublicHooksProxysellerBackfillRoute
   ApiPublicHooksProxysellerFullSyncRoute: typeof ApiPublicHooksProxysellerFullSyncRoute
-  ApiPublicHooksProxysellerReferenceRoute: typeof ApiPublicHooksProxysellerReferenceRoute
   ApiPublicHooksProxysellerSyncRoute: typeof ApiPublicHooksProxysellerSyncRoute
   ApiPublicHooksReconcileStuckOrdersRoute: typeof ApiPublicHooksReconcileStuckOrdersRoute
   ApiPublicHooksRenewalSweepRoute: typeof ApiPublicHooksRenewalSweepRoute
@@ -1789,13 +1775,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProxysellerFullSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/proxyseller-reference': {
-      id: '/api/public/hooks/proxyseller-reference'
-      path: '/api/public/hooks/proxyseller-reference'
-      fullPath: '/api/public/hooks/proxyseller-reference'
-      preLoaderRoute: typeof ApiPublicHooksProxysellerReferenceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/proxyseller-sync': {
       id: '/api/public/hooks/proxyseller-sync'
       path: '/api/public/hooks/proxyseller-sync'
@@ -2034,8 +2013,6 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksProxysellerBackfillRoute,
   ApiPublicHooksProxysellerFullSyncRoute:
     ApiPublicHooksProxysellerFullSyncRoute,
-  ApiPublicHooksProxysellerReferenceRoute:
-    ApiPublicHooksProxysellerReferenceRoute,
   ApiPublicHooksProxysellerSyncRoute: ApiPublicHooksProxysellerSyncRoute,
   ApiPublicHooksReconcileStuckOrdersRoute:
     ApiPublicHooksReconcileStuckOrdersRoute,

@@ -10,7 +10,7 @@ import { WhatsAppFloat } from "./WhatsAppFloat";
 import { whatsappUrl } from "@/config/contact";
 
 export type ProductLandingProps = {
-  slug: "ipv6-br" | "ipv4-us" | "isp-us" | "ipv6-fb-br";
+  slug: "ipv6-br" | "ipv4-us" | "isp-us" | "isp-br" | "ipv6-fb-br";
   badge: string;
   title: React.ReactNode;
   subtitle: string;

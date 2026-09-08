@@ -4,8 +4,8 @@ import { ProductLanding } from "@/components/site/ProductLanding";
 
 const SITE = "https://www.fastproxy.com.br";
 const URL = SITE + "/proxy-isp";
-const TITLE = "Proxy Residencial Brasil — ISP Dedicado, Instagram & WhatsApp | FastProxy";
-const DESC = "Proxy residencial dedicado no Brasil: IPs registrados em provedores reais (não datacenter) com velocidade de servidor. Perfeito pra Instagram, WhatsApp, Facebook Ads e multi-contas. A partir de R$ 49,90.";
+const TITLE = "Proxy ISP Dedicado Brasil — Instagram & WhatsApp | FastProxy";
+const DESC = "Proxy ISP dedicado no Brasil: IP fixo, pool separado do datacenter genérico, com velocidade de servidor. Perfeito pra Instagram, WhatsApp, Facebook Ads e multi-contas. A partir de R$ 49,90.";
 
 
 export const Route = createFileRoute("/proxy-isp")({
@@ -47,26 +47,26 @@ export const Route = createFileRoute("/proxy-isp")({
 function Page() {
   return (
     <ProductLanding
-      slug="isp-us"
-      badge="Proxy Residencial Brasil"
+      slug="isp-br"
+      badge="Proxy ISP Dedicado Brasil"
       Icon={Building2}
       title={
         <>
-          Proxy <span className="text-gradient">residencial</span> com aparência real e velocidade de datacenter
+          Proxy <span className="text-gradient">ISP dedicado</span> com estabilidade e velocidade de servidor
         </>
       }
-      subtitle="O melhor dos dois mundos: IPs registrados em provedores residenciais (ISP) com a estabilidade e velocidade de servidor dedicado. O proxy residencial certo pra quem leva multi-contas a sério."
+      subtitle="IP fixo brasileiro em um pool separado do datacenter genérico de automação, com a estabilidade e velocidade de servidor dedicado. Bom custo-benefício pra quem leva multi-contas a sério — sem prometer o que não é: continua sendo um IP hospedado, não uma linha residencial de operadora."
       bullets={[
-        "IPs residenciais registrados em provedores (ISP) brasileiros",
-        "Aparência 100% residencial — Instagram, WhatsApp e Meta não detectam como proxy",
-        "Velocidade e estabilidade de datacenter, sem queda",
+        "IP fixo dedicado, num pool próprio separado do datacenter genérico",
+        "Reputação historicamente mais limpa que blocos de datacenter comuns",
+        "Estabilidade e velocidade de servidor dedicado, sem queda",
         "Compatível com AdsPower, Dolphin, Multilogin e GoLogin",
         "Reposição inclusa, garantia de 7 dias e suporte humano",
       ]}
       useCases={[
-        { title: "Instagram & WhatsApp", desc: "Gerencie múltiplas contas sem suspensão por suspeita de proxy, VPN ou datacenter." },
-        { title: "Facebook Ads & BMs", desc: "Proxy residencial limpo pra rodar BMs e contas de anúncio sem bloqueio." },
-        { title: "E-commerce e marketplaces", desc: "Mercado Livre, Amazon e plataformas que detectam e bloqueiam IPs de datacenter." },
+        { title: "Instagram & WhatsApp", desc: "Multi-contas com IP fixo e reputação mais limpa que datacenter genérico — sem garantir passar por checagem de ASN de operadora." },
+        { title: "Facebook Ads & BMs", desc: "Proxy dedicado com histórico mais limpo pra rodar BMs e contas de anúncio." },
+        { title: "E-commerce e marketplaces", desc: "Mercado Livre, Amazon e plataformas sensíveis a IP de datacenter comum." },
       ]}
       priceFrom="R$ 49,90"
       whatsappMessage="Olá! Quero comprar um proxy residencial e tenho dúvidas."

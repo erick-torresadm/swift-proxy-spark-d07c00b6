@@ -61,8 +61,8 @@ const CATALOG: Record<Slug, CatalogItem> = {
   "isp-us": {
     slug: "isp-us",
     country: "US",
-    name: "Proxy ISP Residencial EUA",
-    tagline: "IP residencial puro, indetectável",
+    name: "Proxy ISP Dedicado EUA",
+    tagline: "IP fixo em pool dedicado",
     monthly: 18000,
     yearly: 178200,
     blockSize: 1,

@@ -146,14 +146,14 @@ const META: Record<Slug, CatalogMeta> = {
   },
   "isp-br": {
     slug: "isp-br", country: "BR", kind: "isp",
-    name: "Proxy ISP Residencial Brasil",
-    tagline: "IP residencial brasileiro (entrega em até 10 min)",
+    name: "Proxy ISP Dedicado Brasil",
+    tagline: "IP fixo em pool dedicado (entrega em até 10 min)",
     blockSize: 1, unitLabel: "proxy",
   },
   "isp-us": {
     slug: "isp-us", country: "US", kind: "isp",
-    name: "Proxy ISP Residencial EUA",
-    tagline: "IP residencial puro, indetectável (entrega em até 10 min)",
+    name: "Proxy ISP Dedicado EUA",
+    tagline: "IP fixo em pool dedicado (entrega em até 10 min)",
     blockSize: 1, unitLabel: "proxy",
   },
 };
@@ -180,7 +180,7 @@ const COUNTRIES: { code: Country; label: string; flag: string; desc: string }[] 
 ];
 
 const searchSchema = z.object({
-  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "ipv6-us", "ipv6-rot-br"]).optional(),
+  plan: z.enum(["ipv6-br", "ipv4-us", "ipv6-fb-br", "ipv6-fb-us", "isp-us", "isp-br", "ipv6-us", "ipv6-rot-br"]).optional(),
   billing: z.enum(BILLING_CYCLES).optional(),
   qty: z.coerce.number().int().min(1).max(500).optional(),
   canceled: z.coerce.boolean().optional(),

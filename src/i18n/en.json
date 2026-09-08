@@ -109,11 +109,11 @@
     },
     "isp": {
       "name": "ISP Proxy",
-      "tagline": "Pure residential",
-      "best_for": "Operations that need residential IP",
+      "tagline": "Dedicated fixed IP",
+      "best_for": "Operations that need cleaner reputation than generic datacenter",
       "f1": "100 Mbps speed",
-      "f2": "Genuine residential IP",
-      "f3": "Undetectable"
+      "f2": "Separate pool from generic datacenter",
+      "f3": "Cleaner reputation"
     }
   },
   "cta": {

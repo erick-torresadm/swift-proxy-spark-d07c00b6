@@ -25,6 +25,16 @@ export type PsResponse<T> = {
   errors: Array<{ message: string; code: number; customData: unknown }>;
 };
 
+// Listas de proxy chegam a 1,8 MB por chamada e rodam a cada 5 min; no log
+// basta a contagem, senão o audit_log enche o banco.
+function summarizeForAudit(parsed: unknown): unknown {
+  const p = parsed as { status?: unknown; errors?: unknown; data?: { items?: unknown } } | null;
+  if (p?.data && Array.isArray(p.data.items)) {
+    return { status: p.status, errors: p.errors, data: { items_count: p.data.items.length } };
+  }
+  return parsed;
+}
+
 async function psCall<T>(
   method: "GET" | "POST",
   path: string,
@@ -66,7 +76,7 @@ async function psCall<T>(
       response: {
         http: status,
         duration_ms: Date.now() - started,
-        body: parsed as unknown,
+        body: summarizeForAudit(parsed) as unknown,
         error: errMsg ?? null,
       } as never,
     });

@@ -186,7 +186,12 @@ async function runHealthcheck(): Promise<number> {
     };
   }));
 
-  const { error } = await supabaseAdmin.from("proxy_metrics").insert(snapshots);
+  // Só proxies de cliente viram histórico: o painel só mostra os alocados,
+  // e gravar o estoque disponível inteiro a cada 5 min encheu o banco (1,2 GB).
+  const allocatedIds = new Set(stockRows.filter((r) => r.status === "allocated").map((r) => r.id));
+  const { error } = await supabaseAdmin
+    .from("proxy_metrics")
+    .insert(snapshots.filter((s) => allocatedIds.has(s.stock_id)));
   if (error) console.error("[healthcheck] insert failed", error.message);
 
   await supabaseAdmin.from("audit_log").insert({
